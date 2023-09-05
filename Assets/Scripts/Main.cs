@@ -42,7 +42,7 @@ public class Main : MonoBehaviour
 
     private ComputeBuffer _rayPointsBuffer;
 
-    //RayTracingVisualization secondCameraScript = null;
+    RayTracingVisualization secondCameraScript = null;
     private RenderTexture _target;
     RenderTexture rayTracingOutput = null;
 
@@ -91,17 +91,17 @@ public class Main : MonoBehaviour
 
     private void CreateResources()
     {
-        if (cameraWidth != Camera.main.pixelWidth || cameraHeight != Camera.main.pixelHeight)
+        if (cameraWidth != Camera.allCameras[1].pixelWidth || cameraHeight != Camera.allCameras[1].pixelHeight)
         {
             if (rayTracingOutput)
                 rayTracingOutput.Release();
 
-            rayTracingOutput = new RenderTexture(Camera.main.pixelWidth, Camera.main.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+            rayTracingOutput = new RenderTexture(Camera.allCameras[1].pixelWidth, Camera.allCameras[1].pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             rayTracingOutput.enableRandomWrite = true;
             rayTracingOutput.Create();
 
-            cameraWidth = (uint)Camera.main.pixelWidth;
-            cameraHeight = (uint)Camera.main.pixelHeight;
+            cameraWidth = (uint)Camera.allCameras[1].pixelWidth;
+            cameraHeight = (uint)Camera.allCameras[1].pixelHeight;
         }
 
         if (_rayPointsBuffer == null)
@@ -331,8 +331,8 @@ public class Main : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        computeShaderTest.SetMatrix("_CameraToWorld", Camera.main.cameraToWorldMatrix);
-        computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.main.projectionMatrix.inverse);
+        computeShaderTest.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
+        computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
         computeShaderTest.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
         computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);        
 
@@ -364,6 +364,11 @@ public class Main : MonoBehaviour
 
     private void OnEnable()
     {
+        if (secondCamera != null)
+        {
+            secondCameraScript = secondCamera.GetComponent<RayTracingVisualization>();
+        }
+
         // setup the scene
         SetUpScene();
 
@@ -433,7 +438,9 @@ public class Main : MonoBehaviour
         int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
         int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
         computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
-        Graphics.Blit(_target, destination);
+        Graphics.Blit(source, destination);
+
+        secondCameraScript.receiveData(_target);
 
         RayData[] vec = new RayData[10000];
         _rayPointsBuffer.GetData(vec);
