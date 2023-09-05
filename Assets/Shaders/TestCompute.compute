@@ -1,0 +1,230 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+//RWStructuredBuffer<int> testBuffer;
+
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+
+float2 _PixelOffset;
+float2 _Pixel;
+
+static const float PI = 3.14159265f;
+static const float EPSILON = 1e-8;
+
+struct RayData 
+{
+    float3 origin;
+    int set;
+};
+
+RWStructuredBuffer<RayData> _RayPoints;
+
+//-------------------------------------
+//- MESHES
+
+struct MeshObject
+{
+    float4x4 localToWorldMatrix;
+    int indices_offset;
+    int indices_count;
+    int meshObjectType;
+};
+
+StructuredBuffer<MeshObject> _MeshObjects;
+StructuredBuffer<float3> _Vertices;
+StructuredBuffer<int> _Indices;
+
+//-------------------------------------
+//- RAY
+
+struct Ray
+{
+    float3 origin;
+    float3 direction;
+    float3 energy;
+};
+
+Ray CreateRay(float3 origin, float3 direction)
+{
+    Ray ray;
+    ray.origin = origin;
+    ray.direction = direction;
+    ray.energy = float3(1.0f, 1.0f, 1.0f);
+    return ray;
+}
+
+Ray CreateCameraRay(float2 uv)
+{
+    // Transform the camera origin to world space
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+    // Invert the perspective projection of the view-space position
+    float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    // Transform the direction from camera to world space and normalize
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    return CreateRay(origin, direction);
+}
+
+//-------------------------------------
+//- RAYHIT
+
+struct RayHit
+{
+    float3 position;
+    float distance;
+    float3 normal;
+    int type;
+};
+
+RayHit CreateRayHit()
+{
+    RayHit hit;
+    hit.position = float3(0.0f, 0.0f, 0.0f);
+    hit.distance = 1.#INF;
+    hit.normal = float3(0.0f, 0.0f, 0.0f);
+    hit.type = 3;
+    return hit;
+}
+
+//-------------------------------------
+//- INTERSECTION
+
+bool IntersectTriangle_MT97(Ray ray, float3 vert0, float3 vert1, float3 vert2,
+    inout float t, inout float u, inout float v)
+{
+    // find vectors for two edges sharing vert0
+    float3 edge1 = vert1 - vert0;
+    float3 edge2 = vert2 - vert0;
+
+    // begin calculating determinant - also used to calculate U parameter
+    float3 pvec = cross(ray.direction, edge2);
+
+    // if determinant is near zero, ray lies in plane of triangle
+    float det = dot(edge1, pvec);
+
+    // use backface culling
+    if (det < EPSILON)
+        return false;
+    float inv_det = 1.0f / det;
+
+    // calculate distance from vert0 to ray origin
+    float3 tvec = ray.origin - vert0;
+
+    // calculate U parameter and test bounds
+    u = dot(tvec, pvec) * inv_det;
+    if (u < 0.0 || u > 1.0f)
+        return false;
+
+    // prepare to test V parameter
+    float3 qvec = cross(tvec, edge1);
+
+    // calculate V parameter and test bounds
+    v = dot(ray.direction, qvec) * inv_det;
+    if (v < 0.0 || u + v > 1.0f)
+        return false;
+
+    // calculate t, ray intersects triangle
+    t = dot(edge2, qvec) * inv_det;
+
+    return true;
+}
+
+void IntersectMeshObject(Ray ray, inout RayHit bestHit, MeshObject meshObject)
+{
+    uint offset = meshObject.indices_offset;
+    uint count = offset + meshObject.indices_count;
+    for (uint i = offset; i < count; i += 3)
+    {
+        float3 v0 = (mul(meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i]], 1))).xyz;
+        float3 v1 = (mul(meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i + 1]], 1))).xyz;
+        float3 v2 = (mul(meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i + 2]], 1))).xyz;
+
+        float t, u, v;
+        if (IntersectTriangle_MT97(ray, v0, v1, v2, t, u, v))
+        {
+            if (t > 0 && t < bestHit.distance)
+            {
+                bestHit.distance = t;
+                bestHit.position = ray.origin + t * ray.direction;
+                bestHit.normal = normalize(cross(v1 - v0, v2 - v0));    
+                bestHit.type = meshObject.meshObjectType;
+            }
+        }
+    }
+}
+
+//-------------------------------------
+//- TRACE
+
+RayHit Trace(Ray ray)
+{
+    RayHit bestHit = CreateRayHit();
+    uint count, stride;    
+
+    // Trace mesh objects
+    _MeshObjects.GetDimensions(count, stride);
+    for (uint i = 0; i < count; i++)
+    {
+        IntersectMeshObject(ray, bestHit, _MeshObjects[i]);
+    }
+
+    return bestHit;
+}
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    _Pixel = id.x;
+
+    // Get the dimensions of the RenderTexture
+    uint width, height;
+    Result.GetDimensions(width, height);
+
+    // Transform pixel to [-1,1] range
+    float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
+
+    // Get a ray for the UVs
+    Ray ray = CreateCameraRay(uv);
+
+    // Trace and shade the ray
+    float3 result = float3(0, 0, 0);
+    /*for (int i = 0; i < 8; i++)
+    {
+        RayHit hit = Trace(ray);
+        result += ray.energy;
+
+        if (!any(ray.energy))
+            break;
+    }*/
+
+    RayHit hit = Trace(ray);
+    if (hit.type == 0) { //surface
+        Result[id.xy] = float4(1, 0, 0, 1);
+        _RayPoints[id.x].origin = ray.origin;
+        _RayPoints[id.x].set = 1234;
+        _RayPoints[id.x + 1].origin = hit.position;
+        _RayPoints[id.x + 1].set = 1234;
+    }
+    else if (hit.type == 1) { //waterplane
+        Result[id.xy] = float4(0, 1, 0, 1);
+    }
+    else if (hit.type == 2) { //seafloor
+        Result[id.xy] = float4(0, 0, 1, 1);
+        _RayPoints[id.x].origin = ray.origin;
+        _RayPoints[id.x].set = 1234;
+        _RayPoints[id.x + 1].origin = hit.position;
+        _RayPoints[id.x + 1].set = 1234;
+    }
+    else { //miss
+        Result[id.xy] = float4(0, 0, 0, 1);
+    }
+    
+    //Result[id.xy] = float4(result, 1);
+}
