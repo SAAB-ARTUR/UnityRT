@@ -214,6 +214,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     }
     else if (hit.type == 1) { //waterplane
         Result[id.xy] = float4(0, 1, 0, 1);
+        _RayPoints[id.x].origin = ray.origin;
+        _RayPoints[id.x].set = 1234;
+        _RayPoints[id.x + 1].origin = hit.position;
+        _RayPoints[id.x + 1].set = 1234;
     }
     else if (hit.type == 2) { //seafloor
         Result[id.xy] = float4(0, 0, 1, 1);

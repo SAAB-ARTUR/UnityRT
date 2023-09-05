@@ -11,6 +11,7 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject targetSphere = null;
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject surface = null;
+    [SerializeField] GameObject waterplane = null;
     [SerializeField] int depth = 0;
     [SerializeField] int range = 0;
     [SerializeField] int width = 0;
@@ -28,7 +29,8 @@ public class Main : MonoBehaviour
 
     uint cameraWidth = 0;
     uint cameraHeight = 0;
-    
+
+    private List<GameObject> waterplanes = new List<GameObject>();
     private static bool _meshObjectsNeedRebuilding = false;
     private static List<RayTracingObject> _rayTracingObjects = new List<RayTracingObject>();
     private static List<MeshObject> _meshObjects = new List<MeshObject>();
@@ -74,7 +76,7 @@ public class Main : MonoBehaviour
         _meshObjectBuffer?.Release();
         _vertexBuffer?.Release();
         _indexBuffer?.Release();
-        _rayPointsBuffer?.Release();
+        _rayPointsBuffer?.Release();        
     }
 
     void OnDestroy()
@@ -198,26 +200,37 @@ public class Main : MonoBehaviour
     }
 
     private void SetUpScene()
-    {
-        List<Mesh> planes = new List<Mesh>();
+    {        
         // setup the scene
         // SURFACE // 
         surfaceMesh = CreateSurfaceMesh();
         MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
-        surfaceMF.mesh = surfaceMesh;
-        planes.Add(surfaceMesh);
+        surfaceMF.mesh = surfaceMesh;        
 
         // WATER PLANE
-        if (nrOfWaterPlanes > 0) // if >0, create one waterplane, waterPlanesInstanceData handles the remaining waterplanes to be created
+        if (nrOfWaterPlanes > 0) // if >0, create one waterplane
         {
             waterPlane = CreateWaterPlaneMesh();
-        }
+            MeshFilter waterplaneMF = (MeshFilter)waterplane.GetComponent("MeshFilter");
+            waterplaneMF.mesh = waterPlane;
+
+            if (nrOfWaterPlanes > 1) // create copies of the original waterplane at new positions relative to the original to divide the volume between the seafloor and surface evenly
+            {
+                float delta = (float)depth / (float)(nrOfWaterPlanes + 1);
+
+                for (int i = 0; i < nrOfWaterPlanes; i++)
+                {
+                    GameObject gmobj = Instantiate(waterplane, new Vector3(0, -delta*i, 0), Quaternion.identity);
+                    waterplanes.Add(gmobj);
+                }                
+            }
+        }        
 
         // SEAFLOOR //
         seafloorMesh = CreateSeafloorMesh();
         MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
         seafloorMF.mesh = seafloorMesh;
-        planes.Add(seafloorMesh);   
+        
     }
 
     private void RebuildMeshObjectBuffers()
@@ -237,6 +250,10 @@ public class Main : MonoBehaviour
         // Loop over all objects and gather their data
         foreach (RayTracingObject obj in _rayTracingObjects)
         {
+            if (nrOfWaterPlanes <= 0 && obj.meshObjectType == MeshObjectType.WATERPLANE)
+            {
+                continue;
+            }
             Debug.Log("Hejdej");
             Mesh mesh = obj.GetComponent<MeshFilter>().sharedMesh;
 
@@ -258,7 +275,8 @@ public class Main : MonoBehaviour
                 indices_count = indices.Length,
                 meshObjectType = obj.meshObjectType
             }) ;
-        }
+        }        
+
         CreateComputeBuffer(ref _meshObjectBuffer, _meshObjects, 76);
         CreateComputeBuffer(ref _vertexBuffer, _vertices, 12);
         CreateComputeBuffer(ref _indexBuffer, _indices, 4);        
@@ -385,6 +403,12 @@ public class Main : MonoBehaviour
 
         if (oldWidth != width || oldRange != range || oldDepth != depth || oldNrOfWaterPlanes != nrOfWaterPlanes)
         { // change has happened to the scene, update (create new) meshes for the surface, seafloor and water planes
+            
+            foreach(GameObject obj in waterplanes)
+            {
+                Destroy(obj);
+            }
+            waterplanes.Clear();
 
             SetUpScene();         
 
@@ -413,9 +437,9 @@ public class Main : MonoBehaviour
 
         RayData[] vec = new RayData[10000];
         _rayPointsBuffer.GetData(vec);
-        Debug.Log(vec[0].origin);
+        /*Debug.Log(vec[0].origin);
         Debug.Log(vec[0].set);
         Debug.Log(vec[1].origin);
-        Debug.Log(vec[1].set);
+        Debug.Log(vec[1].set);*/
     }
 }
