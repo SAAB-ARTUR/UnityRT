@@ -10,17 +10,23 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject srcSphere = null;
     [SerializeField] GameObject targetSphere = null;
     [SerializeField] GameObject seafloor = null;
+    [SerializeField] GameObject seafloor2 = null;
     [SerializeField] GameObject surface = null;
+    [SerializeField] GameObject surface2 = null;
     [SerializeField] GameObject waterplane = null;
+    [SerializeField] GameObject waterplane2 = null;
     [SerializeField] int depth = 0;
     [SerializeField] int range = 0;
     [SerializeField] int width = 0;
     [SerializeField] int nrOfWaterPlanes = 0;    
     [SerializeField] Camera secondCamera = null;    
     
-    private Mesh waterPlane = null;
+    private Mesh waterplaneMesh = null;
+    private Mesh waterplaneMesh2 = null;
     private Mesh surfaceMesh = null;
-    private Mesh seafloorMesh = null;    
+    private Mesh surfaceMesh2 = null;
+    private Mesh seafloorMesh = null;
+    private Mesh seafloorMesh2 = null;
 
     private int oldDepth = 0;
     private int oldRange = 0;
@@ -59,7 +65,10 @@ public class Main : MonoBehaviour
     {
         public Vector3 origin;
         public int set;
+        public int nrOfInteractions;
     };
+
+    private int raydatabytesize = 20;
 
     private void ReleaseResources()
     {
@@ -106,40 +115,49 @@ public class Main : MonoBehaviour
 
         if (_rayPointsBuffer == null)
         {
-            _rayPointsBuffer = new ComputeBuffer(10000, 16);
+            _rayPointsBuffer = new ComputeBuffer(10000, raydatabytesize);
         }
     }
 
-    private Mesh CreateSurfaceMesh()
+    private Mesh CreateSurfaceMesh(bool flipped=false)
     {
-        Mesh surface = new Mesh()
+        Mesh surfaceMesh = new Mesh()
         {
             name = "Surface Mesh"
         };
 
-        surface.vertices = new Vector3[] {
+        surfaceMesh.vertices = new Vector3[] {
             Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, width), new Vector3(range, 0f, width)
         };
 
-        surface.normals = new Vector3[] {
+        surfaceMesh.normals = new Vector3[] {
             Vector3.back, Vector3.back, Vector3.back, Vector3.back
         };
 
-        surface.tangents = new Vector4[] {
+        surfaceMesh.tangents = new Vector4[] {
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f)
         };
 
-        surface.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
-        };
+        if (flipped)
+        {
+            surfaceMesh.triangles = new int[] {
+                1, 2, 0, 3, 2, 1
+            };
+        }
+        else
+        {
+            surfaceMesh.triangles = new int[] {
+                0, 2, 1, 1, 2, 3
+            };
+        }
 
-        return surface;
+        return surfaceMesh;
     }
 
-    private Mesh CreateSeafloorMesh()
+    private Mesh CreateSeafloorMesh(bool flipped = false)
     {
         Mesh seafloorMesh = new Mesh()
         {
@@ -161,15 +179,25 @@ public class Main : MonoBehaviour
             new Vector4(1f, 0f, 0f, -1f)
         };
 
-        seafloorMesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
-        };
+        if (flipped)
+        {
+            seafloorMesh.triangles = new int[] {
+                1, 2, 0, 3, 2, 1
+            };
+        }
+        else
+        {
+            seafloorMesh.triangles = new int[] {
+                0, 2, 1, 1, 2, 3
+            };
+        }
 
         return seafloorMesh;
     }
 
-    private Mesh CreateWaterPlaneMesh()
+    private Mesh CreateWaterPlaneMesh(bool flipped=false)
     {
+        Debug.Log("hejhej");
         Mesh waterPlaneMesh = new Mesh()
         {
             name = "Waterplane Mesh"
@@ -192,27 +220,45 @@ public class Main : MonoBehaviour
             new Vector4(1f, 0f, 0f, -1f)
         };
 
-        waterPlaneMesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
-        };        
+        if (flipped)
+        {
+            waterPlaneMesh.triangles = new int[] {                
+                1, 2, 0, 3, 2, 1
+            };
+        }
+        else
+        {
+            waterPlaneMesh.triangles = new int[] {
+                0, 2, 1, 1, 2, 3
+            };
+        }
+                
 
         return waterPlaneMesh;
-    }
+    }    
 
     private void SetUpScene()
     {        
-        // setup the scene
+        // setup the scene, unity meshes seem to be one-sided, so all planes are created from two meshes, facing in opposite direction to ensure that rays can hit the planes from either side
         // SURFACE // 
         surfaceMesh = CreateSurfaceMesh();
         MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
-        surfaceMF.mesh = surfaceMesh;        
+        surfaceMF.mesh = surfaceMesh;
+
+        surfaceMesh2 = CreateSurfaceMesh(true);
+        MeshFilter surfaceMF2 = (MeshFilter)surface2.GetComponent("MeshFilter");
+        surfaceMF2.mesh = surfaceMesh2;
 
         // WATER PLANE
         if (nrOfWaterPlanes > 0) // if >0, create one waterplane
         {
-            waterPlane = CreateWaterPlaneMesh();
+            waterplaneMesh = CreateWaterPlaneMesh();
             MeshFilter waterplaneMF = (MeshFilter)waterplane.GetComponent("MeshFilter");
-            waterplaneMF.mesh = waterPlane;
+            waterplaneMF.mesh = waterplaneMesh;
+
+            waterplaneMesh2 = CreateWaterPlaneMesh(true);
+            MeshFilter waterplaneMF2 = (MeshFilter)waterplane2.GetComponent("MeshFilter");
+            waterplaneMF2.mesh = waterplaneMesh2;
 
             if (nrOfWaterPlanes > 1) // create copies of the original waterplane at new positions relative to the original to divide the volume between the seafloor and surface evenly
             {
@@ -222,6 +268,9 @@ public class Main : MonoBehaviour
                 {
                     GameObject gmobj = Instantiate(waterplane, new Vector3(0, -delta*i, 0), Quaternion.identity);
                     waterplanes.Add(gmobj);
+
+                    GameObject gmobj2 = Instantiate(waterplane2, new Vector3(0, -delta * i, 0), Quaternion.identity);
+                    waterplanes.Add(gmobj2);
                 }                
             }
         }        
@@ -230,7 +279,11 @@ public class Main : MonoBehaviour
         seafloorMesh = CreateSeafloorMesh();
         MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
         seafloorMF.mesh = seafloorMesh;
-        
+
+        seafloorMesh2 = CreateSeafloorMesh(true);
+        MeshFilter seafloorMF2 = (MeshFilter)seafloor2.GetComponent("MeshFilter");
+        seafloorMF2.mesh = seafloorMesh2;
+
     }
 
     private void RebuildMeshObjectBuffers()
@@ -250,11 +303,10 @@ public class Main : MonoBehaviour
         // Loop over all objects and gather their data
         foreach (RayTracingObject obj in _rayTracingObjects)
         {
-            if (nrOfWaterPlanes <= 0 && obj.meshObjectType == MeshObjectType.WATERPLANE)
+            if (nrOfWaterPlanes <= 0 && (obj.meshObjectType == MeshObjectType.WATERPLANE_BOTTOM || obj.meshObjectType == MeshObjectType.WATERPLANE_TOP))
             {
                 continue;
-            }
-            Debug.Log("Hejdej");
+            }            
             Mesh mesh = obj.GetComponent<MeshFilter>().sharedMesh;
 
             // Add vertex data
@@ -444,9 +496,16 @@ public class Main : MonoBehaviour
 
         RayData[] vec = new RayData[10000];
         _rayPointsBuffer.GetData(vec);
-        /*Debug.Log(vec[0].origin);
-        Debug.Log(vec[0].set);
-        Debug.Log(vec[1].origin);
-        Debug.Log(vec[1].set);*/
+
+
+        for (int i = 0; i < vec.Length; i++)
+        {
+            Debug.Log(i + " : " + vec[i].set);
+
+        }
+        //Debug.Log(vec[0].origin);
+        //Debug.Log(vec[0].set);
+        //Debug.Log(vec[1].origin);
+        //Debug.Log(vec[1].set);
     }
 }

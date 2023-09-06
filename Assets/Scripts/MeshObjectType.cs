@@ -4,7 +4,10 @@ using UnityEngine;
 
 public enum MeshObjectType
 {
-    SURFACE,
-    WATERPLANE,
-    SEAFLOOR    
+    SURFACE_TOP,
+    SURFACE_BOTTOM,
+    WATERPLANE_TOP,
+    WATERPLANE_BOTTOM,
+    SEAFLOOR_TOP,
+    SEAFLOOR_BOTTOM
 }
