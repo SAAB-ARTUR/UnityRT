@@ -21,7 +21,8 @@ public class Main : MonoBehaviour
     [SerializeField] int nrOfWaterPlanes = 0;    
     [SerializeField] Camera secondCamera = null;
     [SerializeField] bool sendRaysContinuosly = false;
-    
+    [SerializeField] bool visualizeRays = false;
+
     private Mesh waterplaneMesh = null;
     private Mesh waterplaneMesh2 = null;
     private Mesh surfaceMesh = null;
@@ -60,7 +61,7 @@ public class Main : MonoBehaviour
     private bool doRayTracing = false;
     private bool lockRayTracing = false;
 
-    private const int MAXINTERACTIONS = 2;
+    private const int MAXINTERACTIONS = 4;
 
     RayData[] rds = new RayData[16384*MAXINTERACTIONS];
 
@@ -487,8 +488,7 @@ public class Main : MonoBehaviour
         }
 
         if (Input.GetKey(KeyCode.C)){
-            doRayTracing = true;
-            //lockRayTracing = true;
+            doRayTracing = true;            
         }
         else
         {
@@ -519,63 +519,99 @@ public class Main : MonoBehaviour
 
             computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
-            _rayPointsBuffer.GetData(rds);
-
-            // do something with rds
-            Vector3 srcOrigin = srcSphere.transform.position;
-
-            //foreach (RayData rd in rds)
-            //{
-            //    if (rd.set != 12345)
-            //    {
-            //        continue;
-            //    }
-            //    line = new GameObject("Line").AddComponent<LineRenderer>();
-            //    //line.material = new Material(Shader.Find("Default-Line"));
-            //    line.startColor = Color.black;
-            //    line.endColor = Color.black;
-
-            //    line.startWidth = 0.01f;
-            //    line.endWidth = 0.01f;
-            //    line.positionCount = 2;
-            //    line.useWorldSpace = true;
-
-            //    line.SetPosition(0, srcOrigin);
-            //    line.SetPosition(1, rd.origin);
-            //    lines.Add(line);
-            //}            
-
-            Debug.Log(srcOrigin);
-
-            for (int i = 0; i < MAXINTERACTIONS; i++)
+            if (visualizeRays)
             {
-                if (rds[i].set != 12345)
-                {
-                    Debug.Log("hej");
-                    break;                  
-                }
-                line = new GameObject("Line").AddComponent<LineRenderer>();
+                _rayPointsBuffer.GetData(rds);
 
-                line.startColor = Color.black;
-                line.endColor = Color.black;
+                // do something with rds
+                Vector3 srcOrigin = srcSphere.transform.position;
 
-                line.startWidth = 0.01f;
-                line.endWidth = 0.01f;
-                line.positionCount = 2;
-                line.useWorldSpace = true;
+                //foreach (RayData rd in rds)
+                //{
+                //    if (rd.set != 12345)
+                //    {
+                //        continue;
+                //    }
+                //    line = new GameObject("Line").AddComponent<LineRenderer>();
+                //    //line.material = new Material(Shader.Find("Default-Line"));
+                //    line.startColor = Color.black;
+                //    line.endColor = Color.black;
 
-                if (i == 0)
+                //    line.startWidth = 0.01f;
+                //    line.endWidth = 0.01f;
+                //    line.positionCount = 2;
+                //    line.useWorldSpace = true;
+
+                //    line.SetPosition(0, srcOrigin);
+                //    line.SetPosition(1, rd.origin);
+                //    lines.Add(line);
+                //}
+
+                // visualize all lines
+                for (int i = 0; i < rds.Length; i++)
                 {
-                    line.SetPosition(0, srcOrigin);
+                    if (rds[i].set != 12345)
+                    {
+                        // skip to next ray
+                        int mod = i % MAXINTERACTIONS;
+                        int step = MAXINTERACTIONS - mod - 1;
+                        i += step;
+                        continue;
+                    }
+
+                    line = new GameObject("Line").AddComponent<LineRenderer>();
+
+                    line.startColor = Color.black;
+                    line.endColor = Color.black;
+
+                    line.startWidth = 0.01f;
+                    line.endWidth = 0.01f;
+                    line.positionCount = 2;
+                    line.useWorldSpace = true;
+
+                    if (i % MAXINTERACTIONS == 0) // first interaction for a line, draw line from source to first interaction
+                    {
+                        line.SetPosition(0, srcOrigin);
+                    }
+                    else //
+                    {
+                        line.SetPosition(0, rds[i - 1].origin);
+                    }
+
+                    line.SetPosition(1, rds[i].origin);
+                    lines.Add(line);
                 }
-                else 
+
+                // visualize one line
+                /*for (int i = 0; i < MAXINTERACTIONS; i++)
                 {
-                    line.SetPosition(0, rds[i - 1].origin);
-                }
-                
-                line.SetPosition(1, rds[i].origin);
-                lines.Add(line);
-            }           
+                    if (rds[i].set != 12345)
+                    {
+                        break;
+                    }
+                    line = new GameObject("Line").AddComponent<LineRenderer>();
+
+                    line.startColor = Color.black;
+                    line.endColor = Color.black;
+
+                    line.startWidth = 0.01f;
+                    line.endWidth = 0.01f;
+                    line.positionCount = 2;
+                    line.useWorldSpace = true;
+
+                    if (i == 0)
+                    {
+                        line.SetPosition(0, srcOrigin);
+                    }
+                    else
+                    {
+                        line.SetPosition(0, rds[i - 1].origin);
+                    }
+
+                    line.SetPosition(1, rds[i].origin);
+                    lines.Add(line);
+                }*/
+            }
 
             secondCameraScript.receiveData(_target);            
         }

@@ -15,7 +15,7 @@ float2 _Pixel;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
-static const int MAXINTERACTIONS = 2;
+static const int MAXINTERACTIONS = 4;
 
 struct RayData 
 {
@@ -204,7 +204,7 @@ void SurfaceHit(inout Ray ray, RayHit hit, uint index1D)
     _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
 
     // update the ray data
-    ray.origin = hit.position + float3(0, -0.05f, 0);
+    ray.origin = hit.position + float3(0, -0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
     float3 directionTemp = ray.direction;
     float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
     ray.direction = newDirection;
@@ -217,7 +217,7 @@ void SeafloorHit(inout Ray ray, RayHit hit, uint index1D)
     _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
 
     // update the ray data
-    ray.origin = hit.position + float3(0, 0.05f, 0);
+    ray.origin = hit.position + float3(0, 0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
     float3 directionTemp = ray.direction;
     float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
     ray.direction = newDirection;
