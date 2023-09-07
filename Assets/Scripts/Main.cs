@@ -15,12 +15,16 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject surface2 = null;
     [SerializeField] GameObject waterplane = null;
     [SerializeField] GameObject waterplane2 = null;
+    [SerializeField] GameObject surfaceCombo = null;
+    [SerializeField] GameObject bottomCombo = null;
     [SerializeField] int depth = 0;
     [SerializeField] int range = 0;
     [SerializeField] int width = 0;
     [SerializeField] int nrOfWaterPlanes = 0;    
-    [SerializeField] Camera secondCamera = null;    
-    
+    [SerializeField] Camera secondCamera = null;
+    [SerializeField] GameObject world_manager = null;
+
+
     private Mesh waterplaneMesh = null;
     private Mesh waterplaneMesh2 = null;
     private Mesh surfaceMesh = null;
@@ -241,13 +245,13 @@ public class Main : MonoBehaviour
     {        
         // setup the scene, unity meshes seem to be one-sided, so all planes are created from two meshes, facing in opposite direction to ensure that rays can hit the planes from either side
         // SURFACE // 
-        surfaceMesh = CreateSurfaceMesh();
-        MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
-        surfaceMF.mesh = surfaceMesh;
+        //surfaceMesh = CreateSurfaceMesh();
+        //MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
+        //surfaceMF.mesh = surfaceMesh;
 
-        surfaceMesh2 = CreateSurfaceMesh(true);
-        MeshFilter surfaceMF2 = (MeshFilter)surface2.GetComponent("MeshFilter");
-        surfaceMF2.mesh = surfaceMesh2;
+        //surfaceMesh2 = CreateSurfaceMesh(true);
+        //MeshFilter surfaceMF2 = (MeshFilter)surface2.GetComponent("MeshFilter");
+        //surfaceMF2.mesh = surfaceMesh2;
 
         // WATER PLANE
         if (nrOfWaterPlanes > 0) // if >0, create one waterplane
@@ -276,13 +280,13 @@ public class Main : MonoBehaviour
         }        
 
         // SEAFLOOR //
-        seafloorMesh = CreateSeafloorMesh();
-        MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
-        seafloorMF.mesh = seafloorMesh;
+        //seafloorMesh = CreateSeafloorMesh();
+        //MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
+        //seafloorMF.mesh = seafloorMesh;
 
-        seafloorMesh2 = CreateSeafloorMesh(true);
-        MeshFilter seafloorMF2 = (MeshFilter)seafloor2.GetComponent("MeshFilter");
-        seafloorMF2.mesh = seafloorMesh2;
+        //seafloorMesh2 = CreateSeafloorMesh(true);
+        //MeshFilter seafloorMF2 = (MeshFilter)seafloor2.GetComponent("MeshFilter");
+        //seafloorMF2.mesh = seafloorMesh2;
 
     }
 
@@ -413,6 +417,18 @@ public class Main : MonoBehaviour
         }
     }
 
+    private void BuildWorld() {
+
+        Debug.Log("Building world. Please wait...");
+
+        World world = world_manager.GetComponent<World>();
+        world.AddSource(srcSphere);
+        world.AddSurface(surfaceCombo);
+        world.AddBottom(bottomCombo);
+
+        Debug.Log("World build completed.");
+
+    }
 
     private void OnEnable()
     {
@@ -422,7 +438,11 @@ public class Main : MonoBehaviour
         }
 
         // setup the scene
+
+        
+
         SetUpScene();
+    
 
     }
 
@@ -432,7 +452,9 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
         Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
-        targetRenderer.material.SetColor("_Color", Color.red);        
+        targetRenderer.material.SetColor("_Color", Color.red);
+        BuildWorld();
+
     }    
 
     // Update is called once per frame
@@ -482,17 +504,17 @@ public class Main : MonoBehaviour
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         CreateResources();
-        RebuildMeshObjectBuffers();
+        //RebuildMeshObjectBuffers();
         SetShaderParameters();
 
         InitRenderTexture();
         computeShaderTest.SetTexture(0, "Result", _target);
         int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
         int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
-        computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+        //computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
         Graphics.Blit(source, destination);
 
-        secondCameraScript.receiveData(_target);
+        //secondCameraScript.receiveData(_target);
 
         //RayData[] vec = new RayData[10000];
         //_rayPointsBuffer.GetData(vec);
