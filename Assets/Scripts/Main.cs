@@ -498,11 +498,10 @@ public class Main : MonoBehaviour
         //_rayPointsBuffer.GetData(vec);
 
 
-        for (int i = 0; i < vec.Length; i++)
-        {
-            Debug.Log(i + " : " + vec[i].set);
-
-        }
+        //for (int i = 0; i < vec.Length; i++)
+        //{
+        //    Debug.Log(i + " : " + vec[i].set);
+        //}
         //Debug.Log(vec[0].origin);
         //Debug.Log(vec[0].set);
         //Debug.Log(vec[1].origin);
