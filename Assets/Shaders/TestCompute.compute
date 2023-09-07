@@ -18,11 +18,11 @@ static const float EPSILON = 1e-8;
 struct RayData 
 {
     float3 origin;
-    int set;
-    int nrOfInteractions;
+    int set;    
 };
 
 RWStructuredBuffer<RayData> _RayPoints;
+AppendStructuredBuffer<RayData> _appRayPoints;
 
 //-------------------------------------
 //- MESHES
@@ -181,7 +181,7 @@ RayHit Trace(Ray ray)
         else if (yDir > 0 && ((int)_MeshObjects[i].meshObjectType == 1 || (int)_MeshObjects[i].meshObjectType == 3 || (int)_MeshObjects[i].meshObjectType == 5))
         {
             IntersectMeshObject(ray, bestHit, _MeshObjects[i]);
-        }
+        }        
     }
 
     return bestHit;
@@ -190,7 +190,7 @@ RayHit Trace(Ray ray)
 //-------------------------------------
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
 
-void SurfaceHit(uint3 id, RayHit hit)
+void SurfaceHit(RayHit hit, uint index1D)
 {
     // kod för när ytan träffats här...
 
@@ -198,11 +198,11 @@ void SurfaceHit(uint3 id, RayHit hit)
     _RayPoints[id.x].set = 1234;
     _RayPoints[id.x + 1].origin = hit.position;
     _RayPoints[id.x + 1].set = 1234;*/
-    _RayPoints[id.x].origin = hit.position;
-    _RayPoints[id.x].set = 1234;
+    _RayPoints[index1D].origin = hit.position;
+    _RayPoints[index1D].set = 12345;
 }
 
-void SeafloorHit(uint3 id, RayHit hit)
+void SeafloorHit(RayHit hit, uint index1D)
 {
     // kod för när botten träffats här...
 
@@ -210,11 +210,11 @@ void SeafloorHit(uint3 id, RayHit hit)
     _RayPoints[id.x].set = 1234;
     _RayPoints[id.x + 1].origin = hit.position;
     _RayPoints[id.x + 1].set = 1234;*/
-    _RayPoints[id.x].origin = hit.position;
-    _RayPoints[id.x].set = 1234;
+    _RayPoints[index1D].origin = hit.position;
+    _RayPoints[index1D].set = 12345;
 }
 
-void WaterplaneHit(uint3 id, RayHit hit)
+void WaterplaneHit(RayHit hit, uint index1D)
 {
     // kod för när ett vattenplan träffats här... (förhoppningsvis bör vi kunna skriva en funktion som ser likadan ut oavsett vilket vattenplan som träffats. 
     // vissa variabelvärden ändras beroende på djup och sånt men ekvationerna bör se likadana ut.)
@@ -223,35 +223,36 @@ void WaterplaneHit(uint3 id, RayHit hit)
     _RayPoints[id.x].set = 1234;
     _RayPoints[id.x + 1].origin = hit.position;
     _RayPoints[id.x + 1].set = 1234;*/
-    _RayPoints[id.x].origin = hit.position;
-    _RayPoints[id.x].set = 1234;
+    _RayPoints[index1D].origin = hit.position;
+    _RayPoints[index1D].set = 12345;
 }
 
-void NoHit(uint3 id)
+void NoHit(Ray ray, uint index1D)
 {
     // kod för miss ...
 
-    _RayPoints[id.x].origin = float3(61.0f, 12.0f, 333.0f);
-    _RayPoints[id.x].set = 12345;
+    _RayPoints[index1D].origin = ray.origin;
+    _RayPoints[index1D].set = 12345;
+    
 }
 
-void CheckHitType(RayHit hit, uint3 id) //evaluate if the ray hit anything and call the function corresponding to the hit-type
+void CheckHitType(Ray ray, RayHit hit, uint3 id, uint index1D) //evaluate if the ray hit anything and call the function corresponding to the hit-type
 {
     if (hit.type == 0 || hit.type == 1) { //surface
         Result[id.xy] = float4(1, 0, 0, 1);
-        SurfaceHit(id, hit);
+        SurfaceHit(hit, index1D);
     }
     else if (hit.type == 2 || hit.type == 3) { //waterplane
         Result[id.xy] = float4(0, 1, 0, 1);
-        WaterplaneHit(id, hit);
+        WaterplaneHit(hit, index1D);
     }
     else if (hit.type == 4 || hit.type == 5) { //seafloor
         Result[id.xy] = float4(0, 0, 1, 1);
-        SeafloorHit(id, hit);
+        SeafloorHit(hit, index1D);
     }
     else { //miss
         Result[id.xy] = float4(0, 0, 0, 1);
-        NoHit(id);
+        NoHit(ray, index1D);
     }
 }
 
@@ -266,18 +267,27 @@ RayHit SendRay(float3 origin, float3 direction) { // call this to send a ray fro
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    _Pixel = id.x;
+    //_Pixel = id.x;    
 
     // Get the dimensions of the RenderTexture
     uint width, height;
     Result.GetDimensions(width, height);
 
+    uint index1D = id.y * width + id.x; // comvert id x and y values to a 1d index, hopefully this means that 1D-index 0 is the first ray, 1D-index 1 is the second ray, and so on
+
     // Transform pixel to [-1,1] range
     float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
 
     // Get a ray for the UVs
-    Ray ray = CreateCameraRay(uv);        
+    Ray ray = CreateCameraRay(uv);       
+
+    //RayData rd;
+    //rd.origin = float3(1, 2, 3);
+    //rd.set = 123;
+    //_appRayPoints.Append(rd);
+
+
 
     RayHit hit = Trace(ray);
-    CheckHitType(hit, id);  
+    CheckHitType(ray, hit, id, index1D);
 }
