@@ -533,8 +533,9 @@ MonoBehaviour:
   depth: 4
   range: 10
   width: 10
-  nrOfWaterPlanes: 1
+  nrOfWaterPlanes: 0
   secondCamera: {fileID: 2086378707}
+  sendRaysContinuosly: 0
 --- !u!114 &963194230
 MonoBehaviour:
   m_ObjectHideFlags: 0

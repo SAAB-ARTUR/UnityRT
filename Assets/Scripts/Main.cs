@@ -60,13 +60,14 @@ public class Main : MonoBehaviour
     private bool doRayTracing = false;
     private bool lockRayTracing = false;
 
-    RayData[] rds = new RayData[16384];
+    private const int MAXINTERACTIONS = 2;
+
+    RayData[] rds = new RayData[16384*MAXINTERACTIONS];
 
     LineRenderer line = null;
     private List<LineRenderer> lines = new List<LineRenderer>();
 
-    
-
+   
 
     struct MeshObject
     {
@@ -115,7 +116,7 @@ public class Main : MonoBehaviour
 
         if (_rayPointsBuffer == null)
         {
-            _rayPointsBuffer = new ComputeBuffer(16384, raydatabytesize);
+            _rayPointsBuffer = new ComputeBuffer(16384*MAXINTERACTIONS, raydatabytesize);
         }
     }
 
@@ -422,6 +423,7 @@ public class Main : MonoBehaviour
 
     private void OnEnable()
     {
+        Debug.Log("OnEnable");
         if (secondCamera != null)
         {
             secondCameraScript = secondCamera.GetComponent<RayTracingVisualization>();
@@ -438,7 +440,8 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
         Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
-        targetRenderer.material.SetColor("_Color", Color.red);        
+        targetRenderer.material.SetColor("_Color", Color.red);
+        Debug.Log("Start");
     }    
 
     // Update is called once per frame
@@ -479,7 +482,7 @@ public class Main : MonoBehaviour
             oldDepth = depth;
             oldRange = range;
             oldWidth = width;
-            oldNrOfWaterPlanes = nrOfWaterPlanes;
+            oldNrOfWaterPlanes = nrOfWaterPlanes; 
             _meshObjectsNeedRebuilding = true;
         }
 
@@ -494,7 +497,7 @@ public class Main : MonoBehaviour
         }
 
         if ((!lockRayTracing && doRayTracing) || sendRaysContinuosly) // do raytracing if the user has pressed key C. only do it once though. or do it continously
-        {            
+        {
             foreach (LineRenderer line in lines)
             {
                 Destroy(line.gameObject);
@@ -521,28 +524,58 @@ public class Main : MonoBehaviour
             // do something with rds
             Vector3 srcOrigin = srcSphere.transform.position;
 
-            foreach (RayData rd in rds)
+            //foreach (RayData rd in rds)
+            //{
+            //    if (rd.set != 12345)
+            //    {
+            //        continue;
+            //    }
+            //    line = new GameObject("Line").AddComponent<LineRenderer>();
+            //    //line.material = new Material(Shader.Find("Default-Line"));
+            //    line.startColor = Color.black;
+            //    line.endColor = Color.black;
+
+            //    line.startWidth = 0.01f;
+            //    line.endWidth = 0.01f;
+            //    line.positionCount = 2;
+            //    line.useWorldSpace = true;
+
+            //    line.SetPosition(0, srcOrigin);
+            //    line.SetPosition(1, rd.origin);
+            //    lines.Add(line);
+            //}            
+
+            Debug.Log(srcOrigin);
+
+            for (int i = 0; i < MAXINTERACTIONS; i++)
             {
-                if (rd.set != 12345)
+                if (rds[i].set != 12345)
                 {
-                    continue;
+                    Debug.Log("hej");
+                    break;                  
                 }
                 line = new GameObject("Line").AddComponent<LineRenderer>();
-                //line.material = new Material(Shader.Find("Default-Line"));
+
                 line.startColor = Color.black;
                 line.endColor = Color.black;
-               
+
                 line.startWidth = 0.01f;
                 line.endWidth = 0.01f;
                 line.positionCount = 2;
                 line.useWorldSpace = true;
 
-                line.SetPosition(0, srcOrigin);
-                line.SetPosition(1, rd.origin);
+                if (i == 0)
+                {
+                    line.SetPosition(0, srcOrigin);
+                }
+                else 
+                {
+                    line.SetPosition(0, rds[i - 1].origin);
+                }
+                
+                line.SetPosition(1, rds[i].origin);
                 lines.Add(line);
-            }
-
-            Debug.Log(lines.Count);
+            }           
 
             secondCameraScript.receiveData(_target);            
         }
