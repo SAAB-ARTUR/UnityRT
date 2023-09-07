@@ -10,3 +10,10 @@ Eventuellt kan Unity klaga på att instancing inte finns, se då till att GPU in
 Med hjälp av högerklick och tangenterna W,A,S,D,Q,E kan man styra den vänstra vyn. Med hjälp av högerklick medan tangenten punkt/kolon hålls ner och tangenterna U,H,J,K,Y,I kan man flytta den gröna sfären. 
 
 Just nu kan rays som sagt inte studsa, det är väl nästa steg. Dock har ett eventuellt problem upptäckts som undersöks just nu. Det verkar som att raytracing-shaders inte är byggda för att enkelt kunna skicka data mellan GPU och CPU utan de är gjorda för att vara en del av en rendering pipeline (inte helt säker på vad det innebär men det verkar ha med visuella saker att göra, och det visuella är ju inte vårt huvudsakliga intresse). Istället bör compute shaders användas istället eftersom de är gjorda för GPGPU-programmering (https://discussions.unity.com/t/send-float-value-from-shader-to-script/148108), men där är problemet att det just nu inte är lika klart hur raytracing ska genomföras. Raytracing är ganska klarlagd som det är gjort just nu, men som sagt är det frågetecken hur vi kan skicka våra resultat från shader till C#-skript. I en compute shader ska det vara enklare att skicka data men raytracing-implementationen är inte lika självklar. Så just behövs det undersökas många saker. 
+
+Håller på att göra om raytracingen med compute shaders istället, det verkar gå iallafall. Just nu är inte raytracingen baserad på nån accelerationsstruktur eller BVH tyvärr. Det får bli senare arbete för att öka prestandan.
+
+Att göra: 
+- Visualisera rays vägar genom miljön med studsar.
+- Lista ut hur buffern (som gör kommunikation mellan GPU och CPU möjlig) ska struktureras och indexeras.
+

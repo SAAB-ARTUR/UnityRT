@@ -1,28 +1,32 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Profiling;
-using UnityEngine.UI;
-using System.IO;
 
 public class Main : MonoBehaviour
-{
-    public RayTracingShader rayTracingShader = null;
+{    
+    public ComputeShader computeShaderTest = null;
 
     [SerializeField] GameObject srcSphere = null;
     [SerializeField] GameObject targetSphere = null;
     [SerializeField] GameObject seafloor = null;
+    [SerializeField] GameObject seafloor2 = null;
     [SerializeField] GameObject surface = null;
+    [SerializeField] GameObject surface2 = null;
+    [SerializeField] GameObject waterplane = null;
+    [SerializeField] GameObject waterplane2 = null;
     [SerializeField] int depth = 0;
     [SerializeField] int range = 0;
     [SerializeField] int width = 0;
-    [SerializeField] int nrOfWaterPlanes = 0;
-    [SerializeField] Material waterPlaneMaterial = null;
+    [SerializeField] int nrOfWaterPlanes = 0;    
     [SerializeField] Camera secondCamera = null;    
     
-    private Mesh waterPlane = null;
+    private Mesh waterplaneMesh = null;
+    private Mesh waterplaneMesh2 = null;
     private Mesh surfaceMesh = null;
-    private Mesh seafloorMesh = null;    
+    private Mesh surfaceMesh2 = null;
+    private Mesh seafloorMesh = null;
+    private Mesh seafloorMesh2 = null;
 
     private int oldDepth = 0;
     private int oldRange = 0;
@@ -30,24 +34,44 @@ public class Main : MonoBehaviour
     private int oldNrOfWaterPlanes = 0;
 
     uint cameraWidth = 0;
-    uint cameraHeight = 0;    
+    uint cameraHeight = 0;
 
-    RayTracingAccelerationStructure rtas = null;
+    private List<GameObject> waterplanes = new List<GameObject>();
+    private static bool _meshObjectsNeedRebuilding = false;
+    private static List<RayTracingObject> _rayTracingObjects = new List<RayTracingObject>();
+    private static List<MeshObject> _meshObjects = new List<MeshObject>();
+    private static List<Vector3> _vertices = new List<Vector3>();
+    private static List<int> _indices = new List<int>();
+    private ComputeBuffer _meshObjectBuffer;
+    private ComputeBuffer _vertexBuffer;
+    private ComputeBuffer _indexBuffer;
+
+    private ComputeBuffer _rayPointsBuffer;
 
     RayTracingVisualization secondCameraScript = null;
+    private RenderTexture _target;
     RenderTexture rayTracingOutput = null;
 
-    SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
-    SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
-    WaterPlaneInstanceData waterPlanesInstanceData = null;
+    
+    struct MeshObject
+    {
+        public Matrix4x4 localToWorldMatrix;
+        public int indices_offset;
+        public int indices_count;
+        public MeshObjectType meshObjectType;
+    }
+
+    struct RayData
+    {
+        public Vector3 origin;
+        public int set;
+        public int nrOfInteractions;
+    };
+
+    private int raydatabytesize = 20;
 
     private void ReleaseResources()
     {
-        if (rtas != null)
-        {
-            rtas.Release();
-            rtas = null;
-        }
 
         if (rayTracingOutput)
         {
@@ -58,21 +82,10 @@ public class Main : MonoBehaviour
         cameraHeight = 0;
         cameraWidth = 0;
 
-        if (surfaceInstanceData != null)
-        {
-            surfaceInstanceData.Dispose();
-            surfaceInstanceData = null;
-        }
-        if (waterPlanesInstanceData != null)
-        {
-            waterPlanesInstanceData.Dispose();
-            waterPlanesInstanceData = null;
-        }
-        if (seafloorInstanceData != null)
-        {
-            seafloorInstanceData.Dispose();
-            seafloorInstanceData = null;
-        }
+        _meshObjectBuffer?.Release();
+        _vertexBuffer?.Release();
+        _indexBuffer?.Release();
+        _rayPointsBuffer?.Release();        
     }
 
     void OnDestroy()
@@ -100,64 +113,51 @@ public class Main : MonoBehaviour
             cameraHeight = (uint)Camera.allCameras[1].pixelHeight;
         }
 
-        if (surfaceInstanceData == null)
-        {           
-            surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
-        }  
-        if (seafloorInstanceData == null)
+        if (_rayPointsBuffer == null)
         {
-            seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
+            _rayPointsBuffer = new ComputeBuffer(10000, raydatabytesize);
         }
-
-        if (nrOfWaterPlanes > 0 && (waterPlanesInstanceData == null || waterPlanesInstanceData.layers != nrOfWaterPlanes || waterPlanesInstanceData.depth != depth))
-        {
-            if (waterPlanesInstanceData != null)
-            {
-                waterPlanesInstanceData.Dispose();
-            }
-            waterPlanesInstanceData = new WaterPlaneInstanceData(nrOfWaterPlanes, depth);
-        }
-        else if (nrOfWaterPlanes <= 0)
-        {
-            if (waterPlanesInstanceData != null)
-            {
-                waterPlanesInstanceData.Dispose();
-            }
-            waterPlanesInstanceData = null;
-        }
-
     }
 
-    private Mesh CreateSurfaceMesh()
+    private Mesh CreateSurfaceMesh(bool flipped=false)
     {
-        Mesh surface = new Mesh()
+        Mesh surfaceMesh = new Mesh()
         {
             name = "Surface Mesh"
         };
 
-        surface.vertices = new Vector3[] {
+        surfaceMesh.vertices = new Vector3[] {
             Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, width), new Vector3(range, 0f, width)
         };
 
-        surface.normals = new Vector3[] {
+        surfaceMesh.normals = new Vector3[] {
             Vector3.back, Vector3.back, Vector3.back, Vector3.back
         };
 
-        surface.tangents = new Vector4[] {
+        surfaceMesh.tangents = new Vector4[] {
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f)
         };
 
-        surface.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
-        };
+        if (flipped)
+        {
+            surfaceMesh.triangles = new int[] {
+                1, 2, 0, 3, 2, 1
+            };
+        }
+        else
+        {
+            surfaceMesh.triangles = new int[] {
+                0, 2, 1, 1, 2, 3
+            };
+        }
 
-        return surface;
+        return surfaceMesh;
     }
 
-    private Mesh CreateSeafloorMesh()
+    private Mesh CreateSeafloorMesh(bool flipped = false)
     {
         Mesh seafloorMesh = new Mesh()
         {
@@ -179,15 +179,25 @@ public class Main : MonoBehaviour
             new Vector4(1f, 0f, 0f, -1f)
         };
 
-        seafloorMesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
-        };
+        if (flipped)
+        {
+            seafloorMesh.triangles = new int[] {
+                1, 2, 0, 3, 2, 1
+            };
+        }
+        else
+        {
+            seafloorMesh.triangles = new int[] {
+                0, 2, 1, 1, 2, 3
+            };
+        }
 
         return seafloorMesh;
     }
 
-    private Mesh CreateWaterPlaneMesh()
+    private Mesh CreateWaterPlaneMesh(bool flipped=false)
     {
+        Debug.Log("hejhej");
         Mesh waterPlaneMesh = new Mesh()
         {
             name = "Waterplane Mesh"
@@ -210,43 +220,209 @@ public class Main : MonoBehaviour
             new Vector4(1f, 0f, 0f, -1f)
         };
 
-        waterPlaneMesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
-        };
+        if (flipped)
+        {
+            waterPlaneMesh.triangles = new int[] {                
+                1, 2, 0, 3, 2, 1
+            };
+        }
+        else
+        {
+            waterPlaneMesh.triangles = new int[] {
+                0, 2, 1, 1, 2, 3
+            };
+        }
+                
 
         return waterPlaneMesh;
+    }    
+
+    private void SetUpScene()
+    {        
+        // setup the scene, unity meshes seem to be one-sided, so all planes are created from two meshes, facing in opposite direction to ensure that rays can hit the planes from either side
+        // SURFACE // 
+        surfaceMesh = CreateSurfaceMesh();
+        MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
+        surfaceMF.mesh = surfaceMesh;
+
+        surfaceMesh2 = CreateSurfaceMesh(true);
+        MeshFilter surfaceMF2 = (MeshFilter)surface2.GetComponent("MeshFilter");
+        surfaceMF2.mesh = surfaceMesh2;
+
+        // WATER PLANE
+        if (nrOfWaterPlanes > 0) // if >0, create one waterplane
+        {
+            waterplaneMesh = CreateWaterPlaneMesh();
+            MeshFilter waterplaneMF = (MeshFilter)waterplane.GetComponent("MeshFilter");
+            waterplaneMF.mesh = waterplaneMesh;
+
+            waterplaneMesh2 = CreateWaterPlaneMesh(true);
+            MeshFilter waterplaneMF2 = (MeshFilter)waterplane2.GetComponent("MeshFilter");
+            waterplaneMF2.mesh = waterplaneMesh2;
+
+            if (nrOfWaterPlanes > 1) // create copies of the original waterplane at new positions relative to the original to divide the volume between the seafloor and surface evenly
+            {
+                float delta = (float)depth / (float)(nrOfWaterPlanes + 1);
+
+                for (int i = 0; i < nrOfWaterPlanes; i++)
+                {
+                    GameObject gmobj = Instantiate(waterplane, new Vector3(0, -delta*i, 0), Quaternion.identity);
+                    waterplanes.Add(gmobj);
+
+                    GameObject gmobj2 = Instantiate(waterplane2, new Vector3(0, -delta * i, 0), Quaternion.identity);
+                    waterplanes.Add(gmobj2);
+                }                
+            }
+        }        
+
+        // SEAFLOOR //
+        seafloorMesh = CreateSeafloorMesh();
+        MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
+        seafloorMF.mesh = seafloorMesh;
+
+        seafloorMesh2 = CreateSeafloorMesh(true);
+        MeshFilter seafloorMF2 = (MeshFilter)seafloor2.GetComponent("MeshFilter");
+        seafloorMF2.mesh = seafloorMesh2;
+
     }
+
+    private void RebuildMeshObjectBuffers()
+    {
+        if (!_meshObjectsNeedRebuilding)
+        {
+            return;
+        }
+
+        _meshObjectsNeedRebuilding = false;        
+
+        // Clear all lists
+        _meshObjects.Clear();
+        _vertices.Clear();
+        _indices.Clear();        
+
+        // Loop over all objects and gather their data
+        foreach (RayTracingObject obj in _rayTracingObjects)
+        {
+            if (nrOfWaterPlanes <= 0 && (obj.meshObjectType == MeshObjectType.WATERPLANE_BOTTOM || obj.meshObjectType == MeshObjectType.WATERPLANE_TOP))
+            {
+                continue;
+            }            
+            Mesh mesh = obj.GetComponent<MeshFilter>().sharedMesh;
+
+            // Add vertex data
+            int firstVertex = _vertices.Count;
+            _vertices.AddRange(mesh.vertices);
+
+            // Add index data - if the vertex buffer wasn't empty before, the
+            // indices need to be offset
+            int firstIndex = _indices.Count;
+            var indices = mesh.GetIndices(0);
+            _indices.AddRange(indices.Select(index => index + firstVertex));            
+
+            // Add the object itself
+            _meshObjects.Add(new MeshObject()
+            {
+                localToWorldMatrix = obj.transform.localToWorldMatrix,
+                indices_offset = firstIndex,
+                indices_count = indices.Length,
+                meshObjectType = obj.meshObjectType
+            }) ;
+        }        
+
+        CreateComputeBuffer(ref _meshObjectBuffer, _meshObjects, 76);
+        CreateComputeBuffer(ref _vertexBuffer, _vertices, 12);
+        CreateComputeBuffer(ref _indexBuffer, _indices, 4);        
+    }
+
+    public static void RegisterObject(RayTracingObject obj)
+    {
+        _rayTracingObjects.Add(obj);
+        _meshObjectsNeedRebuilding = true;
+    }
+    public static void UnregisterObject(RayTracingObject obj)
+    {
+        _rayTracingObjects.Remove(obj);
+        _meshObjectsNeedRebuilding = true;
+    }
+
+    private static void CreateComputeBuffer<T>(ref ComputeBuffer buffer, List<T> data, int stride)
+        where T : struct
+    {
+        // Do we already have a compute buffer?
+        if (buffer != null)
+        {
+            // If no data or buffer doesn't match the given criteria, release it
+            if (data.Count == 0 || buffer.count != data.Count || buffer.stride != stride)
+            {
+                buffer.Release();
+                buffer = null;
+            }
+        }
+
+        if (data.Count != 0)
+        {
+            // If the buffer has been released or wasn't there to
+            // begin with, create it
+            if (buffer == null)
+            {
+                buffer = new ComputeBuffer(data.Count, stride);
+            }
+
+            // Set data on the buffer
+            buffer.SetData(data);
+        }
+    }
+
+    private void SetComputeBuffer(string name, ComputeBuffer buffer)
+    {
+        if (buffer != null)
+        {        
+            computeShaderTest.SetBuffer(0, name, buffer);
+        }
+    }
+
+    private void SetShaderParameters()
+    {
+        computeShaderTest.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
+        computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
+        computeShaderTest.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
+        computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);        
+
+        SetComputeBuffer("_MeshObjects", _meshObjectBuffer);
+        SetComputeBuffer("_Vertices", _vertexBuffer);
+        SetComputeBuffer("_Indices", _indexBuffer);
+        SetComputeBuffer("_RayPoints", _rayPointsBuffer);
+        
+    }
+
+    private void InitRenderTexture()
+    {
+        if (_target == null || _target.width != Screen.width || _target.height != Screen.height)
+        {
+            // Release render texture if we already have one
+            if (_target != null)
+            {
+                _target.Release();                
+            }
+
+            // Get a render target for Ray Tracing
+            _target = new RenderTexture(Screen.width, Screen.height, 0,
+                RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            _target.enableRandomWrite = true;
+            _target.Create();            
+        }
+    }
+
 
     private void OnEnable()
     {
-        if (rtas != null)
-            return;
-
-        rtas = new RayTracingAccelerationStructure();
-        
         if (secondCamera != null)
         {
             secondCameraScript = secondCamera.GetComponent<RayTracingVisualization>();
         }
 
         // setup the scene
-        // SURFACE // 
-        surfaceMesh = CreateSurfaceMesh();
-
-        MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
-        surfaceMF.mesh = surfaceMesh;
-
-        // WATER PLANE
-        if (nrOfWaterPlanes > 0) // if >0, create one waterplane, waterPlanesInstanceData handles the remaining waterplanes to be created
-        {
-            waterPlane = CreateWaterPlaneMesh();
-        }
-
-        // SEAFLOOR //
-        seafloorMesh = CreateSeafloorMesh();
-
-        MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
-        seafloorMF.mesh = seafloorMesh;
+        SetUpScene();
 
     }
 
@@ -256,7 +432,7 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
         Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
-        targetRenderer.material.SetColor("_Color", Color.red);
+        targetRenderer.material.SetColor("_Color", Color.red);        
     }    
 
     // Update is called once per frame
@@ -284,102 +460,52 @@ public class Main : MonoBehaviour
 
         if (oldWidth != width || oldRange != range || oldDepth != depth || oldNrOfWaterPlanes != nrOfWaterPlanes)
         { // change has happened to the scene, update (create new) meshes for the surface, seafloor and water planes
-          // SURFACE //            
-
-            surfaceMesh = CreateSurfaceMesh();
-            MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
-            surfaceMF.mesh = surfaceMesh;
-
-            // WATER PLANES //
-            if (nrOfWaterPlanes > 0) // if >0, create one waterplane, waterPlanesInstanceData handles the remaining waterplanes to be created
+            
+            foreach(GameObject obj in waterplanes)
             {
-                waterPlane = CreateWaterPlaneMesh();
+                Destroy(obj);
             }
+            waterplanes.Clear();
 
-            // SEAFLOOR //
-            seafloorMesh = CreateSeafloorMesh();
-            MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
-            seafloorMF.mesh = seafloorMesh;
+            SetUpScene();         
 
             // update values
             oldDepth = depth;
             oldRange = range;
             oldWidth = width;
             oldNrOfWaterPlanes = nrOfWaterPlanes;
+            _meshObjectsNeedRebuilding = true;
         }
-    }
+    }    
 
     [ImageEffectOpaque]
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         CreateResources();
+        RebuildMeshObjectBuffers();
+        SetShaderParameters();
 
-        CommandBuffer cmdBuffer = new CommandBuffer();
-        cmdBuffer.name = "RT Test";
-
-        rtas.ClearInstances();
-
-        try
-        {
-            if (surfaceInstanceData != null && seafloorInstanceData != null)
-            {
-                MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
-                Mesh surfaceMesh = surfaceMF.mesh;                
-
-                MeshRenderer surfaceMR = (MeshRenderer)surface.GetComponent("MeshRenderer");
-                Material surfaceMaterial = surfaceMR.material;
-                RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
-
-                MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
-                Mesh seafloorMesh = seafloorMF.mesh;
-
-                MeshRenderer seafloorMR = (MeshRenderer)seafloor.GetComponent("MeshRenderer");
-                Material seafloorMaterial = seafloorMR.material;
-                RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);                
-
-                // add meshes and materials to rt accelereation structure
-                rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices);
-                rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices);
-
-                if (waterPlanesInstanceData != null) // add water planes to rtas
-                {
-                    RayTracingMeshInstanceConfig waterPlaneConfig = new RayTracingMeshInstanceConfig(waterPlane, 0, waterPlaneMaterial);
-                    rtas.AddInstances(waterPlaneConfig, waterPlanesInstanceData.matrices);                    
-                }
-                
-            }
-            else
-            {
-                Debug.Log("InstanceData is null for either the surface or the seadloor."); 
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.Log("An exception occurred: " + e.Message);
-        }        
-
-        cmdBuffer.BuildRayTracingAccelerationStructure(rtas);
-        cmdBuffer.SetRayTracingShaderPass(rayTracingShader, "RTPass");         
-
-        // define "shared" variables between the CPU and GPU code
-        cmdBuffer.SetRayTracingAccelerationStructure(rayTracingShader, Shader.PropertyToID("g_AccelStruct"), rtas);
-        cmdBuffer.SetRayTracingMatrixParam(rayTracingShader, Shader.PropertyToID("g_InvViewMatrix"), Camera.allCameras[1].cameraToWorldMatrix);
-        cmdBuffer.SetRayTracingFloatParam(rayTracingShader, Shader.PropertyToID("g_Zoom"), Mathf.Tan(Mathf.Deg2Rad * Camera.allCameras[1].fieldOfView * 0.5f));
-
-        Vector3[] points = new Vector3[] { new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 0f)};
-
-        // Output
-        cmdBuffer.SetRayTracingTextureParam(rayTracingShader, Shader.PropertyToID("g_Output"), rayTracingOutput);        
-
-        cmdBuffer.DispatchRays(rayTracingShader, "MainRayGenShader", cameraWidth, cameraHeight, 1); // de sista 3 gissar jag har att göra med hur många rays som ska skickas
-
-        Graphics.ExecuteCommandBuffer(cmdBuffer);
-
-
-        cmdBuffer.Release();
-        
-        secondCameraScript.receiveData(rayTracingOutput); //send raytracing results to display to the other camera
-        
+        InitRenderTexture();
+        computeShaderTest.SetTexture(0, "Result", _target);
+        int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
+        int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
+        computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
         Graphics.Blit(source, destination);
+
+        secondCameraScript.receiveData(_target);
+
+        RayData[] vec = new RayData[10000];
+        _rayPointsBuffer.GetData(vec);
+
+
+        for (int i = 0; i < vec.Length; i++)
+        {
+            Debug.Log(i + " : " + vec[i].set);
+
+        }
+        //Debug.Log(vec[0].origin);
+        //Debug.Log(vec[0].set);
+        //Debug.Log(vec[1].origin);
+        //Debug.Log(vec[1].set);
     }
 }
