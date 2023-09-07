@@ -494,8 +494,8 @@ public class Main : MonoBehaviour
 
         secondCameraScript.receiveData(_target);
 
-        RayData[] vec = new RayData[10000];
-        _rayPointsBuffer.GetData(vec);
+        //RayData[] vec = new RayData[10000];
+        //_rayPointsBuffer.GetData(vec);
 
 
         for (int i = 0; i < vec.Length; i++)
