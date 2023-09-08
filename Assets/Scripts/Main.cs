@@ -79,17 +79,12 @@ public class Main : MonoBehaviour
     private List<LineRenderer> lines = new List<LineRenderer>();
 
     LineRenderer srcDirectionLine = null;
+    LineRenderer srcViewLine1 = null;
+    LineRenderer srcViewLine2 = null;
+    LineRenderer srcViewLine3 = null;
+    LineRenderer srcViewLine4 = null;
 
-    struct AngleData
-    {
-        int theta;
-        int ntheta;
-        int phi;
-        int nphi;
-        Vector3 srcDirection;
-    }
-
-    private AngleData angleData;
+    const float PI = 3.14159265f;
 
     struct MeshObject
     {
@@ -477,13 +472,13 @@ public class Main : MonoBehaviour
         targetRenderer.material.SetColor("_Color", Color.red);
         Debug.Log("Start");
 
-        srcDirectionLine = new GameObject("Line").AddComponent<LineRenderer>();
+        srcDirectionLine = new GameObject("SourceDirectionLine").AddComponent<LineRenderer>();
 
         srcDirectionLine.startColor = Color.black;
         srcDirectionLine.endColor = Color.black;
 
-        srcDirectionLine.startWidth = 0.05f;
-        srcDirectionLine.endWidth = 0.05f;
+        srcDirectionLine.startWidth = 0.01f;
+        srcDirectionLine.endWidth = 0.01f;
         srcDirectionLine.positionCount = 2;
         srcDirectionLine.useWorldSpace = true;
 
@@ -492,7 +487,153 @@ public class Main : MonoBehaviour
 
         srcDirectionLine.material = lineMaterial;
         srcDirectionLine.material.color = Color.black;
-    }    
+
+        Debug.Log(srcSphere.transform.forward);
+        Debug.Log(srcSphere.transform.forward.normalized);
+
+        Vector3[] viewLines = DirectionLines();
+
+        // line1
+        srcViewLine1 = new GameObject("View line1").AddComponent<LineRenderer>();
+        srcViewLine1.startColor = Color.black;
+        srcViewLine1.endColor = Color.black;
+
+        srcViewLine1.startWidth = 0.01f;
+        srcViewLine1.endWidth = 0.01f;
+        srcViewLine1.positionCount = 2;
+        srcViewLine1.useWorldSpace = true;
+
+        srcViewLine1.SetPosition(0, srcSphere.transform.position);
+        srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
+
+        srcViewLine1.material = lineMaterial;
+        srcViewLine1.material.color = Color.black;
+
+        // line2
+        srcViewLine2 = new GameObject("View line2").AddComponent<LineRenderer>();
+        srcViewLine2.startColor = Color.black;
+        srcViewLine2.endColor = Color.black;
+
+        srcViewLine2.startWidth = 0.01f;
+        srcViewLine2.endWidth = 0.01f;
+        srcViewLine2.positionCount = 2;
+        srcViewLine2.useWorldSpace = true;
+
+        srcViewLine2.SetPosition(0, srcSphere.transform.position);
+        srcViewLine2.SetPosition(1, srcSphere.transform.position + viewLines[1] * lineLength);
+
+        srcViewLine2.material = lineMaterial;
+        srcViewLine2.material.color = Color.black;
+
+        // line3
+        srcViewLine3 = new GameObject("View line3").AddComponent<LineRenderer>();
+        srcViewLine3.startColor = Color.black;
+        srcViewLine3.endColor = Color.black;
+
+        srcViewLine3.startWidth = 0.01f;
+        srcViewLine3.endWidth = 0.01f;
+        srcViewLine3.positionCount = 2;
+        srcViewLine3.useWorldSpace = true;
+
+        srcViewLine3.SetPosition(0, srcSphere.transform.position);
+        srcViewLine3.SetPosition(1, srcSphere.transform.position + viewLines[2] * lineLength);
+
+        srcViewLine3.material = lineMaterial;
+        srcViewLine3.material.color = Color.black;
+
+        // line4
+        srcViewLine4 = new GameObject("View line4").AddComponent<LineRenderer>();
+        srcViewLine4.startColor = Color.black;
+        srcViewLine4.endColor = Color.black;
+
+        srcViewLine4.startWidth = 0.01f;
+        srcViewLine4.endWidth = 0.01f;
+        srcViewLine4.positionCount = 2;
+        srcViewLine4.useWorldSpace = true;
+
+        srcViewLine4.SetPosition(0, srcSphere.transform.position);
+        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);
+
+        srcViewLine4.material = lineMaterial;
+        srcViewLine4.material.color = Color.black;
+
+    }
+
+    private void UpdateSourceViewLines()
+    {
+        Vector3[] viewLines = DirectionLines();
+
+        srcViewLine1.SetPosition(0, srcSphere.transform.position);
+        srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
+
+        srcViewLine2.SetPosition(0, srcSphere.transform.position);
+        srcViewLine2.SetPosition(1, srcSphere.transform.position + viewLines[1] * lineLength);
+
+        srcViewLine3.SetPosition(0, srcSphere.transform.position);
+        srcViewLine3.SetPosition(1, srcSphere.transform.position + viewLines[2] * lineLength);
+
+        srcViewLine4.SetPosition(0, srcSphere.transform.position);
+        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);
+    }
+
+    Vector3[] DirectionLines()
+    {
+        float theta_rad = theta * PI / 180; //convert to radians
+        float phi_rad = phi * PI / 180;
+
+        float dtheta = theta_rad / ntheta; // resolution in theta
+        float dphi = phi_rad / nphi; // resolution in phi
+
+        Vector2[] offsets = new Vector2[4];
+
+        // calculate the angular offset for the lines compared to the forward vector of the source
+        int k = 0;
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 2; j++)
+            {
+                float offset_theta = -theta_rad / 2 + i * theta_rad;
+                float offset_phi = -phi_rad / 2 + j * phi_rad;
+                offsets[k] = new Vector2(offset_theta, offset_phi);
+                k++;
+            }            
+        }        
+        
+        // calculate angles of the source's forward vector
+        float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);
+        float origin_phi = Math.Sign(srcSphere.transform.forward.z) * (float)Math.Acos(srcSphere.transform.forward.x / Math.Sqrt(Math.Pow(srcSphere.transform.forward.x, 2) + Math.Pow(srcSphere.transform.forward.z, 2)));
+
+        // add the angular offset
+        float[] theta_results = new float[4];
+        float[] phi_results = new float[4];
+
+        for (int i = 0; i < 4; i++) 
+        {
+            theta_results[i] = origin_theta + offsets[i].x;
+            phi_results[i] = origin_phi + offsets[i].y;
+        }
+
+        Vector3[] viewLines = new Vector3[4] 
+        {
+            new Vector3((float)(Math.Sin(theta_results[0]) * Math.Cos(phi_results[0])), (float)Math.Cos(theta_results[0]), (float)(Math.Sin(theta_results[0]) * Math.Sin(phi_results[0]))),
+            new Vector3((float)(Math.Sin(theta_results[1]) * Math.Cos(phi_results[1])), (float)Math.Cos(theta_results[1]), (float)(Math.Sin(theta_results[1]) * Math.Sin(phi_results[1]))),
+            new Vector3((float)(Math.Sin(theta_results[2]) * Math.Cos(phi_results[2])), (float)Math.Cos(theta_results[2]), (float)(Math.Sin(theta_results[2]) * Math.Sin(phi_results[2]))),
+            new Vector3((float)(Math.Sin(theta_results[3]) * Math.Cos(phi_results[3])), (float)Math.Cos(theta_results[3]), (float)(Math.Sin(theta_results[3]) * Math.Sin(phi_results[3])))
+        };
+
+        return viewLines;
+
+        //float theta_res = origin_theta + offset_theta;
+        //float phi_res = origin_phi + offset_phi;
+
+        // calculate new direction (r is assumed to be one since srcDirection should be normalized)
+        //Vector3 direction = new Vector3
+        //    (
+        //        Math.Sin(theta_res) * cos(phi_res), //x
+        //        cos(theta_res),                     //y
+        //        sin(theta_res) * sin(phi_res)       //z
+        //    );
+    }
 
     // Update is called once per frame
     void Update()
@@ -521,6 +662,11 @@ public class Main : MonoBehaviour
         {
             srcDirectionLine.SetPosition(0, srcSphere.transform.position);
             srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
+
+            UpdateSourceViewLines();
+
+            Debug.Log(srcSphere.transform.forward);
+            Debug.Log(srcSphere.transform.forward.normalized);
         }
 
         if (oldtheta != theta || oldntheta != ntheta || oldphi != phi || oldnphi != nphi)

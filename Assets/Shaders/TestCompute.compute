@@ -83,7 +83,7 @@ Ray CreateCameraRay(float2 uv)
 }
 
 Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
-{   // based on https://en.wikipedia.org/wiki/Spherical_coordinate_system, however the y-axis and z-axis are flipped
+{   // based on https://en.wikipedia.org/wiki/Spherical_coordinate_system, however the y-axis and z-axis are flipped here
     float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz; // source sphere's position
 
     float theta_rad = theta * PI / 180; //convert to radians
@@ -93,16 +93,16 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
     float dphi = phi_rad / nphi; // resolution in phi
 
     // calculate the angular offset for the ray compared to the forward vector of the source
-    float _theta = -theta_rad / 2 + id.x * dtheta;
-    float _phi = -phi_rad / 2 + id.y * dphi;
+    float offset_theta = -theta_rad / 2 + id.x * dtheta;
+    float offset_phi = -phi_rad / 2 + id.y * dphi;
 
     // calculate angles of the source's forward vector
     float origin_theta = acos(srcDirection.y);
     float origin_phi = sign(srcDirection.z) * acos(srcDirection.x / sqrt(pow(srcDirection.x,2) + pow(srcDirection.z,2)));
     
     // add the angular offset
-    float theta_res = origin_theta + _theta;
-    float phi_res = origin_phi + _phi;
+    float theta_res = origin_theta + offset_theta;
+    float phi_res = origin_phi + offset_phi;
 
     // calculate new direction (r is assumed to be one since srcDirection should be normalized)
     float3 direction = float3(
