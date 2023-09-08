@@ -22,6 +22,8 @@ public class Main : MonoBehaviour
     [SerializeField] Camera secondCamera = null;
     [SerializeField] bool sendRaysContinuosly = false;
     [SerializeField] bool visualizeRays = false;
+    [SerializeField] float lineLength = 1;
+    [SerializeField] Material lineMaterial = null;
 
     private Mesh waterplaneMesh = null;
     private Mesh waterplaneMesh2 = null;
@@ -68,7 +70,7 @@ public class Main : MonoBehaviour
     LineRenderer line = null;
     private List<LineRenderer> lines = new List<LineRenderer>();
 
-   
+    LineRenderer srcDirectionLine = null;
 
     struct MeshObject
     {
@@ -431,8 +433,7 @@ public class Main : MonoBehaviour
         }
 
         // setup the scene
-        SetUpScene();
-
+        SetUpScene();        
     }
 
     // Start is called before the first frame update
@@ -443,6 +444,22 @@ public class Main : MonoBehaviour
         Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
         targetRenderer.material.SetColor("_Color", Color.red);
         Debug.Log("Start");
+
+        srcDirectionLine = new GameObject("Line").AddComponent<LineRenderer>();
+
+        srcDirectionLine.startColor = Color.black;
+        srcDirectionLine.endColor = Color.black;
+
+        srcDirectionLine.startWidth = 0.05f;
+        srcDirectionLine.endWidth = 0.05f;
+        srcDirectionLine.positionCount = 2;
+        srcDirectionLine.useWorldSpace = true;
+
+        srcDirectionLine.SetPosition(0, srcSphere.transform.position);
+        srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
+
+        srcDirectionLine.material = lineMaterial;
+        srcDirectionLine.material.color = Color.black;
     }    
 
     // Update is called once per frame
@@ -466,6 +483,12 @@ public class Main : MonoBehaviour
         if (seafloor == null)
         {
             Debug.Log("No seafloor!");
+        }
+
+        if (srcDirectionLine != null)
+        {
+            srcDirectionLine.SetPosition(0, srcSphere.transform.position);
+            srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
         }
 
         if (oldWidth != width || oldRange != range || oldDepth != depth || oldNrOfWaterPlanes != nrOfWaterPlanes)
@@ -494,7 +517,7 @@ public class Main : MonoBehaviour
         {
             doRayTracing = false;
             lockRayTracing = false;
-        }
+        }        
 
         if ((!lockRayTracing && doRayTracing) || sendRaysContinuosly) // do raytracing if the user has pressed key C. only do it once though. or do it continously
         {
@@ -526,27 +549,6 @@ public class Main : MonoBehaviour
                 // do something with rds
                 Vector3 srcOrigin = srcSphere.transform.position;
 
-                //foreach (RayData rd in rds)
-                //{
-                //    if (rd.set != 12345)
-                //    {
-                //        continue;
-                //    }
-                //    line = new GameObject("Line").AddComponent<LineRenderer>();
-                //    //line.material = new Material(Shader.Find("Default-Line"));
-                //    line.startColor = Color.black;
-                //    line.endColor = Color.black;
-
-                //    line.startWidth = 0.01f;
-                //    line.endWidth = 0.01f;
-                //    line.positionCount = 2;
-                //    line.useWorldSpace = true;
-
-                //    line.SetPosition(0, srcOrigin);
-                //    line.SetPosition(1, rd.origin);
-                //    lines.Add(line);
-                //}
-
                 // visualize all lines
                 for (int i = 0; i < rds.Length; i++)
                 {
@@ -569,6 +571,10 @@ public class Main : MonoBehaviour
                     line.positionCount = 2;
                     line.useWorldSpace = true;
 
+                    // add material to lines to make them another color than magenta, however this heavily worsens fps when there are many rays
+                    // line.material = lineMaterial;
+                    // line.material.color = Color.black;
+
                     if (i % MAXINTERACTIONS == 0) // first interaction for a line, draw line from source to first interaction
                     {
                         line.SetPosition(0, srcOrigin);
@@ -580,6 +586,7 @@ public class Main : MonoBehaviour
 
                     line.SetPosition(1, rds[i].origin);
                     lines.Add(line);
+                    
                 }
 
                 // visualize one line
@@ -611,9 +618,18 @@ public class Main : MonoBehaviour
                     line.SetPosition(1, rds[i].origin);
                     lines.Add(line);
                 }*/
-            }
+            }            
 
             secondCameraScript.receiveData(_target);            
+        }
+
+        if (!visualizeRays)
+        {
+            foreach (LineRenderer line in lines)
+            {
+                Destroy(line.gameObject);
+            }
+            lines.Clear();
         }
     }    
 

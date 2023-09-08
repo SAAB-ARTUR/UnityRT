@@ -536,6 +536,9 @@ MonoBehaviour:
   nrOfWaterPlanes: 0
   secondCamera: {fileID: 2086378707}
   sendRaysContinuosly: 0
+  visualizeRays: 0
+  lineLength: 1
+  lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
 --- !u!114 &963194230
 MonoBehaviour:
   m_ObjectHideFlags: 0
