@@ -463,6 +463,20 @@ public class Main : MonoBehaviour
         rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
     }
 
+    private LineRenderer CreateSrcViewLine(string name)
+    {
+        LineRenderer viewLine = new GameObject(name).AddComponent<LineRenderer>();
+        viewLine.startWidth = 0.01f;
+        viewLine.endWidth = 0.01f;
+        viewLine.positionCount = 2;
+        viewLine.useWorldSpace = true;        
+
+        viewLine.material = lineMaterial;
+        viewLine.material.color = Color.black;
+
+        return viewLine;
+    }
+
     // Start is called before the first frame update
     void Start()
     {        
@@ -472,91 +486,36 @@ public class Main : MonoBehaviour
         targetRenderer.material.SetColor("_Color", Color.red);
         Debug.Log("Start");
 
-        srcDirectionLine = new GameObject("SourceDirectionLine").AddComponent<LineRenderer>();
-
-        srcDirectionLine.startColor = Color.black;
-        srcDirectionLine.endColor = Color.black;
-
-        srcDirectionLine.startWidth = 0.01f;
-        srcDirectionLine.endWidth = 0.01f;
-        srcDirectionLine.positionCount = 2;
-        srcDirectionLine.useWorldSpace = true;
+        srcDirectionLine = CreateSrcViewLine("SourceDirectionLine");
 
         srcDirectionLine.SetPosition(0, srcSphere.transform.position);
         srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
 
-        srcDirectionLine.material = lineMaterial;
-        srcDirectionLine.material.color = Color.black;
-
-        Debug.Log(srcSphere.transform.forward);
-        Debug.Log(srcSphere.transform.forward.normalized);
-
         Vector3[] viewLines = DirectionLines();
 
         // line1
-        srcViewLine1 = new GameObject("View line1").AddComponent<LineRenderer>();
-        srcViewLine1.startColor = Color.black;
-        srcViewLine1.endColor = Color.black;
-
-        srcViewLine1.startWidth = 0.01f;
-        srcViewLine1.endWidth = 0.01f;
-        srcViewLine1.positionCount = 2;
-        srcViewLine1.useWorldSpace = true;
+        srcViewLine1 = CreateSrcViewLine("View line1");        
 
         srcViewLine1.SetPosition(0, srcSphere.transform.position);
         srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
 
-        srcViewLine1.material = lineMaterial;
-        srcViewLine1.material.color = Color.black;
-
         // line2
-        srcViewLine2 = new GameObject("View line2").AddComponent<LineRenderer>();
-        srcViewLine2.startColor = Color.black;
-        srcViewLine2.endColor = Color.black;
-
-        srcViewLine2.startWidth = 0.01f;
-        srcViewLine2.endWidth = 0.01f;
-        srcViewLine2.positionCount = 2;
-        srcViewLine2.useWorldSpace = true;
+        srcViewLine2 = CreateSrcViewLine("View line2");            
 
         srcViewLine2.SetPosition(0, srcSphere.transform.position);
         srcViewLine2.SetPosition(1, srcSphere.transform.position + viewLines[1] * lineLength);
 
-        srcViewLine2.material = lineMaterial;
-        srcViewLine2.material.color = Color.black;
-
         // line3
-        srcViewLine3 = new GameObject("View line3").AddComponent<LineRenderer>();
-        srcViewLine3.startColor = Color.black;
-        srcViewLine3.endColor = Color.black;
-
-        srcViewLine3.startWidth = 0.01f;
-        srcViewLine3.endWidth = 0.01f;
-        srcViewLine3.positionCount = 2;
-        srcViewLine3.useWorldSpace = true;
+        srcViewLine3 = CreateSrcViewLine("View line3");
 
         srcViewLine3.SetPosition(0, srcSphere.transform.position);
         srcViewLine3.SetPosition(1, srcSphere.transform.position + viewLines[2] * lineLength);
 
-        srcViewLine3.material = lineMaterial;
-        srcViewLine3.material.color = Color.black;
-
         // line4
-        srcViewLine4 = new GameObject("View line4").AddComponent<LineRenderer>();
-        srcViewLine4.startColor = Color.black;
-        srcViewLine4.endColor = Color.black;
-
-        srcViewLine4.startWidth = 0.01f;
-        srcViewLine4.endWidth = 0.01f;
-        srcViewLine4.positionCount = 2;
-        srcViewLine4.useWorldSpace = true;
+        srcViewLine4 = CreateSrcViewLine("View line4");
 
         srcViewLine4.SetPosition(0, srcSphere.transform.position);
-        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);
-
-        srcViewLine4.material = lineMaterial;
-        srcViewLine4.material.color = Color.black;
-
+        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);        
     }
 
     private void UpdateSourceViewLines()
@@ -580,9 +539,6 @@ public class Main : MonoBehaviour
     {
         float theta_rad = theta * PI / 180; //convert to radians
         float phi_rad = phi * PI / 180;
-
-        float dtheta = theta_rad / ntheta; // resolution in theta
-        float dphi = phi_rad / nphi; // resolution in phi
 
         Vector2[] offsets = new Vector2[4];
 
@@ -622,17 +578,6 @@ public class Main : MonoBehaviour
         };
 
         return viewLines;
-
-        //float theta_res = origin_theta + offset_theta;
-        //float phi_res = origin_phi + offset_phi;
-
-        // calculate new direction (r is assumed to be one since srcDirection should be normalized)
-        //Vector3 direction = new Vector3
-        //    (
-        //        Math.Sin(theta_res) * cos(phi_res), //x
-        //        cos(theta_res),                     //y
-        //        sin(theta_res) * sin(phi_res)       //z
-        //    );
     }
 
     // Update is called once per frame
@@ -760,10 +705,7 @@ public class Main : MonoBehaviour
                         continue;
                     }
 
-                    line = new GameObject("Line").AddComponent<LineRenderer>();
-
-                    line.startColor = Color.black;
-                    line.endColor = Color.black;
+                    line = new GameObject("Line").AddComponent<LineRenderer>();             
 
                     line.startWidth = 0.01f;
                     line.endWidth = 0.01f;
@@ -796,9 +738,6 @@ public class Main : MonoBehaviour
                         break;
                     }
                     line = new GameObject("Line").AddComponent<LineRenderer>();
-
-                    line.startColor = Color.black;
-                    line.endColor = Color.black;
 
                     line.startWidth = 0.01f;
                     line.endWidth = 0.01f;
