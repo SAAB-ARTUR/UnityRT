@@ -3,8 +3,10 @@
 Håller på att göra om raytracingen med compute shaders istället, det verkar gå iallafall. Just nu är inte raytracingen baserad på nån accelerationsstruktur eller BVH tyvärr. Det får bli senare arbete för att öka prestandan.
 
 Att göra:
-  - Lägga till max antal interaktioner för en ray. (Interaktioner räknas för tillfället som en träff mot yta eller botten, samt vändpunkter i vatten. Vändpunkter kommer dock inte finnas än eftersom det inte finns någon sound speed profile implementerad ännu.)
-  - Lägga till studsar och försöka visualisera det. 
+  Oklart just nu...  
+
+Studsar mot botten och yta har lagts till, just nu inverteras endast y-riktningen så studsarna är väldigt primitiva. Ett maxtal för antal interaktioner har lagts och det går att visualisera stusarna. Vändpunkter i vattnet finns ej.  
+Klicka C för att skicka rays, eller klicka i rutan i maincamera-komponenten som gör att rays skickas vid varje Update()-anrop.
 
 GÄLLANDE DISPATCH (anropet som startar shader-koden): 
 Funktionen Dispatch anropas med ett antal parametrar där den första säger vilken kernel som ska köras. Just nu finns det bara en kernel definierad så kernel 0 kommer vara CSMain. Övriga parametrar definierar hur många threadgroups som ska startas. I shader-koden finns det sedan ovanför CSMain några siffror (typ [8,8,1]), dessa siffror definierar hur stor varje threadgroup är.  
