@@ -539,6 +539,10 @@ MonoBehaviour:
   visualizeRays: 0
   lineLength: 1
   lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  theta: 60
+  ntheta: 512
+  phi: 60
+  nphi: 512
 --- !u!114 &963194230
 MonoBehaviour:
   m_ObjectHideFlags: 0
