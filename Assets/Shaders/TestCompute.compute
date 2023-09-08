@@ -15,14 +15,16 @@ float2 _Pixel;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
+static const int MAXINTERACTIONS = 4;
+
 struct RayData 
 {
     float3 origin;
-    int set;
-    int nrOfInteractions;
+    int set;    
 };
 
 RWStructuredBuffer<RayData> _RayPoints;
+AppendStructuredBuffer<RayData> _appRayPoints;
 
 //-------------------------------------
 //- MESHES
@@ -47,14 +49,16 @@ struct Ray
     float3 origin;
     float3 direction;
     float3 energy;
+    int nrOfInteractions;
 };
 
-Ray CreateRay(float3 origin, float3 direction)
+Ray CreateRay(float3 origin, float3 direction, int nrOfInteractions)
 {
     Ray ray;
     ray.origin = origin;
     ray.direction = direction;
     ray.energy = float3(1.0f, 1.0f, 1.0f);
+    ray.nrOfInteractions = nrOfInteractions;
     return ray;
 }
 
@@ -68,8 +72,9 @@ Ray CreateCameraRay(float2 uv)
     // Transform the direction from camera to world space and normalize
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
+    int nrOfInteractions = 0;
 
-    return CreateRay(origin, direction);
+    return CreateRay(origin, direction, nrOfInteractions);
 }
 
 //-------------------------------------
@@ -81,6 +86,7 @@ struct RayHit
     float distance;
     float3 normal;
     int type;
+    bool sendNewRay;
 };
 
 RayHit CreateRayHit()
@@ -90,6 +96,7 @@ RayHit CreateRayHit()
     hit.distance = 1.#INF;
     hit.normal = float3(0.0f, 0.0f, 0.0f);
     hit.type = 10;
+    hit.sendNewRay = false;
     return hit;
 }
 
@@ -181,7 +188,7 @@ RayHit Trace(Ray ray)
         else if (yDir > 0 && ((int)_MeshObjects[i].meshObjectType == 1 || (int)_MeshObjects[i].meshObjectType == 3 || (int)_MeshObjects[i].meshObjectType == 5))
         {
             IntersectMeshObject(ray, bestHit, _MeshObjects[i]);
-        }
+        }        
     }
 
     return bestHit;
@@ -190,94 +197,108 @@ RayHit Trace(Ray ray)
 //-------------------------------------
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
 
-void SurfaceHit(uint3 id, RayHit hit)
+void SurfaceHit(inout Ray ray, RayHit hit, uint index1D)
 {
-    // kod för när ytan träffats här...
+    // save hit data to buffer
+    _RayPoints[(index1D*MAXINTERACTIONS) + ray.nrOfInteractions].origin = hit.position;
+    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
 
-    /*_RayPoints[id.x].origin = ray.origin;
-    _RayPoints[id.x].set = 1234;
-    _RayPoints[id.x + 1].origin = hit.position;
-    _RayPoints[id.x + 1].set = 1234;*/
-    _RayPoints[id.x].origin = hit.position;
-    _RayPoints[id.x].set = 1234;
+    // update the ray data
+    ray.origin = hit.position + float3(0, -0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
+    float3 directionTemp = ray.direction;
+    float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
+    ray.direction = newDirection;
 }
 
-void SeafloorHit(uint3 id, RayHit hit)
+void SeafloorHit(inout Ray ray, RayHit hit, uint index1D)
 {
-    // kod för när botten träffats här...
+    // save hit data to buffer
+    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].origin = hit.position;
+    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
 
-    /*_RayPoints[id.x].origin = ray.origin;
-    _RayPoints[id.x].set = 1234;
-    _RayPoints[id.x + 1].origin = hit.position;
-    _RayPoints[id.x + 1].set = 1234;*/
-    _RayPoints[id.x].origin = hit.position;
-    _RayPoints[id.x].set = 1234;
+    // update the ray data
+    ray.origin = hit.position + float3(0, 0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
+    float3 directionTemp = ray.direction;
+    float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
+    ray.direction = newDirection;
 }
 
-void WaterplaneHit(uint3 id, RayHit hit)
+void WaterplaneHit(RayHit hit, uint index1D)
 {
     // kod för när ett vattenplan träffats här... (förhoppningsvis bör vi kunna skriva en funktion som ser likadan ut oavsett vilket vattenplan som träffats. 
     // vissa variabelvärden ändras beroende på djup och sånt men ekvationerna bör se likadana ut.)
 
-    /*_RayPoints[id.x].origin = ray.origin;
-    _RayPoints[id.x].set = 1234;
-    _RayPoints[id.x + 1].origin = hit.position;
-    _RayPoints[id.x + 1].set = 1234;*/
-    _RayPoints[id.x].origin = hit.position;
-    _RayPoints[id.x].set = 1234;
+    // do nothing for now
 }
 
-void NoHit(uint3 id)
+void NoHit(Ray ray, uint index1D)
 {
     // kod för miss ...
 
-    _RayPoints[id.x].origin = float3(61.0f, 12.0f, 333.0f);
-    _RayPoints[id.x].set = 12345;
+    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].origin = float3(0, 1000, 0); // impossible hit since all hits should have y-coordinate <= 0
+    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 400; // no hit found
+    
 }
 
-void CheckHitType(RayHit hit, uint3 id) //evaluate if the ray hit anything and call the function corresponding to the hit-type
+
+bool SendNewRay(Ray ray)
+{
+    if (ray.nrOfInteractions < MAXINTERACTIONS)
+    {
+        return true;
+    }
+    return false;
+}
+
+
+void CheckHitType(inout Ray ray, inout RayHit hit, uint3 id, uint index1D) //evaluate if the ray hit anything and call the function corresponding to the hit-type
 {
     if (hit.type == 0 || hit.type == 1) { //surface
         Result[id.xy] = float4(1, 0, 0, 1);
-        SurfaceHit(id, hit);
+        SurfaceHit(ray, hit, index1D);
+        ray.nrOfInteractions++;
+        hit.sendNewRay = SendNewRay(ray);
     }
     else if (hit.type == 2 || hit.type == 3) { //waterplane
         Result[id.xy] = float4(0, 1, 0, 1);
-        WaterplaneHit(id, hit);
+        WaterplaneHit(hit, index1D);
     }
     else if (hit.type == 4 || hit.type == 5) { //seafloor
         Result[id.xy] = float4(0, 0, 1, 1);
-        SeafloorHit(id, hit);
+        SeafloorHit(ray, hit, index1D);
+        ray.nrOfInteractions++;
+        hit.sendNewRay = SendNewRay(ray);
     }
     else { //miss
         Result[id.xy] = float4(0, 0, 0, 1);
-        NoHit(id);
+        NoHit(ray, index1D);
+        hit.sendNewRay = false;
     }
-}
-
-RayHit SendRay(float3 origin, float3 direction) { // call this to send a ray from a point with a direction
-    Ray ray = CreateRay(origin, direction);
-    RayHit hit = Trace(ray);
-    
-    return hit;
 }
 
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    _Pixel = id.x;
-
     // Get the dimensions of the RenderTexture
     uint width, height;
     Result.GetDimensions(width, height);
+
+    // comvert id x and y values to a 1d index, each ray is allocated MAXINTERACTIONS slots for its interactions (surface/bottom hits, turning points)
+    uint index1D = (id.y * width + id.x) * MAXINTERACTIONS; 
 
     // Transform pixel to [-1,1] range
     float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
 
     // Get a ray for the UVs
-    Ray ray = CreateCameraRay(uv);        
+    Ray ray = CreateCameraRay(uv);
 
     RayHit hit = Trace(ray);
-    CheckHitType(hit, id);  
+    CheckHitType(ray, hit, id, index1D);
+
+    while (hit.sendNewRay) 
+    {        
+        hit = Trace(ray);
+        CheckHitType(ray, hit, id, index1D);
+    }
 }

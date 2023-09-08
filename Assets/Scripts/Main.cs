@@ -19,8 +19,12 @@ public class Main : MonoBehaviour
     [SerializeField] int range = 0;
     [SerializeField] int width = 0;
     [SerializeField] int nrOfWaterPlanes = 0;    
-    [SerializeField] Camera secondCamera = null;    
-    
+    [SerializeField] Camera secondCamera = null;
+    [SerializeField] bool sendRaysContinuosly = false;
+    [SerializeField] bool visualizeRays = false;
+    [SerializeField] float lineLength = 1;
+    [SerializeField] Material lineMaterial = null;
+
     private Mesh waterplaneMesh = null;
     private Mesh waterplaneMesh2 = null;
     private Mesh surfaceMesh = null;
@@ -47,12 +51,27 @@ public class Main : MonoBehaviour
     private ComputeBuffer _indexBuffer;
 
     private ComputeBuffer _rayPointsBuffer;
-
+    
     RayTracingVisualization secondCameraScript = null;
     private RenderTexture _target;
-    RenderTexture rayTracingOutput = null;
 
-    
+    private int threadGroupsDivisionX = 64;
+    private int threadGroupsDivisionY = 64;
+    private int threadGroupInternalSizeX = 8;
+    private int threadGroupInternalSizeY = 8;
+
+    private bool doRayTracing = false;
+    private bool lockRayTracing = false;
+
+    private const int MAXINTERACTIONS = 4;
+
+    RayData[] rds = new RayData[16384*MAXINTERACTIONS];
+
+    LineRenderer line = null;
+    private List<LineRenderer> lines = new List<LineRenderer>();
+
+    LineRenderer srcDirectionLine = null;
+
     struct MeshObject
     {
         public Matrix4x4 localToWorldMatrix;
@@ -65,27 +84,19 @@ public class Main : MonoBehaviour
     {
         public Vector3 origin;
         public int set;
-        public int nrOfInteractions;
     };
 
-    private int raydatabytesize = 20;
+    private int raydatabytesize = 16;
 
     private void ReleaseResources()
     {
-
-        if (rayTracingOutput)
-        {
-            rayTracingOutput.Release();
-            rayTracingOutput = null;
-        }
-
         cameraHeight = 0;
         cameraWidth = 0;
 
         _meshObjectBuffer?.Release();
         _vertexBuffer?.Release();
         _indexBuffer?.Release();
-        _rayPointsBuffer?.Release();        
+        _rayPointsBuffer?.Release();
     }
 
     void OnDestroy()
@@ -102,20 +113,13 @@ public class Main : MonoBehaviour
     {
         if (cameraWidth != Camera.allCameras[1].pixelWidth || cameraHeight != Camera.allCameras[1].pixelHeight)
         {
-            if (rayTracingOutput)
-                rayTracingOutput.Release();
-
-            rayTracingOutput = new RenderTexture(Camera.allCameras[1].pixelWidth, Camera.allCameras[1].pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-            rayTracingOutput.enableRandomWrite = true;
-            rayTracingOutput.Create();
-
             cameraWidth = (uint)Camera.allCameras[1].pixelWidth;
             cameraHeight = (uint)Camera.allCameras[1].pixelHeight;
         }
 
         if (_rayPointsBuffer == null)
         {
-            _rayPointsBuffer = new ComputeBuffer(10000, raydatabytesize);
+            _rayPointsBuffer = new ComputeBuffer(16384*MAXINTERACTIONS, raydatabytesize);
         }
     }
 
@@ -196,8 +200,7 @@ public class Main : MonoBehaviour
     }
 
     private Mesh CreateWaterPlaneMesh(bool flipped=false)
-    {
-        Debug.Log("hejhej");
+    {        
         Mesh waterPlaneMesh = new Mesh()
         {
             name = "Waterplane Mesh"
@@ -397,7 +400,7 @@ public class Main : MonoBehaviour
 
     private void InitRenderTexture()
     {
-        if (_target == null || _target.width != Screen.width || _target.height != Screen.height)
+        if (_target == null || _target.width != Screen.width/8 || _target.height != Screen.height/8)
         {
             // Release render texture if we already have one
             if (_target != null)
@@ -406,24 +409,31 @@ public class Main : MonoBehaviour
             }
 
             // Get a render target for Ray Tracing
-            _target = new RenderTexture(Screen.width, Screen.height, 0,
+
+            int thgx = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
+            int thgy = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
+            _target = new RenderTexture(thgx * threadGroupInternalSizeX, thgy * threadGroupInternalSizeY, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
-            _target.Create();            
+            _target.Create();
+            //Debug.Log(_target.width);
+            //Debug.Log(_target.height);
+            //Debug.Log("Width: " + Screen.width);
+            //Debug.Log("Height: " + Screen.height);
         }
     }
 
 
     private void OnEnable()
     {
+        Debug.Log("OnEnable");
         if (secondCamera != null)
         {
             secondCameraScript = secondCamera.GetComponent<RayTracingVisualization>();
         }
 
         // setup the scene
-        SetUpScene();
-
+        SetUpScene();        
     }
 
     // Start is called before the first frame update
@@ -432,7 +442,24 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
         Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
-        targetRenderer.material.SetColor("_Color", Color.red);        
+        targetRenderer.material.SetColor("_Color", Color.red);
+        Debug.Log("Start");
+
+        srcDirectionLine = new GameObject("Line").AddComponent<LineRenderer>();
+
+        srcDirectionLine.startColor = Color.black;
+        srcDirectionLine.endColor = Color.black;
+
+        srcDirectionLine.startWidth = 0.05f;
+        srcDirectionLine.endWidth = 0.05f;
+        srcDirectionLine.positionCount = 2;
+        srcDirectionLine.useWorldSpace = true;
+
+        srcDirectionLine.SetPosition(0, srcSphere.transform.position);
+        srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
+
+        srcDirectionLine.material = lineMaterial;
+        srcDirectionLine.material.color = Color.black;
     }    
 
     // Update is called once per frame
@@ -458,6 +485,12 @@ public class Main : MonoBehaviour
             Debug.Log("No seafloor!");
         }
 
+        if (srcDirectionLine != null)
+        {
+            srcDirectionLine.SetPosition(0, srcSphere.transform.position);
+            srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
+        }
+
         if (oldWidth != width || oldRange != range || oldDepth != depth || oldNrOfWaterPlanes != nrOfWaterPlanes)
         { // change has happened to the scene, update (create new) meshes for the surface, seafloor and water planes
             
@@ -473,38 +506,159 @@ public class Main : MonoBehaviour
             oldDepth = depth;
             oldRange = range;
             oldWidth = width;
-            oldNrOfWaterPlanes = nrOfWaterPlanes;
+            oldNrOfWaterPlanes = nrOfWaterPlanes; 
             _meshObjectsNeedRebuilding = true;
+        }
+
+        if (Input.GetKey(KeyCode.C)){
+            doRayTracing = true;            
+        }
+        else
+        {
+            doRayTracing = false;
+            lockRayTracing = false;
+        }        
+
+        if ((!lockRayTracing && doRayTracing) || sendRaysContinuosly) // do raytracing if the user has pressed key C. only do it once though. or do it continously
+        {
+            foreach (LineRenderer line in lines)
+            {
+                Destroy(line.gameObject);
+            }
+            lines.Clear();
+
+            lockRayTracing = true; // disable raytracing being done several times during one keypress
+            // do raytracing
+            Debug.Log("RayTrace");
+            CreateResources();
+            RebuildMeshObjectBuffers();
+            SetShaderParameters();
+
+            InitRenderTexture();
+
+            computeShaderTest.SetTexture(0, "Result", _target);
+            int threadGroupsX = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
+            int threadGroupsY = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
+
+            computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+
+            if (visualizeRays)
+            {
+                _rayPointsBuffer.GetData(rds);
+
+                // do something with rds
+                Vector3 srcOrigin = srcSphere.transform.position;
+
+                // visualize all lines
+                for (int i = 0; i < rds.Length; i++)
+                {
+                    if (rds[i].set != 12345)
+                    {
+                        // skip to next ray
+                        int mod = i % MAXINTERACTIONS;
+                        int step = MAXINTERACTIONS - mod - 1;
+                        i += step;
+                        continue;
+                    }
+
+                    line = new GameObject("Line").AddComponent<LineRenderer>();
+
+                    line.startColor = Color.black;
+                    line.endColor = Color.black;
+
+                    line.startWidth = 0.01f;
+                    line.endWidth = 0.01f;
+                    line.positionCount = 2;
+                    line.useWorldSpace = true;
+
+                    // add material to lines to make them another color than magenta, however this heavily worsens fps when there are many rays
+                    // line.material = lineMaterial;
+                    // line.material.color = Color.black;
+
+                    if (i % MAXINTERACTIONS == 0) // first interaction for a line, draw line from source to first interaction
+                    {
+                        line.SetPosition(0, srcOrigin);
+                    }
+                    else //
+                    {
+                        line.SetPosition(0, rds[i - 1].origin);
+                    }
+
+                    line.SetPosition(1, rds[i].origin);
+                    lines.Add(line);
+                    
+                }
+
+                // visualize one line
+                /*for (int i = 0; i < MAXINTERACTIONS; i++)
+                {
+                    if (rds[i].set != 12345)
+                    {
+                        break;
+                    }
+                    line = new GameObject("Line").AddComponent<LineRenderer>();
+
+                    line.startColor = Color.black;
+                    line.endColor = Color.black;
+
+                    line.startWidth = 0.01f;
+                    line.endWidth = 0.01f;
+                    line.positionCount = 2;
+                    line.useWorldSpace = true;
+
+                    if (i == 0)
+                    {
+                        line.SetPosition(0, srcOrigin);
+                    }
+                    else
+                    {
+                        line.SetPosition(0, rds[i - 1].origin);
+                    }
+
+                    line.SetPosition(1, rds[i].origin);
+                    lines.Add(line);
+                }*/
+            }            
+
+            secondCameraScript.receiveData(_target);            
+        }
+
+        if (!visualizeRays)
+        {
+            foreach (LineRenderer line in lines)
+            {
+                Destroy(line.gameObject);
+            }
+            lines.Clear();
         }
     }    
 
-    [ImageEffectOpaque]
-    private void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        CreateResources();
-        RebuildMeshObjectBuffers();
-        SetShaderParameters();
+    //[ImageEffectOpaque]
+    //private void OnRenderImage(RenderTexture source, RenderTexture destination)
+    //{        
+        //CreateResources();
+        //RebuildMeshObjectBuffers();
+        //SetShaderParameters();
 
-        InitRenderTexture();
-        computeShaderTest.SetTexture(0, "Result", _target);
-        int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
-        int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
-        computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
-        Graphics.Blit(source, destination);
+        //InitRenderTexture();
+        //computeShaderTest.SetTexture(0, "Result", _target);
+        //int threadGroupsX = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
+        //int threadGroupsY = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
+        //Debug.Log(threadGroupsX);
+        //Debug.Log(threadGroupsY);
 
-        secondCameraScript.receiveData(_target);
+        //Debug.Log("ThreadGroups: " + threadGroupsX + ", " + threadGroupsY);
+        //computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+        //Graphics.Blit(source, destination);        
 
-        //RayData[] vec = new RayData[10000];
-        //_rayPointsBuffer.GetData(vec);
+        //RayData[] rds = new RayData[16384];
+        //_rayPointsBuffer.GetData(rds);
 
-
-        //for (int i = 0; i < vec.Length; i++)
+        //for (int i = 0; i < rds.Length; i++)
         //{
-        //    Debug.Log(i + " : " + vec[i].set);
+        //    Debug.Log("i : " + i);
+        //    Debug.Log("Origin: " + rds[i].origin);
+        //    Debug.Log("Set : " + rds[i].set);
         //}
-        //Debug.Log(vec[0].origin);
-        //Debug.Log(vec[0].set);
-        //Debug.Log(vec[1].origin);
-        //Debug.Log(vec[1].set);
-    }
+    //}    
 }
