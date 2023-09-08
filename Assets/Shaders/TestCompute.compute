@@ -4,7 +4,6 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> Result;
-//RWStructuredBuffer<int> testBuffer;
 
 float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
@@ -15,9 +14,15 @@ float2 _Pixel;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
-static const int MAXINTERACTIONS = 4;
+static const int MAXINTERACTIONS = 1;
 
-struct RayData 
+int theta;
+int ntheta;
+int phi;
+int nphi;
+float3 srcDirection;
+
+struct RayData // Data that will be sent back to the CPU
 {
     float3 origin;
     int set;    
@@ -72,6 +77,40 @@ Ray CreateCameraRay(float2 uv)
     // Transform the direction from camera to world space and normalize
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
+    int nrOfInteractions = 0;
+
+    return CreateRay(origin, direction, nrOfInteractions);
+}
+
+Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
+{   // based on https://en.wikipedia.org/wiki/Spherical_coordinate_system, however the y-axis and z-axis are flipped
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz; // source sphere's position
+
+    float theta_rad = theta * PI / 180; //convert to radians
+    float phi_rad = phi * PI / 180;
+
+    float dtheta = theta_rad / ntheta; // resolution in theta
+    float dphi = phi_rad / nphi; // resolution in phi
+
+    // calculate the angular offset for the ray compared to the forward vector of the source
+    float _theta = -theta_rad / 2 + id.x * dtheta;
+    float _phi = -phi_rad / 2 + id.y * dphi;
+
+    // calculate angles of the source's forward vector
+    float origin_theta = acos(srcDirection.y);
+    float origin_phi = sign(srcDirection.z) * acos(srcDirection.x / sqrt(pow(srcDirection.x,2) + pow(srcDirection.z,2)));
+    
+    // add the angular offset
+    float theta_res = origin_theta + _theta;
+    float phi_res = origin_phi + _phi;
+
+    // calculate new direction (r is assumed to be one since srcDirection should be normalized)
+    float3 direction = float3(
+        sin(theta_res) * cos(phi_res),  //x
+        cos(theta_res),                 //y
+        sin(theta_res) * sin(phi_res)   //z
+        );
+
     int nrOfInteractions = 0;
 
     return CreateRay(origin, direction, nrOfInteractions);
@@ -288,10 +327,12 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     uint index1D = (id.y * width + id.x) * MAXINTERACTIONS; 
 
     // Transform pixel to [-1,1] range
-    float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
+    //float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
 
     // Get a ray for the UVs
-    Ray ray = CreateCameraRay(uv);
+    //Ray ray = CreateCameraRay(uv);
+
+    Ray ray = CreateThetaPhiRay(id);
 
     RayHit hit = Trace(ray);
     CheckHitType(ray, hit, id, index1D);

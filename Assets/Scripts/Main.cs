@@ -24,6 +24,10 @@ public class Main : MonoBehaviour
     [SerializeField] bool visualizeRays = false;
     [SerializeField] float lineLength = 1;
     [SerializeField] Material lineMaterial = null;
+    [SerializeField] int theta = 0;
+    [SerializeField] int ntheta = 0;
+    [SerializeField] int phi = 0;
+    [SerializeField] int nphi = 0;
 
     private Mesh waterplaneMesh = null;
     private Mesh waterplaneMesh2 = null;
@@ -32,6 +36,10 @@ public class Main : MonoBehaviour
     private Mesh seafloorMesh = null;
     private Mesh seafloorMesh2 = null;
 
+    private int oldtheta = 0;
+    private int oldntheta = 0;
+    private int oldphi = 0;
+    private int oldnphi = 0;
     private int oldDepth = 0;
     private int oldRange = 0;
     private int oldWidth = 0;
@@ -55,22 +63,33 @@ public class Main : MonoBehaviour
     RayTracingVisualization secondCameraScript = null;
     private RenderTexture _target;
 
-    private int threadGroupsDivisionX = 64;
-    private int threadGroupsDivisionY = 64;
-    private int threadGroupInternalSizeX = 8;
-    private int threadGroupInternalSizeY = 8;
+    //private int threadGroupsDivisionX = 64;
+    //private int threadGroupsDivisionY = 64;
+    //private int threadGroupInternalSizeX = 8;
+    //private int threadGroupInternalSizeY = 8;
 
     private bool doRayTracing = false;
     private bool lockRayTracing = false;
 
-    private const int MAXINTERACTIONS = 4;
+    private const int MAXINTERACTIONS = 1;
 
-    RayData[] rds = new RayData[16384*MAXINTERACTIONS];
+    RayData[] rds = null;
 
     LineRenderer line = null;
     private List<LineRenderer> lines = new List<LineRenderer>();
 
     LineRenderer srcDirectionLine = null;
+
+    struct AngleData
+    {
+        int theta;
+        int ntheta;
+        int phi;
+        int nphi;
+        Vector3 srcDirection;
+    }
+
+    private AngleData angleData;
 
     struct MeshObject
     {
@@ -123,6 +142,7 @@ public class Main : MonoBehaviour
         }
     }
 
+    #region SceneStuff
     private Mesh CreateSurfaceMesh(bool flipped=false)
     {
         Mesh surfaceMesh = new Mesh()
@@ -288,6 +308,7 @@ public class Main : MonoBehaviour
         seafloorMF2.mesh = seafloorMesh2;
 
     }
+    #endregion
 
     private void RebuildMeshObjectBuffers()
     {
@@ -389,13 +410,18 @@ public class Main : MonoBehaviour
         computeShaderTest.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
         computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
         computeShaderTest.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
-        computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);        
+        computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);
 
         SetComputeBuffer("_MeshObjects", _meshObjectBuffer);
         SetComputeBuffer("_Vertices", _vertexBuffer);
         SetComputeBuffer("_Indices", _indexBuffer);
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
-        
+
+        computeShaderTest.SetInt("theta", theta);
+        computeShaderTest.SetInt("ntheta", ntheta);
+        computeShaderTest.SetInt("phi", phi);
+        computeShaderTest.SetInt("nphi", nphi);
+        computeShaderTest.SetVector("srcDirection", srcSphere.transform.forward);
     }
 
     private void InitRenderTexture()
@@ -409,13 +435,18 @@ public class Main : MonoBehaviour
             }
 
             // Get a render target for Ray Tracing
-
-            int thgx = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
-            int thgy = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
-            _target = new RenderTexture(thgx * threadGroupInternalSizeX, thgy * threadGroupInternalSizeY, 0,
+            _target = new RenderTexture(ntheta, nphi, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
             _target.Create();
+
+            //int thgx = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
+            //int thgy = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
+            //_target = new RenderTexture(thgx * threadGroupInternalSizeX, thgy * threadGroupInternalSizeY, 0,
+            //    RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            //_target.enableRandomWrite = true;
+            //_target.Create();
+
             //Debug.Log(_target.width);
             //Debug.Log(_target.height);
             //Debug.Log("Width: " + Screen.width);
@@ -433,7 +464,8 @@ public class Main : MonoBehaviour
         }
 
         // setup the scene
-        SetUpScene();        
+        SetUpScene();
+        rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
     }
 
     // Start is called before the first frame update
@@ -491,6 +523,24 @@ public class Main : MonoBehaviour
             srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
         }
 
+        if (oldtheta != theta || oldntheta != ntheta || oldphi != phi || oldnphi != nphi)
+        {
+            // do stuff
+            // reinit rds arrau
+            rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
+            // reinit raydatabuffer
+            if (_rayPointsBuffer != null)
+            {
+                _rayPointsBuffer.Release();
+            }
+            _rayPointsBuffer = new ComputeBuffer(ntheta * nphi * MAXINTERACTIONS, raydatabytesize);
+
+            oldtheta = theta;
+            oldntheta = ntheta;
+            oldphi = phi;
+            oldnphi = nphi;
+        }
+
         if (oldWidth != width || oldRange != range || oldDepth != depth || oldNrOfWaterPlanes != nrOfWaterPlanes)
         { // change has happened to the scene, update (create new) meshes for the surface, seafloor and water planes
             
@@ -537,8 +587,11 @@ public class Main : MonoBehaviour
             InitRenderTexture();
 
             computeShaderTest.SetTexture(0, "Result", _target);
-            int threadGroupsX = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
-            int threadGroupsY = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
+            //int threadGroupsX = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
+            //int threadGroupsY = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
+
+            int threadGroupsX = Mathf.FloorToInt(ntheta / 8.0f);
+            int threadGroupsY = Mathf.FloorToInt(nphi / 8.0f);
 
             computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
