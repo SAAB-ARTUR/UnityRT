@@ -523,45 +523,37 @@ public class Main : MonoBehaviour
 
     Vector3[] DirectionLines()
     {
+        // angles for srcSphere's forward vector (which is of length 1 meaning that r can be removed from all equations below)
+        float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);        
+        float origin_phi = (float)Math.Atan2(srcSphere.transform.forward.z, srcSphere.transform.forward.x);
+
         float theta_rad = theta * PI / 180; //convert to radians
-        float phi_rad = phi * PI / 180;
+        float phi_rad = phi * PI / 180;        
 
-        Vector2[] offsets = new Vector2[4];
+        float s0 = (float)Math.Sin(origin_phi);
+        float c0 = (float)Math.Cos(origin_phi);
 
-        // calculate the angular offset for the lines compared to the forward vector of the source
+        // create angular spans in both dimensions
+        float[] theta_offsets = new float[2] { origin_theta - theta_rad / 2, origin_theta + theta_rad / 2 };
+        float[] phi_offsets = new float[2] { origin_phi - phi_rad / 2, origin_phi + phi_rad / 2 };
+
+        Vector3[] viewLines = new Vector3[4];
+
         int k = 0;
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 2; i++) // loop over phi
         {
-            for (int j = 0; j < 2; j++)
+            float s1 = (float)Math.Sin(phi_offsets[i] - origin_phi);
+            float c1 = (float)Math.Cos(phi_offsets[i] - origin_phi);
+
+            for (int j = 0; j < 2; j++) // loop over theta
             {
-                float offset_theta = -theta_rad / 2 + i * theta_rad;
-                float offset_phi = -phi_rad / 2 + j * phi_rad;
-                offsets[k] = new Vector2(offset_theta, offset_phi);
+                float x = c0 * c1 * (float)Math.Sin(theta_offsets[j]) - s0 * s1;
+                float z = s0 * c1 * (float)Math.Sin(theta_offsets[j]) + c0 * s1;
+                float y = c1 * (float)Math.Cos(theta_offsets[j]);
+                viewLines[k] = new Vector3(x, y, z);
                 k++;
-            }            
-        }        
-        
-        // calculate angles of the source's forward vector
-        float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);
-        float origin_phi = Math.Sign(srcSphere.transform.forward.z) * (float)Math.Acos(srcSphere.transform.forward.x / Math.Sqrt(Math.Pow(srcSphere.transform.forward.x, 2) + Math.Pow(srcSphere.transform.forward.z, 2)));
-        
-        // add the angular offset
-        float[] theta_results = new float[4];
-        float[] phi_results = new float[4];
-
-        for (int i = 0; i < 4; i++) 
-        {
-            theta_results[i] = origin_theta + offsets[i].x;
-            phi_results[i] = origin_phi + offsets[i].y;
+            }
         }
-
-        Vector3[] viewLines = new Vector3[4] 
-        {
-            new Vector3((float)(Math.Sin(theta_results[0]) * Math.Cos(phi_results[0])), (float)Math.Cos(theta_results[0]), (float)(Math.Sin(theta_results[0]) * Math.Sin(phi_results[0]))),
-            new Vector3((float)(Math.Sin(theta_results[1]) * Math.Cos(phi_results[1])), (float)Math.Cos(theta_results[1]), (float)(Math.Sin(theta_results[1]) * Math.Sin(phi_results[1]))),
-            new Vector3((float)(Math.Sin(theta_results[2]) * Math.Cos(phi_results[2])), (float)Math.Cos(theta_results[2]), (float)(Math.Sin(theta_results[2]) * Math.Sin(phi_results[2]))),
-            new Vector3((float)(Math.Sin(theta_results[3]) * Math.Cos(phi_results[3])), (float)Math.Cos(theta_results[3]), (float)(Math.Sin(theta_results[3]) * Math.Sin(phi_results[3])))
-        };
 
         return viewLines;
     }
