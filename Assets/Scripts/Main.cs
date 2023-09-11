@@ -17,6 +17,7 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject waterplane2 = null;
     [SerializeField] GameObject surfaceCombo = null;
     [SerializeField] GameObject bottomCombo = null;
+    [SerializeField] GameObject waterLayerCombo = null;
     [SerializeField] int depth = 0;
     [SerializeField] int range = 0;
     [SerializeField] int width = 0;
@@ -425,6 +426,7 @@ public class Main : MonoBehaviour
         world.AddSource(srcSphere);
         world.AddSurface(surfaceCombo);
         world.AddBottom(bottomCombo);
+        world.AddWaterLayers(waterLayerCombo);
 
         Debug.Log("World build completed.");
 
