@@ -5,19 +5,20 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 
 public class World : MonoBehaviour
 {
     
-    [SerializeField] int waterDepth = 0;
-    [SerializeField] int sourceDepth = 0;
-    [SerializeField] int range = 0;
+    [SerializeField] float waterDepth = 0;
+    [SerializeField] float sourceDepth = 0;
+    [SerializeField] float range = 0;
     [SerializeField] int nrOfWaterPlanes = 0;
 
     private class State {
 
-        public int depth;
-        public int range;
+        public float depth;
+        public float range;
         public int nrOfWaterPlanes;
         public Vector3 position;
 
@@ -145,6 +146,35 @@ public class World : MonoBehaviour
     // Update is called once per framuie
     void Update()
     {
-        
+
+        float sourceDept2 = this.transform.position.y;
+
+        Vector3 pos = bottom.transform.position;
+        pos.y = -waterDepth;
+        bottom.transform.position = pos;
+
+
+        Vector3 pos2 = surface.transform.position;
+        pos.y = 0;
+        surface.transform.position = pos;
+
+        if (sourceDept2 > 0 )
+        {
+
+            Vector3 p = sourceSphere.transform.position;
+            p.y = 0;
+            sourceSphere.transform.position = p;
+        }
+
+        if (sourceDept2 < -waterDepth) {
+
+            Vector3 p = sourceSphere.transform.position;
+            p.y = -waterDepth;
+            sourceSphere.transform.position = p;
+
+        }
+
+
+
     }
 }
