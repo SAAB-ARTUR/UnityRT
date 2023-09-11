@@ -197,7 +197,6 @@ public class World : MonoBehaviour
         {
 
             SetPlaneDepth(waterLayers[i], waterLayerDepths[i]);
-            Debug.Log(waterLayerDepths[i]);
 
         }
         SetPlaneDepth(bottom, waterDepth);
