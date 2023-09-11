@@ -181,26 +181,30 @@ public class World : MonoBehaviour
 
     // Update is called once per framuie
 
-    void SetPlaneDepth(DualPlane dp, float depth) {
+    void SetPlaneDepthStationary(DualPlane dp, float depth) {
         Vector3 pos = dp.transform.position;
         pos.y = -depth;
         dp.transform.position = pos;
+        dp.transform.rotation = Quaternion.Euler(0, 0, 0);
     }
 
     void Update()
     {
 
+        this.transform.position = sourceSphere.transform.position;
         float sourceDept2 = this.transform.position.y;
 
-        SetPlaneDepth(surface, 0);
+        SetPlaneDepthStationary(surface, 0);
         for (int i = 0; i<waterLayers.Length; i++)
         {
 
-            SetPlaneDepth(waterLayers[i], waterLayerDepths[i]);
+            SetPlaneDepthStationary(waterLayers[i], waterLayerDepths[i]);
 
         }
-        SetPlaneDepth(bottom, waterDepth);
+        SetPlaneDepthStationary(bottom, waterDepth);
         
+
+
 
 
         if (sourceDept2 > 0 )
@@ -220,6 +224,6 @@ public class World : MonoBehaviour
         }
 
 
-
+        
     }
 }
