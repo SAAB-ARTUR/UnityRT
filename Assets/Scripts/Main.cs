@@ -653,7 +653,7 @@ public class Main : MonoBehaviour
             }
             lines.Clear();
         }
-    }    
+    }
 
     [ImageEffectOpaque]
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -680,5 +680,6 @@ public class Main : MonoBehaviour
         //    Debug.Log("Origin: " + rds[i].origin);
         //    Debug.Log("Set : " + rds[i].set);
         //}
-    //}    
+        //}
+    }
 }
