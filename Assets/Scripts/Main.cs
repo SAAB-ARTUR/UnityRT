@@ -28,6 +28,7 @@ public class Main : MonoBehaviour
     [SerializeField] int ntheta = 0;
     [SerializeField] int phi = 0;
     [SerializeField] int nphi = 0;
+    [SerializeField] int MAXINTERACTIONS = 0;
 
     private Mesh waterplaneMesh = null;
     private Mesh waterplaneMesh2 = null;
@@ -40,6 +41,7 @@ public class Main : MonoBehaviour
     private int oldntheta = 0;
     private int oldphi = 0;
     private int oldnphi = 0;
+    private int oldMAXINTERACTIONS = 0;
     private int oldDepth = 0;
     private int oldRange = 0;
     private int oldWidth = 0;
@@ -63,15 +65,8 @@ public class Main : MonoBehaviour
     RayTracingVisualization secondCameraScript = null;
     private RenderTexture _target;
 
-    //private int threadGroupsDivisionX = 64;
-    //private int threadGroupsDivisionY = 64;
-    //private int threadGroupInternalSizeX = 8;
-    //private int threadGroupInternalSizeY = 8;
-
     private bool doRayTracing = false;
-    private bool lockRayTracing = false;
-
-    private const int MAXINTERACTIONS = 1;
+    private bool lockRayTracing = false;    
 
     RayData[] rds = null;
 
@@ -133,7 +128,8 @@ public class Main : MonoBehaviour
 
         if (_rayPointsBuffer == null)
         {
-            _rayPointsBuffer = new ComputeBuffer(16384*MAXINTERACTIONS, raydatabytesize);
+            _rayPointsBuffer = new ComputeBuffer(ntheta*nphi*MAXINTERACTIONS, raydatabytesize);
+            rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
         }
     }
 
@@ -417,6 +413,8 @@ public class Main : MonoBehaviour
         computeShaderTest.SetInt("phi", phi);
         computeShaderTest.SetInt("nphi", nphi);
         computeShaderTest.SetVector("srcDirection", srcSphere.transform.forward);
+
+        computeShaderTest.SetInt("_MAXINTERACTIONS", MAXINTERACTIONS);
     }
 
     private void InitRenderTexture()
@@ -433,19 +431,7 @@ public class Main : MonoBehaviour
             _target = new RenderTexture(ntheta, nphi, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
-            _target.Create();
-
-            //int thgx = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
-            //int thgy = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
-            //_target = new RenderTexture(thgx * threadGroupInternalSizeX, thgy * threadGroupInternalSizeY, 0,
-            //    RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            //_target.enableRandomWrite = true;
-            //_target.Create();
-
-            //Debug.Log(_target.width);
-            //Debug.Log(_target.height);
-            //Debug.Log("Width: " + Screen.width);
-            //Debug.Log("Height: " + Screen.height);
+            _target.Create();            
         }
     }
 
@@ -558,7 +544,7 @@ public class Main : MonoBehaviour
         // calculate angles of the source's forward vector
         float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);
         float origin_phi = Math.Sign(srcSphere.transform.forward.z) * (float)Math.Acos(srcSphere.transform.forward.x / Math.Sqrt(Math.Pow(srcSphere.transform.forward.x, 2) + Math.Pow(srcSphere.transform.forward.z, 2)));
-
+        
         // add the angular offset
         float[] theta_results = new float[4];
         float[] phi_results = new float[4];
@@ -609,12 +595,9 @@ public class Main : MonoBehaviour
             srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
 
             UpdateSourceViewLines();
-
-            Debug.Log(srcSphere.transform.forward);
-            Debug.Log(srcSphere.transform.forward.normalized);
         }
 
-        if (oldtheta != theta || oldntheta != ntheta || oldphi != phi || oldnphi != nphi)
+        if (oldtheta != theta || oldntheta != ntheta || oldphi != phi || oldnphi != nphi || oldMAXINTERACTIONS != MAXINTERACTIONS)
         {
             // do stuff
             // reinit rds arrau
@@ -625,11 +608,13 @@ public class Main : MonoBehaviour
                 _rayPointsBuffer.Release();
             }
             _rayPointsBuffer = new ComputeBuffer(ntheta * nphi * MAXINTERACTIONS, raydatabytesize);
+            rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
 
             oldtheta = theta;
             oldntheta = ntheta;
             oldphi = phi;
             oldnphi = nphi;
+            oldMAXINTERACTIONS = MAXINTERACTIONS;
         }
 
         if (oldWidth != width || oldRange != range || oldDepth != depth || oldNrOfWaterPlanes != nrOfWaterPlanes)
@@ -676,10 +661,8 @@ public class Main : MonoBehaviour
             SetShaderParameters();
 
             InitRenderTexture();
-
+            
             computeShaderTest.SetTexture(0, "Result", _target);
-            //int threadGroupsX = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
-            //int threadGroupsY = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
 
             int threadGroupsX = Mathf.FloorToInt(ntheta / 8.0f);
             int threadGroupsY = Mathf.FloorToInt(nphi / 8.0f);
@@ -769,34 +752,5 @@ public class Main : MonoBehaviour
             }
             lines.Clear();
         }
-    }    
-
-    //[ImageEffectOpaque]
-    //private void OnRenderImage(RenderTexture source, RenderTexture destination)
-    //{        
-        //CreateResources();
-        //RebuildMeshObjectBuffers();
-        //SetShaderParameters();
-
-        //InitRenderTexture();
-        //computeShaderTest.SetTexture(0, "Result", _target);
-        //int threadGroupsX = Mathf.FloorToInt(Screen.width / threadGroupsDivisionX);
-        //int threadGroupsY = Mathf.FloorToInt(Screen.height / threadGroupsDivisionY);
-        //Debug.Log(threadGroupsX);
-        //Debug.Log(threadGroupsY);
-
-        //Debug.Log("ThreadGroups: " + threadGroupsX + ", " + threadGroupsY);
-        //computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
-        //Graphics.Blit(source, destination);        
-
-        //RayData[] rds = new RayData[16384];
-        //_rayPointsBuffer.GetData(rds);
-
-        //for (int i = 0; i < rds.Length; i++)
-        //{
-        //    Debug.Log("i : " + i);
-        //    Debug.Log("Origin: " + rds[i].origin);
-        //    Debug.Log("Set : " + rds[i].set);
-        //}
-    //}    
+    } 
 }

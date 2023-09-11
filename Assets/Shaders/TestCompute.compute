@@ -11,10 +11,12 @@ float4x4 _CameraInverseProjection;
 float2 _PixelOffset;
 float2 _Pixel;
 
+int _MAXINTERACTIONS;
+
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
-static const int MAXINTERACTIONS = 1;
+//static const int MAXINTERACTIONS = 1;
 
 int theta;
 int ntheta;
@@ -83,7 +85,7 @@ Ray CreateCameraRay(float2 uv)
 }
 
 Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
-{   // based on https://en.wikipedia.org/wiki/Spherical_coordinate_system, however the y-axis and z-axis are flipped here
+{   // based on https://en.wikipedia.org/wiki/Spherical_coordinate_system, however the y-axis and z-axis are flipped here (unity uses left-handed system)
     float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz; // source sphere's position
 
     float theta_rad = theta * PI / 180; //convert to radians
@@ -93,8 +95,8 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
     float dphi = phi_rad / nphi; // resolution in phi
 
     // calculate the angular offset for the ray compared to the forward vector of the source
-    float offset_theta = -theta_rad / 2 + id.x * dtheta;
-    float offset_phi = -phi_rad / 2 + id.y * dphi;
+    float offset_theta = -theta_rad / 2 + id.y * dtheta;
+    float offset_phi = -phi_rad / 2 + id.x * dphi;
 
     // calculate angles of the source's forward vector
     float origin_theta = acos(srcDirection.y);
@@ -239,8 +241,8 @@ RayHit Trace(Ray ray)
 void SurfaceHit(inout Ray ray, RayHit hit, uint index1D)
 {
     // save hit data to buffer
-    _RayPoints[(index1D*MAXINTERACTIONS) + ray.nrOfInteractions].origin = hit.position;
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
+    _RayPoints[index1D + ray.nrOfInteractions].origin = hit.position;
+    _RayPoints[index1D + ray.nrOfInteractions].set = 12345;
 
     // update the ray data
     ray.origin = hit.position + float3(0, -0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
@@ -252,8 +254,8 @@ void SurfaceHit(inout Ray ray, RayHit hit, uint index1D)
 void SeafloorHit(inout Ray ray, RayHit hit, uint index1D)
 {
     // save hit data to buffer
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].origin = hit.position;
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
+    _RayPoints[index1D + ray.nrOfInteractions].origin = hit.position;
+    _RayPoints[index1D + ray.nrOfInteractions].set = 12345;
 
     // update the ray data
     ray.origin = hit.position + float3(0, 0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
@@ -274,15 +276,15 @@ void NoHit(Ray ray, uint index1D)
 {
     // kod för miss ...
 
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].origin = float3(0, 1000, 0); // impossible hit since all hits should have y-coordinate <= 0
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 400; // no hit found
+    _RayPoints[index1D + ray.nrOfInteractions].origin = float3(0, 1000, 0); // impossible hit since all hits should have y-coordinate <= 0
+    _RayPoints[index1D + ray.nrOfInteractions].set = 400; // no hit found
     
 }
 
 
 bool SendNewRay(Ray ray)
 {
-    if (ray.nrOfInteractions < MAXINTERACTIONS)
+    if (ray.nrOfInteractions < _MAXINTERACTIONS)
     {
         return true;
     }
@@ -324,7 +326,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     Result.GetDimensions(width, height);
 
     // comvert id x and y values to a 1d index, each ray is allocated MAXINTERACTIONS slots for its interactions (surface/bottom hits, turning points)
-    uint index1D = (id.y * width + id.x) * MAXINTERACTIONS; 
+    uint index1D = (id.y * width + id.x) * _MAXINTERACTIONS; 
 
     // Transform pixel to [-1,1] range
     //float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
