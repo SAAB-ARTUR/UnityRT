@@ -29,6 +29,8 @@ public class World : MonoBehaviour
 
     private DualPlane surface;
     private DualPlane bottom;
+    private DualPlane[] waterLayers = { };
+    private float[] waterLayerDepths = { };
 
 
     private GameObject sourceSphere;
@@ -83,6 +85,40 @@ public class World : MonoBehaviour
         bottom.bottomMesh.GetComponent<MeshFilter>().mesh = m2;
         bottom.transform.parent = this.transform;
         bottom.transform.localPosition = center;
+    }
+
+    public void AddWaterLayers(GameObject _waterLayerParent) {
+
+        // Figure out the depths of the layers
+        float dx = waterDepth / nrOfWaterPlanes;
+        DualPlane parentWaterLayer = _waterLayerParent.GetComponent<DualPlane>();
+
+        List<DualPlane> waterPlanes = new List<DualPlane>();
+        List<float> waterPlanesDepths = new List<float>();
+
+        for (int i = 0; i < nrOfWaterPlanes; i++)
+        {
+
+            Vector3 center = state.position + Vector3.down * dx * i;
+            Mesh m1 = PlaneMesh(Vector3.zero, false);
+            Mesh m2 = PlaneMesh(Vector3.zero, true);
+
+            GameObject wl = Instantiate(_waterLayerParent);
+            DualPlane dp = wl.GetComponent<DualPlane>();
+            dp.topMesh.GetComponent<MeshFilter>().mesh = m1;
+            dp.bottomMesh.GetComponent<MeshFilter>().mesh = m2;
+
+            dp.transform.parent = this.transform;
+            dp.transform.position = center;
+
+            waterPlanes.Add(dp);
+            waterPlanesDepths.Add(dx * i);
+
+        }
+
+        waterLayers = waterPlanes.ToArray();
+        waterLayerDepths = waterPlanesDepths.ToArray();
+
     }
 
     private Vector3 mean(Vector3[] vectors) { 
@@ -144,19 +180,29 @@ public class World : MonoBehaviour
     }
 
     // Update is called once per framuie
+
+    void SetPlaneDepth(DualPlane dp, float depth) {
+        Vector3 pos = dp.transform.position;
+        pos.y = -depth;
+        dp.transform.position = pos;
+    }
+
     void Update()
     {
 
         float sourceDept2 = this.transform.position.y;
 
-        Vector3 pos = bottom.transform.position;
-        pos.y = -waterDepth;
-        bottom.transform.position = pos;
+        SetPlaneDepth(surface, 0);
+        for (int i = 0; i<waterLayers.Length; i++)
+        {
 
+            SetPlaneDepth(waterLayers[i], waterLayerDepths[i]);
+            Debug.Log(waterLayerDepths[i]);
 
-        Vector3 pos2 = surface.transform.position;
-        pos.y = 0;
-        surface.transform.position = pos;
+        }
+        SetPlaneDepth(bottom, waterDepth);
+        
+
 
         if (sourceDept2 > 0 )
         {
