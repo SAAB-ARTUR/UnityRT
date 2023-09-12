@@ -218,96 +218,8 @@ public class Main : MonoBehaviour
         return seafloorMesh;
     }
 
-    private Mesh CreateWaterPlaneMesh(bool flipped=false)
-    {        
-        Mesh waterPlaneMesh = new Mesh()
-        {
-            name = "Waterplane Mesh"
-        };
-
-        float delta = (float)depth / (float)(nrOfWaterPlanes + 1);
-
-        waterPlaneMesh.vertices = new Vector3[] {
-            new Vector3(0f, -delta, 0f), new Vector3(range, -delta, 0f), new Vector3(0f, -delta, width), new Vector3(range, -delta, width)
-        };
-
-        waterPlaneMesh.normals = new Vector3[] {
-            Vector3.back, Vector3.back, Vector3.back, Vector3.back
-        };
-
-        waterPlaneMesh.tangents = new Vector4[] {
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f)
-        };
-
-        if (flipped)
-        {
-            waterPlaneMesh.triangles = new int[] {                
-                1, 2, 0, 3, 2, 1
-            };
-        }
-        else
-        {
-            waterPlaneMesh.triangles = new int[] {
-                0, 2, 1, 1, 2, 3
-            };
-        }
-                
-
-        return waterPlaneMesh;
-    }    
-
-    private void SetUpScene()
-    {        
-        // setup the scene, unity meshes seem to be one-sided, so all planes are created from two meshes, facing in opposite direction to ensure that rays can hit the planes from either side
-        // SURFACE // 
-        //surfaceMesh = CreateSurfaceMesh();
-        //MeshFilter surfaceMF = (MeshFilter)surface.GetComponent("MeshFilter");
-        //surfaceMF.mesh = surfaceMesh;
-
-        //surfaceMesh2 = CreateSurfaceMesh(true);
-        //MeshFilter surfaceMF2 = (MeshFilter)surface2.GetComponent("MeshFilter");
-        //surfaceMF2.mesh = surfaceMesh2;
-
-        // WATER PLANE
-        if (nrOfWaterPlanes > 0) // if >0, create one waterplane
-        {
-            waterplaneMesh = CreateWaterPlaneMesh();
-            MeshFilter waterplaneMF = (MeshFilter)waterplane.GetComponent("MeshFilter");
-            waterplaneMF.mesh = waterplaneMesh;
-
-            waterplaneMesh2 = CreateWaterPlaneMesh(true);
-            MeshFilter waterplaneMF2 = (MeshFilter)waterplane2.GetComponent("MeshFilter");
-            waterplaneMF2.mesh = waterplaneMesh2;
-
-            if (nrOfWaterPlanes > 1) // create copies of the original waterplane at new positions relative to the original to divide the volume between the seafloor and surface evenly
-            {
-                float delta = (float)depth / (float)(nrOfWaterPlanes + 1);
-
-                for (int i = 0; i < nrOfWaterPlanes; i++)
-                {
-                    GameObject gmobj = Instantiate(waterplane, new Vector3(0, -delta*i, 0), Quaternion.identity);
-                    waterplanes.Add(gmobj);
-
-                    GameObject gmobj2 = Instantiate(waterplane2, new Vector3(0, -delta * i, 0), Quaternion.identity);
-                    waterplanes.Add(gmobj2);
-                }                
-            }
-        }        
-
-        // SEAFLOOR //
-        //seafloorMesh = CreateSeafloorMesh();
-        //MeshFilter seafloorMF = (MeshFilter)seafloor.GetComponent("MeshFilter");
-        //seafloorMF.mesh = seafloorMesh;
-
-        //seafloorMesh2 = CreateSeafloorMesh(true);
-        //MeshFilter seafloorMF2 = (MeshFilter)seafloor2.GetComponent("MeshFilter");
-        //seafloorMF2.mesh = seafloorMesh2;
-
-    }
     #endregion
+    
 
     #region MeshObjects
     private void RebuildMeshObjectBuffers()
@@ -468,7 +380,8 @@ public class Main : MonoBehaviour
         }
 
         // setup the scene
-        SetUpScene();
+        // SetUpScene();
+        
         //rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
     }
 
@@ -645,7 +558,7 @@ public class Main : MonoBehaviour
             }
             waterplanes.Clear();
 
-            SetUpScene();         
+            // SetUpScene();         
 
             // update values
             oldDepth = depth;
