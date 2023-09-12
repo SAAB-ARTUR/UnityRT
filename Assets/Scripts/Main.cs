@@ -94,7 +94,6 @@ public class Main : MonoBehaviour
         public Vector3 origin;
         public int set;
     };
-
     private int raydatabytesize = 16;
 
     private void ReleaseResources()
@@ -105,7 +104,7 @@ public class Main : MonoBehaviour
         _meshObjectBuffer?.Release();
         _vertexBuffer?.Release();
         _indexBuffer?.Release();
-        _rayPointsBuffer?.Release();
+        _rayPointsBuffer?.Release();        
     }
 
     void OnDestroy()
@@ -129,6 +128,10 @@ public class Main : MonoBehaviour
         if (_rayPointsBuffer == null)
         {
             _rayPointsBuffer = new ComputeBuffer(ntheta*nphi*MAXINTERACTIONS, raydatabytesize);
+        }
+
+        if (rds == null)
+        {
             rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
         }
     }
@@ -301,6 +304,7 @@ public class Main : MonoBehaviour
     }
     #endregion
 
+    #region MeshObjects
     private void RebuildMeshObjectBuffers()
     {
         if (!_meshObjectsNeedRebuilding)
@@ -359,6 +363,7 @@ public class Main : MonoBehaviour
         _rayTracingObjects.Remove(obj);
         _meshObjectsNeedRebuilding = true;
     }
+    #endregion
 
     private static void CreateComputeBuffer<T>(ref ComputeBuffer buffer, List<T> data, int stride)
         where T : struct
@@ -446,9 +451,10 @@ public class Main : MonoBehaviour
 
         // setup the scene
         SetUpScene();
-        rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
+        //rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
     }
 
+    #region SourceViewLines
     private LineRenderer CreateSrcViewLine(string name)
     {
         LineRenderer viewLine = new GameObject(name).AddComponent<LineRenderer>();
@@ -463,50 +469,9 @@ public class Main : MonoBehaviour
         return viewLine;
     }
 
-    // Start is called before the first frame update
-    void Start()
-    {        
-        Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
-        srcRenderer.material.SetColor("_Color", Color.green);
-        Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
-        targetRenderer.material.SetColor("_Color", Color.red);
-        Debug.Log("Start");
-
-        srcDirectionLine = CreateSrcViewLine("SourceDirectionLine");
-
-        srcDirectionLine.SetPosition(0, srcSphere.transform.position);
-        srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
-
-        Vector3[] viewLines = DirectionLines();
-
-        // line1
-        srcViewLine1 = CreateSrcViewLine("View line1");        
-
-        srcViewLine1.SetPosition(0, srcSphere.transform.position);
-        srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
-
-        // line2
-        srcViewLine2 = CreateSrcViewLine("View line2");            
-
-        srcViewLine2.SetPosition(0, srcSphere.transform.position);
-        srcViewLine2.SetPosition(1, srcSphere.transform.position + viewLines[1] * lineLength);
-
-        // line3
-        srcViewLine3 = CreateSrcViewLine("View line3");
-
-        srcViewLine3.SetPosition(0, srcSphere.transform.position);
-        srcViewLine3.SetPosition(1, srcSphere.transform.position + viewLines[2] * lineLength);
-
-        // line4
-        srcViewLine4 = CreateSrcViewLine("View line4");
-
-        srcViewLine4.SetPosition(0, srcSphere.transform.position);
-        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);        
-    }
-
     private void UpdateSourceViewLines()
     {
-        Vector3[] viewLines = DirectionLines();
+        Vector3[] viewLines = ViewLines();
 
         srcViewLine1.SetPosition(0, srcSphere.transform.position);
         srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
@@ -521,14 +486,14 @@ public class Main : MonoBehaviour
         srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);
     }
 
-    Vector3[] DirectionLines()
+    Vector3[] ViewLines()
     {
         // angles for srcSphere's forward vector (which is of length 1 meaning that r can be removed from all equations below)
-        float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);        
+        float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);
         float origin_phi = (float)Math.Atan2(srcSphere.transform.forward.z, srcSphere.transform.forward.x);
 
         float theta_rad = theta * PI / 180; //convert to radians
-        float phi_rad = phi * PI / 180;        
+        float phi_rad = phi * PI / 180;
 
         float s0 = (float)Math.Sin(origin_phi);
         float c0 = (float)Math.Cos(origin_phi);
@@ -556,6 +521,48 @@ public class Main : MonoBehaviour
         }
 
         return viewLines;
+    }
+    #endregion
+
+    // Start is called before the first frame update
+    void Start()
+    {        
+        Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
+        srcRenderer.material.SetColor("_Color", Color.green);
+        Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
+        targetRenderer.material.SetColor("_Color", Color.red);
+        Debug.Log("Start");
+
+        srcDirectionLine = CreateSrcViewLine("SourceDirectionLine");
+
+        srcDirectionLine.SetPosition(0, srcSphere.transform.position);
+        srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
+
+        Vector3[] viewLines = ViewLines();
+
+        // line1
+        srcViewLine1 = CreateSrcViewLine("View line1");        
+
+        srcViewLine1.SetPosition(0, srcSphere.transform.position);
+        srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
+
+        // line2
+        srcViewLine2 = CreateSrcViewLine("View line2");            
+
+        srcViewLine2.SetPosition(0, srcSphere.transform.position);
+        srcViewLine2.SetPosition(1, srcSphere.transform.position + viewLines[1] * lineLength);
+
+        // line3
+        srcViewLine3 = CreateSrcViewLine("View line3");
+
+        srcViewLine3.SetPosition(0, srcSphere.transform.position);
+        srcViewLine3.SetPosition(1, srcSphere.transform.position + viewLines[2] * lineLength);
+
+        // line4
+        srcViewLine4 = CreateSrcViewLine("View line4");
+
+        srcViewLine4.SetPosition(0, srcSphere.transform.position);
+        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);        
     }
 
     // Update is called once per frame
@@ -590,8 +597,7 @@ public class Main : MonoBehaviour
         }
 
         if (oldtheta != theta || oldntheta != ntheta || oldphi != phi || oldnphi != nphi || oldMAXINTERACTIONS != MAXINTERACTIONS)
-        {
-            // do stuff
+        {            
             // reinit rds arrau
             rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
             // reinit raydatabuffer
@@ -599,8 +605,7 @@ public class Main : MonoBehaviour
             {
                 _rayPointsBuffer.Release();
             }
-            _rayPointsBuffer = new ComputeBuffer(ntheta * nphi * MAXINTERACTIONS, raydatabytesize);
-            rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
+            _rayPointsBuffer = new ComputeBuffer(ntheta * nphi * MAXINTERACTIONS, raydatabytesize);            
 
             oldtheta = theta;
             oldntheta = ntheta;
@@ -610,8 +615,7 @@ public class Main : MonoBehaviour
         }
 
         if (oldWidth != width || oldRange != range || oldDepth != depth || oldNrOfWaterPlanes != nrOfWaterPlanes)
-        { // change has happened to the scene, update (create new) meshes for the surface, seafloor and water planes
-            
+        { // change has happened to the scene, update (create new) meshes for the surface, seafloor and water planes            
             foreach(GameObject obj in waterplanes)
             {
                 Destroy(obj);
@@ -680,29 +684,23 @@ public class Main : MonoBehaviour
                         continue;
                     }
 
-                    line = new GameObject("Line").AddComponent<LineRenderer>();             
-
+                    line = new GameObject("Line").AddComponent<LineRenderer>();
                     line.startWidth = 0.01f;
                     line.endWidth = 0.01f;
                     line.positionCount = 2;
                     line.useWorldSpace = true;
 
-                    // add material to lines to make them another color than magenta, however this heavily worsens fps when there are many rays
-                    // line.material = lineMaterial;
-                    // line.material.color = Color.black;
-
                     if (i % MAXINTERACTIONS == 0) // first interaction for a line, draw line from source to first interaction
                     {
                         line.SetPosition(0, srcOrigin);
                     }
-                    else //
+                    else
                     {
                         line.SetPosition(0, rds[i - 1].origin);
                     }
 
                     line.SetPosition(1, rds[i].origin);
-                    lines.Add(line);
-                    
+                    lines.Add(line);                    
                 }
 
                 // visualize one line

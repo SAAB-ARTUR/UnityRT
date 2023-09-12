@@ -99,8 +99,8 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
     float origin_phi = atan2(srcDirection.z, srcDirection.x);    
 
     // calculate the angular offset for the ray compared to the forward vector of the source
-    float offset_theta = origin_theta - theta_rad / 2 + id.y * dtheta;
-    float offset_phi = origin_phi - phi_rad / 2 + id.x * dphi;
+    float offset_theta = origin_theta + theta_rad / 2 - id.y * dtheta;
+    float offset_phi = origin_phi + phi_rad / 2 - id.x * dphi;
 
     float s0 = sin(origin_phi);
     float c0 = cos(origin_phi);
