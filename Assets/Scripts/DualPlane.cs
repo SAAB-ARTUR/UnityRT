@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class DualPlane : MonoBehaviour
@@ -8,8 +9,9 @@ public class DualPlane : MonoBehaviour
     public GameObject topMesh = null;
     public GameObject bottomMesh = null;
     void Start()
-    {
-        
+    {   
+        //Mesh topMeshMesh = topMesh.GetComponent<MeshFilter>().mesh.Clone<Mesh>();
+        //this.GetComponent<MeshFilter>.sharedMesh = topMeshMesh;
     }
 
     // Update is called once per frame

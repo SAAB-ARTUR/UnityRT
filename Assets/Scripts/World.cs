@@ -24,7 +24,7 @@ public class World : MonoBehaviour
 
     }
 
-    private State state0;
+    private State state0 = null;
     private State state;
 
     private DualPlane surface;
@@ -45,8 +45,34 @@ public class World : MonoBehaviour
         state.nrOfWaterPlanes = nrOfWaterPlanes;
         state.position = Vector3.zero;
 
-       
+    }
 
+    State getCurrentState() {
+
+        state = new State();
+        // Set initial state
+        state.depth = waterDepth;
+        state.range = range;
+        state.nrOfWaterPlanes = nrOfWaterPlanes;
+        state.position = this.transform.position;
+
+        return state;
+
+    }
+
+    bool StateChanged() {
+
+        if (state0 is null) {
+            return true;
+        }
+
+        if (state.depth != state0.depth || state.range != state0.range || state.nrOfWaterPlanes != state0.nrOfWaterPlanes || ! state.position.Equals(state0.position)) {
+
+            return true;
+
+        }
+
+        return false;
     }
 
     public void AddSource(GameObject test) {
@@ -56,12 +82,6 @@ public class World : MonoBehaviour
 
         this.sourceSphere.transform.localPosition = Vector3.down * sourceDepth;
 
-        //test.transform.parent = this.gameObject.transform;
-        //Debug.Log(test.transform.position.ToString());
-        //this.sourceSphere.transform.position = Vector3.zero + Vector3.up * test.transform.position.y;
-        //Debug.Log(test.transform.position.ToString());
-        //Debug.Log(test.ToString());
-        //state.position = this.transform.position;
     }
 
     public void AddSurface(GameObject _surface) {
@@ -190,6 +210,16 @@ public class World : MonoBehaviour
 
     void Update()
     {
+
+
+        state0 = state;
+        state = getCurrentState();
+
+        if (StateChanged()) {
+            Main._meshObjectsNeedRebuilding = true;
+        }
+        
+
 
         Vector3 worldPos = this.transform.position;
 
