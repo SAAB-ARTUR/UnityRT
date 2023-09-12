@@ -297,7 +297,7 @@ MonoBehaviour:
   waterDepth: 10
   sourceDepth: 2
   range: 83.5
-  nrOfWaterPlanes: 10
+  nrOfWaterPlanes: 0
 --- !u!4 &202712679
 Transform:
   m_ObjectHideFlags: 0
@@ -671,22 +671,12 @@ MonoBehaviour:
   computeShaderTest: {fileID: 7200000, guid: 54b5e8440abef8d48b4dfadc2e8f5ec8, type: 3}
   srcSphere: {fileID: 2026214310}
   targetSphere: {fileID: 2001379511}
-  seafloor: {fileID: 121144433}
-  seafloor2: {fileID: 1221008223}
-  surface: {fileID: 657415826}
-  surface2: {fileID: 1414105110}
-  waterplane: {fileID: 1009286129}
-  waterplane2: {fileID: 1832905540}
   surfaceCombo: {fileID: 1616472004}
   bottomCombo: {fileID: 400401204}
   waterLayerCombo: {fileID: 1528223291}
-  depth: 4
-  range: 10
-  width: 10
-  nrOfWaterPlanes: 0
   secondCamera: {fileID: 2086378707}
   sendRaysContinuosly: 0
-  visualizeRays: 0
+  visualizeRays: 1
   lineLength: 1
   lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   world_manager: {fileID: 202712677}
@@ -1122,6 +1112,63 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8203080797943527928, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
   m_PrefabInstance: {fileID: 4163844514946327126}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2026214318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026214310}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e43025a00209674f9273d2c35dba485, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  boost: 3.5
+  positionLerpTime: 0.2
+  mouseSensitivityCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.5
+      inSlope: 0
+      outSlope: 5
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 2.5
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  rotationLerpTime: 0.01
+  invertY: 0
+--- !u!114 &2026214319
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026214310}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f106950e9c28c4e4f9e0c0573906599b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  theta: 60
+  ntheta: 60
+  phi: 60
+  nphi: 60
+  MAXINTERACTIONS: 1
 --- !u!1 &2086378704
 GameObject:
   m_ObjectHideFlags: 0
@@ -1317,7 +1364,13 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8203080797943527928, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2086378708}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1801918301974408492, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2026214318}
+    - targetCorrespondingSourceObject: {fileID: 1801918301974408492, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2026214319}
   m_SourcePrefab: {fileID: 100100000, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
