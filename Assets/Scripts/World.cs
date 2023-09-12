@@ -191,17 +191,25 @@ public class World : MonoBehaviour
     void Update()
     {
 
+        Vector3 worldPos = this.transform.position;
+
         this.transform.position = sourceSphere.transform.position;
-        float sourceDept2 = this.transform.position.y;
+        Vector3 newPos = this.transform.position;
+        newPos.y = worldPos.y;
+        this.transform.position = newPos;
 
-        SetPlaneDepthStationary(surface, 0);
-        for (int i = 0; i<waterLayers.Length; i++)
-        {
 
-            SetPlaneDepthStationary(waterLayers[i], waterLayerDepths[i]);
+        float sourceDept2 = sourceSphere.transform.position.y;
+        //Debug.Log(sourceDept2);
 
-        }
-        SetPlaneDepthStationary(bottom, waterDepth);
+        //SetPlaneDepthStationary(surface, 0);
+        //for (int i = 0; i<waterLayers.Length; i++)
+        //{
+
+          //  SetPlaneDepthStationary(waterLayers[i], waterLayerDepths[i]);
+
+        //}
+        //SetPlaneDepthStationary(bottom, waterDepth);
         
 
 
@@ -213,6 +221,7 @@ public class World : MonoBehaviour
             Vector3 p = sourceSphere.transform.position;
             p.y = 0;
             sourceSphere.transform.position = p;
+        //    this.transform.position = p;
         }
 
         if (sourceDept2 < -waterDepth) {
@@ -220,7 +229,7 @@ public class World : MonoBehaviour
             Vector3 p = sourceSphere.transform.position;
             p.y = -waterDepth;
             sourceSphere.transform.position = p;
-
+          //  this.transform.position = p;
         }
 
 
