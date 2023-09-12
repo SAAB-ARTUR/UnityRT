@@ -4,7 +4,6 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> Result;
-//RWStructuredBuffer<int> testBuffer;
 
 float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
@@ -12,12 +11,20 @@ float4x4 _CameraInverseProjection;
 float2 _PixelOffset;
 float2 _Pixel;
 
+int _MAXINTERACTIONS;
+
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
-static const int MAXINTERACTIONS = 4;
+//static const int MAXINTERACTIONS = 1;
 
-struct RayData 
+int theta;
+int ntheta;
+int phi;
+int nphi;
+float3 srcDirection;
+
+struct RayData // Data that will be sent back to the CPU
 {
     float3 origin;
     int set;    
@@ -77,6 +84,41 @@ Ray CreateCameraRay(float2 uv)
     return CreateRay(origin, direction, nrOfInteractions);
 }
 
+Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
+{   
+    float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz; // source sphere's position
+
+    float theta_rad = theta * PI / 180; //convert to radians
+    float phi_rad = phi * PI / 180;
+
+    float dtheta = theta_rad / ntheta; // resolution in theta
+    float dphi = phi_rad / nphi; // resolution in phi
+
+    // angles for srcSphere's forward vector (which is of length 1 meaning that r can be removed from all equations below)
+    float origin_theta = acos(srcDirection.y);
+    float origin_phi = atan2(srcDirection.z, srcDirection.x);    
+
+    // calculate the angular offset for the ray compared to the forward vector of the source
+    float offset_theta = origin_theta + theta_rad / 2 - id.y * dtheta;
+    float offset_phi = origin_phi + phi_rad / 2 - id.x * dphi;
+
+    float s0 = sin(origin_phi);
+    float c0 = cos(origin_phi);
+
+    float s1 = sin(offset_phi - origin_phi);
+    float c1 = cos(offset_phi - origin_phi);
+
+    float x = c0 * c1 * sin(offset_theta) - s0 * s1;
+    float z = s0 * c1 * sin(offset_theta) + c0 * s1;
+    float y = c1 * cos(offset_theta);
+
+    float3 direction = float3(x, y, z);
+
+    int nrOfInteractions = 0;
+
+    return CreateRay(origin, direction, nrOfInteractions);
+}
+
 //-------------------------------------
 //- RAYHIT
 
@@ -102,70 +144,7 @@ RayHit CreateRayHit()
 
 //-------------------------------------
 //- INTERSECTION
-
-bool IntersectTriangle_MT97(Ray ray, float3 vert0, float3 vert1, float3 vert2,
-    inout float t, inout float u, inout float v)
-{
-    // find vectors for two edges sharing vert0
-    float3 edge1 = vert1 - vert0;
-    float3 edge2 = vert2 - vert0;
-
-    // begin calculating determinant - also used to calculate U parameter
-    float3 pvec = cross(ray.direction, edge2);
-
-    // if determinant is near zero, ray lies in plane of triangle
-    float det = dot(edge1, pvec);
-
-    // use backface culling
-    if (det < EPSILON)
-        return false;
-    float inv_det = 1.0f / det;
-
-    // calculate distance from vert0 to ray origin
-    float3 tvec = ray.origin - vert0;
-
-    // calculate U parameter and test bounds
-    u = dot(tvec, pvec) * inv_det;
-    if (u < 0.0 || u > 1.0f)
-        return false;
-
-    // prepare to test V parameter
-    float3 qvec = cross(tvec, edge1);
-
-    // calculate V parameter and test bounds
-    v = dot(ray.direction, qvec) * inv_det;
-    if (v < 0.0 || u + v > 1.0f)
-        return false;
-
-    // calculate t, ray intersects triangle
-    t = dot(edge2, qvec) * inv_det;
-
-    return true;
-}
-
-void IntersectMeshObject(Ray ray, inout RayHit bestHit, MeshObject meshObject)
-{
-    uint offset = meshObject.indices_offset;
-    uint count = offset + meshObject.indices_count;
-    for (uint i = offset; i < count; i += 3)
-    {
-        float3 v0 = (mul(meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i]], 1))).xyz;
-        float3 v1 = (mul(meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i + 1]], 1))).xyz;
-        float3 v2 = (mul(meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i + 2]], 1))).xyz;
-
-        float t, u, v;
-        if (IntersectTriangle_MT97(ray, v0, v1, v2, t, u, v))
-        {
-            if (t > 0 && t < bestHit.distance)
-            {
-                bestHit.distance = t;
-                bestHit.position = ray.origin + t * ray.direction;
-                bestHit.normal = normalize(cross(v1 - v0, v2 - v0));    
-                bestHit.type = meshObject.meshObjectType;
-            }
-        }
-    }
-}
+#include "Intersection.cginc"
 
 //-------------------------------------
 //- TRACE
@@ -196,63 +175,10 @@ RayHit Trace(Ray ray)
 
 //-------------------------------------
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
-
-void SurfaceHit(inout Ray ray, RayHit hit, uint index1D)
-{
-    // save hit data to buffer
-    _RayPoints[(index1D*MAXINTERACTIONS) + ray.nrOfInteractions].origin = hit.position;
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
-
-    // update the ray data
-    ray.origin = hit.position + float3(0, -0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
-    float3 directionTemp = ray.direction;
-    float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
-    ray.direction = newDirection;
-}
-
-void SeafloorHit(inout Ray ray, RayHit hit, uint index1D)
-{
-    // save hit data to buffer
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].origin = hit.position;
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 12345;
-
-    // update the ray data
-    ray.origin = hit.position + float3(0, 0.005f, 0); // move origin slightly so we don't accidentaly rehit the same plane
-    float3 directionTemp = ray.direction;
-    float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
-    ray.direction = newDirection;
-}
-
-void WaterplaneHit(RayHit hit, uint index1D)
-{
-    // kod för när ett vattenplan träffats här... (förhoppningsvis bör vi kunna skriva en funktion som ser likadan ut oavsett vilket vattenplan som träffats. 
-    // vissa variabelvärden ändras beroende på djup och sånt men ekvationerna bör se likadana ut.)
-
-    // do nothing for now
-}
-
-void NoHit(Ray ray, uint index1D)
-{
-    // kod för miss ...
-
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].origin = float3(0, 1000, 0); // impossible hit since all hits should have y-coordinate <= 0
-    _RayPoints[(index1D * MAXINTERACTIONS) + ray.nrOfInteractions].set = 400; // no hit found
-    
-}
-
-
-bool SendNewRay(Ray ray)
-{
-    if (ray.nrOfInteractions < MAXINTERACTIONS)
-    {
-        return true;
-    }
-    return false;
-}
-
+#include "HitHandler.cginc"
 
 void CheckHitType(inout Ray ray, inout RayHit hit, uint3 id, uint index1D) //evaluate if the ray hit anything and call the function corresponding to the hit-type
-{
+{    
     if (hit.type == 0 || hit.type == 1) { //surface
         Result[id.xy] = float4(1, 0, 0, 1);
         SurfaceHit(ray, hit, index1D);
@@ -285,13 +211,15 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     Result.GetDimensions(width, height);
 
     // comvert id x and y values to a 1d index, each ray is allocated MAXINTERACTIONS slots for its interactions (surface/bottom hits, turning points)
-    uint index1D = (id.y * width + id.x) * MAXINTERACTIONS; 
+    uint index1D = (id.y * width + id.x) * _MAXINTERACTIONS; 
 
     // Transform pixel to [-1,1] range
-    float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
+    //float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
 
     // Get a ray for the UVs
-    Ray ray = CreateCameraRay(uv);
+    //Ray ray = CreateCameraRay(uv);
+
+    Ray ray = CreateThetaPhiRay(id);
 
     RayHit hit = Trace(ray);
     CheckHitType(ray, hit, id, index1D);
