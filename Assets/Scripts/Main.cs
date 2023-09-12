@@ -421,9 +421,12 @@ public class Main : MonoBehaviour
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
+        Debug.Log(sourceParams == oldSourceParams);
+        Debug.Log(sourceParams.Clone());
 
         if (sourceParams != oldSourceParams)
-            {            
+            {
+            Debug.Log("Reeinit raybuffer");
             // reinit rds arrau
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             // reinit raydatabuffer

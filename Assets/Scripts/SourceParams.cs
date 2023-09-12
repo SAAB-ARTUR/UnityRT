@@ -15,7 +15,14 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
     public object Clone()
     {
-        return this.MemberwiseClone();
+        SourceParams s = new SourceParams();
+        s.theta = theta;
+        s.ntheta = ntheta;  
+        s.phi = phi;
+        s.nphi = nphi;
+        s.MAXINTERACTIONS = MAXINTERACTIONS;
+        return s;
+
     }
 
     public bool Equals(SourceParams other)
