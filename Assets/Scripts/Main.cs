@@ -18,29 +18,9 @@ public class Main : MonoBehaviour
     [SerializeField] float lineLength = 1;
     [SerializeField] Material lineMaterial = null;
     [SerializeField] GameObject world_manager = null;
+    
 
-    [SerializeField] int theta = 0;
-    [SerializeField] int ntheta = 0;
-    [SerializeField] int phi = 0;
-    [SerializeField] int nphi = 0;
-    [SerializeField] int MAXINTERACTIONS = 0;
-
-    private Mesh waterplaneMesh = null;
-    private Mesh waterplaneMesh2 = null;
-    private Mesh surfaceMesh = null;
-    private Mesh surfaceMesh2 = null;
-    private Mesh seafloorMesh = null;
-    private Mesh seafloorMesh2 = null;
-
-    private int oldtheta = 0;
-    private int oldntheta = 0;
-    private int oldphi = 0;
-    private int oldnphi = 0;
-    private int oldMAXINTERACTIONS = 0;
-    private int oldDepth = 0;
-    private int oldRange = 0;
-    private int oldWidth = 0;
-    private int oldNrOfWaterPlanes = 0;
+    private SourceParams oldSourceParams = null;
 
     uint cameraWidth = 0;
     uint cameraHeight = 0;
@@ -114,6 +94,9 @@ public class Main : MonoBehaviour
 
     private void CreateResources()
     {
+
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+
         if (cameraWidth != Camera.allCameras[1].pixelWidth || cameraHeight != Camera.allCameras[1].pixelHeight)
         {
             cameraWidth = (uint)Camera.allCameras[1].pixelWidth;
@@ -122,12 +105,12 @@ public class Main : MonoBehaviour
 
         if (_rayPointsBuffer == null)
         {
-            _rayPointsBuffer = new ComputeBuffer(ntheta*nphi*MAXINTERACTIONS, raydatabytesize);
+            _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta*sourceParams.nphi*sourceParams.MAXINTERACTIONS, raydatabytesize);
         }
 
         if (rds == null)
         {
-            rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
+            rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
         }
     }
     
@@ -251,16 +234,19 @@ public class Main : MonoBehaviour
         SetComputeBuffer("_Indices", _indexBuffer);
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
 
-        computeShaderTest.SetInt("theta", theta);
-        computeShaderTest.SetInt("ntheta", ntheta);
-        computeShaderTest.SetInt("phi", phi);
-        computeShaderTest.SetInt("nphi", nphi);
+
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+
+        computeShaderTest.SetInt("theta", sourceParams.theta);
+        computeShaderTest.SetInt("ntheta", sourceParams.ntheta);
+        computeShaderTest.SetInt("phi", sourceParams.phi);
+        computeShaderTest.SetInt("nphi", sourceParams.nphi);
         computeShaderTest.SetVector("srcDirection", srcSphere.transform.forward);
 
-        computeShaderTest.SetInt("_MAXINTERACTIONS", MAXINTERACTIONS);
+        computeShaderTest.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
     }
 
-    private void InitRenderTexture()
+    private void InitRenderTexture(SourceParams sourceParams)
     {
         if (_target == null || _target.width != Screen.width/8 || _target.height != Screen.height/8)
         {
@@ -271,7 +257,7 @@ public class Main : MonoBehaviour
             }
 
             // Get a render target for Ray Tracing
-            _target = new RenderTexture(ntheta, nphi, 0,
+            _target = new RenderTexture(sourceParams.ntheta, sourceParams.nphi, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
             _target.Create();            
@@ -336,11 +322,14 @@ public class Main : MonoBehaviour
     Vector3[] ViewLines()
     {
         // angles for srcSphere's forward vector (which is of length 1 meaning that r can be removed from all equations below)
+
+        SourceParams srcParams = srcSphere.GetComponent<SourceParams>();
+
         float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);
         float origin_phi = (float)Math.Atan2(srcSphere.transform.forward.z, srcSphere.transform.forward.x);
 
-        float theta_rad = theta * PI / 180; //convert to radians
-        float phi_rad = phi * PI / 180;
+        float theta_rad = srcParams.theta * PI / 180; //convert to radians
+        float phi_rad = srcParams.phi * PI / 180;
 
         float s0 = (float)Math.Sin(origin_phi);
         float c0 = (float)Math.Cos(origin_phi);
@@ -430,22 +419,21 @@ public class Main : MonoBehaviour
             UpdateSourceViewLines();
         }
 
-        if (oldtheta != theta || oldntheta != ntheta || oldphi != phi || oldnphi != nphi || oldMAXINTERACTIONS != MAXINTERACTIONS)
-        {            
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+
+
+        if (sourceParams != oldSourceParams)
+            {            
             // reinit rds arrau
-            rds = new RayData[ntheta * nphi * MAXINTERACTIONS];
+            rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             // reinit raydatabuffer
             if (_rayPointsBuffer != null)
             {
                 _rayPointsBuffer.Release();
             }
-            _rayPointsBuffer = new ComputeBuffer(ntheta * nphi * MAXINTERACTIONS, raydatabytesize);            
-
-            oldtheta = theta;
-            oldntheta = ntheta;
-            oldphi = phi;
-            oldnphi = nphi;
-            oldMAXINTERACTIONS = MAXINTERACTIONS;
+            _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS, raydatabytesize);            
+            
+            oldSourceParams = (SourceParams)sourceParams.Clone();
         }
 
 
@@ -473,12 +461,12 @@ public class Main : MonoBehaviour
             RebuildMeshObjectBuffers();
             SetShaderParameters();
 
-            InitRenderTexture();
+            InitRenderTexture(sourceParams);
             
             computeShaderTest.SetTexture(0, "Result", _target);
 
-            int threadGroupsX = Mathf.FloorToInt(ntheta / 8.0f);
-            int threadGroupsY = Mathf.FloorToInt(nphi / 8.0f);
+            int threadGroupsX = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
+            int threadGroupsY = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
 
             computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
@@ -495,8 +483,8 @@ public class Main : MonoBehaviour
                     if (rds[i].set != 12345)
                     {
                         // skip to next ray
-                        int mod = i % MAXINTERACTIONS;
-                        int step = MAXINTERACTIONS - mod - 1;
+                        int mod = i % sourceParams.MAXINTERACTIONS;
+                        int step = sourceParams.MAXINTERACTIONS - mod - 1;
                         i += step;
                         continue;
                     }
@@ -507,7 +495,7 @@ public class Main : MonoBehaviour
                     line.positionCount = 2;
                     line.useWorldSpace = true;
 
-                    if (i % MAXINTERACTIONS == 0) // first interaction for a line, draw line from source to first interaction
+                    if (i % sourceParams.MAXINTERACTIONS == 0) // first interaction for a line, draw line from source to first interaction
                     {
                         line.SetPosition(0, srcOrigin);
                     }
