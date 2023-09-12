@@ -690,6 +690,11 @@ MonoBehaviour:
   lineLength: 1
   lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   world_manager: {fileID: 202712677}
+  theta: 60
+  ntheta: 64
+  phi: 60
+  nphi: 64
+  MAXINTERACTIONS: 1
 --- !u!114 &963194230
 MonoBehaviour:
   m_ObjectHideFlags: 0
