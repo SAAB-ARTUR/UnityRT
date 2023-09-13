@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 1909771995186614292}
   - component: {fileID: 1372857929398669409}
   - component: {fileID: -2388308868298360725}
-  - component: {fileID: -7166025942390354104}
   m_Layer: 0
   m_Name: Waterplane
   m_TagString: Untagged
@@ -84,16 +83,3 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7805979378382958672}
   m_Mesh: {fileID: 0}
---- !u!114 &-7166025942390354104
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7805979378382958672}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: da17dc88cd93a904fa282f6c1e7372c2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  meshObjectType: 2
