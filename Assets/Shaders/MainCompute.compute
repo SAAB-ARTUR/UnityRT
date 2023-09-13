@@ -142,7 +142,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     Ray ray = CreateThetaPhiRay(id);
 
-    RayDesc ray2; //byt namn
+    RayDesc ray2; //description of the ray to be used in tracerayinline
     ray2.Origin = ray.origin;
     ray2.Direction = ray.direction;
     ray2.TMin = 0;
@@ -153,7 +153,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     const uint rayFlags = RAY_FLAG_NONE;
     UnityRayQuery<rayFlags> rayQuery;
 
-    rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2);
+    rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2); // send a first ray
     rayQuery.Proceed();
 
     uint2 dest = id.xy;
@@ -183,7 +183,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         hit.sendNewRay = false;
     }    
 
-    while (hit.sendNewRay) 
+    while (hit.sendNewRay) // spawn new ray from the hit position of the previous ray
     {   
         ray2.Origin = ray.origin;
         ray2.Direction = ray.direction;
