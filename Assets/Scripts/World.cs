@@ -14,6 +14,7 @@ public class World : MonoBehaviour
     [SerializeField] float sourceDepth = 0;
     [SerializeField] float range = 0;
     [SerializeField] int nrOfWaterPlanes = 0;
+    //[SerializeField] Material waterplaneMaterial;
 
     private class State {
 
@@ -86,12 +87,11 @@ public class World : MonoBehaviour
         surface.transform.parent = this.transform;
     }
     public void AddBottom(GameObject bottom) {
-        Vector3 center = state.position + Vector3.down * waterDepth;
+        Vector3 center = Vector3.down * waterDepth;
         Mesh m1 = PlaneMesh(center);
 
         bottom.GetComponent<MeshFilter>().mesh = m1;
-        bottom.transform.parent = this.transform;
-        bottom.transform.localPosition = center;
+        bottom.transform.parent = this.transform;        
     }
 
     public void AddWaterplane(GameObject waterplane) {
@@ -100,11 +100,15 @@ public class World : MonoBehaviour
         float dx = waterDepth / (nrOfWaterPlanes + 1);
         //List<float> waterPlanesDepths = new List<float>();
                 
-        Vector3 center = state.position + Vector3.down * dx;
+        Vector3 center = Vector3.down * dx;
         Mesh m1 = PlaneMesh(center);
 
         waterplane.GetComponent<MeshFilter>().mesh = m1;
         waterplane.transform.parent = this.transform;
+
+        Color temp = waterplane.GetComponent<MeshRenderer>().material.color;
+        temp.a = 0;
+        waterplane.GetComponent<MeshRenderer>().material.color = temp;
 
         //GameObject wl = Instantiate(_waterLayerParent);
         //DualPlane dp = wl.GetComponent<DualPlane>();
@@ -116,7 +120,7 @@ public class World : MonoBehaviour
 
         //waterPlanes.Add(dp);
         //waterPlanesDepths.Add(dx * i);
-        
+
         //waterLayers = waterPlanes.ToArray();
         //waterLayerDepths = waterPlanesDepths.ToArray();
     }

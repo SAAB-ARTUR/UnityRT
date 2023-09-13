@@ -22,12 +22,12 @@ public class Main : MonoBehaviour
     [SerializeField] Material lineMaterial = null;
     [SerializeField] GameObject world_manager = null;
 
+    //private Mesh waterplane = null;
+
     private SourceParams oldSourceParams = null;
 
     uint cameraWidth = 0;
-    uint cameraHeight = 0;
-
-    private List<GameObject> waterplanes = new List<GameObject>();    
+    uint cameraHeight = 0;    
 
     private ComputeBuffer _rayPointsBuffer;
     
@@ -171,8 +171,8 @@ public class Main : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        computeShaderTest.SetMatrix("_CameraToWorld", Camera.main.cameraToWorldMatrix);
-        computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.main.projectionMatrix.inverse);
+        computeShaderTest.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
+        computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
         computeShaderTest.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
         computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);
         
@@ -382,6 +382,7 @@ public class Main : MonoBehaviour
         if (world.StateChanged())
         {
             BuildWorld();
+            rebuildRTAS = true;
         }
 
         if (Input.GetKey(KeyCode.C)){
@@ -532,6 +533,7 @@ public class Main : MonoBehaviour
         if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
         {
             rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
+            Debug.Log(waterplaneInstanceData.matrices.Length);
         }        
         rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
 
