@@ -1,11 +1,25 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 
 public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 {
+
+
+    public struct Properties {
+        public int ntheta;
+        public float theta;
+
+        public float phi;
+        public int nphi;
+        public int MAXINTERACTIONS;
+
+    }
+
+
     const int MIN_SIZE_ANG = 8;
     const int MIN_INTERACTIONS = 1;
 
@@ -69,6 +83,33 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
     }
 
+    public Properties ToStruct() { 
+    
+        Properties p = new Properties();
+        p.theta = theta;
+        p.ntheta = ntheta;
+
+        p.phi = phi;    
+        p.nphi = nphi;
+
+        p.MAXINTERACTIONS = MAXINTERACTIONS;
+
+        return p;
+
+    }
+
+    public bool HasChanged(Properties? p) {
+
+        if (p is null) {
+            return true;
+        }
+
+        Properties pp = this.ToStruct();
+
+        return !pp.Equals(p);
+
+    }
+
     public bool Equals(SourceParams other)
     {
         if (other == null) return false;
@@ -86,20 +127,4 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
     }
 
 
-    // Update is called once per frame
-    void Update()
-    {
-        // Ensure that the source params are within valid range
-        if (this.ntheta < 1) {
-            this.ntheta = 1;
-        }
-        if (this.nphi < 1)
-        {
-            this.nphi = 1;
-        }
-        if (this.MAXINTERACTIONS < 1)
-        {
-            this.MAXINTERACTIONS = 1;
-        }
-    }
 }

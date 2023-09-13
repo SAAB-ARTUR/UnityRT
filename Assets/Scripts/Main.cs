@@ -20,7 +20,7 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject world_manager = null;
     
 
-    private SourceParams oldSourceParams = null;
+    private SourceParams.Properties? oldSourceParams = null;
 
     uint cameraWidth = 0;
     uint cameraHeight = 0;
@@ -421,10 +421,8 @@ public class Main : MonoBehaviour
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
-        Debug.Log(sourceParams == oldSourceParams);
-        Debug.Log(sourceParams.Clone());
-
-        if (sourceParams != oldSourceParams)
+        
+        if (sourceParams.HasChanged(oldSourceParams))
             {
             Debug.Log("Reeinit raybuffer");
             // reinit rds arrau
@@ -436,7 +434,7 @@ public class Main : MonoBehaviour
             }
             _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS, raydatabytesize);            
             
-            oldSourceParams = (SourceParams)sourceParams.Clone();
+            oldSourceParams = sourceParams.ToStruct();
         }
 
 
