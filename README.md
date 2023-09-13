@@ -13,6 +13,8 @@ Exempel: Om threadGroupsX = 16, threadGroupsY = 16, threadGroupsZ = 1 och det i 
 Kontroller:  
 Med hjälp av högerklick och tangenterna W,A,S,D,Q,E kan man styra den vänstra vyn. Med hjälp av högerklick medan tangenten punkt/kolon hålls ner och tangenterna U,H,J,K,Y,I kan man flytta den gröna sfären. Klicka C för att skicka rays, eller klicka i rutan i maincamera-komponenten som gör att rays skickas vid varje Update()-anrop.
 
+13 september: Compute-shadern bygger nu på inlineraytracing med en accelerationsstruktur. Unity-miljön är omgjord för att definiera källan som centrum i världen. 
+
 12 september: Rays skickas nu från källan och användaren kan sätta två vinklar som avgör vilket spann som rays kommer skickas över. Användaren kan också ange antal rays per vinkel.
 
 8 september: Studsar mot botten och yta har lagts till, just nu inverteras endast y-riktningen så studsarna är väldigt primitiva. Ett maxtal för antal interaktioner har lagts och det går att visualisera stusarna. Vändpunkter i vattnet finns ej.
