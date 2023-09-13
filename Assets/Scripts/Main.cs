@@ -257,7 +257,7 @@ public class Main : MonoBehaviour
             }
 
             // Get a render target for Ray Tracing
-            _target = new RenderTexture(sourceParams.ntheta, sourceParams.nphi, 0,
+            _target = new RenderTexture(sourceParams.nphi, sourceParams.ntheta, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
             _target.Create();            
