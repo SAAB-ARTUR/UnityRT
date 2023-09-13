@@ -472,7 +472,7 @@ public class Main : MonoBehaviour
                 }
 
                 // visualize one line
-                /*for (int i = 0; i < MAXINTERACTIONS; i++)
+                /*for (int i = 0; i < sourceParams.MAXINTERACTIONS; i++)
                 {
                     if (rds[i].set != 12345)
                     {
