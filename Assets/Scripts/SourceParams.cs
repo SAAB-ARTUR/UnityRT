@@ -3,16 +3,60 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 {
+    const int MIN_SIZE_ANG = 8;
+    const int MIN_INTERACTIONS = 1;
 
 
     public int theta = 0;
-    public int ntheta = 0;
-    public int phi = 0;
-    public int nphi = 0;
-    public int MAXINTERACTIONS = 0;
+    [SerializeField]
+    private int _ntheta = MIN_SIZE_ANG;
+    public int ntheta { 
+        get { return _ntheta; }
+        set {
+            if (value > MIN_SIZE_ANG) { _ntheta = value; }
+            else { _ntheta = MIN_SIZE_ANG; }
+        }
+    }
 
+
+    public int phi = 0;
+    [SerializeField]
+    private int _nphi = MIN_SIZE_ANG;
+    public int nphi
+    {
+        get { return _nphi; }
+        set
+        {
+            if (value > MIN_SIZE_ANG) { _nphi = value; }
+            else { _nphi = MIN_SIZE_ANG; }
+        }
+    }
+
+
+    public int MAXINTERACTIONS {
+        get { return _maxInteractions; }
+        set
+        {
+            if (value > MIN_INTERACTIONS) { _maxInteractions = value; }
+            else { _maxInteractions = MIN_INTERACTIONS; }
+        }
+    }
+
+    [SerializeField]
+    private int _maxInteractions;
+
+
+
+    private void OnValidate()
+    {   
+        ntheta = _ntheta;
+        nphi = _nphi;
+        MAXINTERACTIONS = _maxInteractions;
+
+    }
     public object Clone()
     {
         SourceParams s = new SourceParams();
@@ -41,16 +85,21 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         return false;
     }
 
-    // Start is called before the first frame update
-
-    void Start()
-    {
-        
-    }
 
     // Update is called once per frame
     void Update()
     {
-        
+        // Ensure that the source params are within valid range
+        if (this.ntheta < 1) {
+            this.ntheta = 1;
+        }
+        if (this.nphi < 1)
+        {
+            this.nphi = 1;
+        }
+        if (this.MAXINTERACTIONS < 1)
+        {
+            this.MAXINTERACTIONS = 1;
+        }
     }
 }
