@@ -1,5 +1,9 @@
 // Each #kernel tells which function to compile; you can have many kernels
+#include "UnityRayQuery.cginc"
+#pragma require inlineraytracing
 #pragma kernel CSMain
+
+RaytracingAccelerationStructure g_AccelStruct;
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
@@ -16,8 +20,6 @@ int _MAXINTERACTIONS;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
-//static const int MAXINTERACTIONS = 1;
-
 int theta;
 int ntheta;
 int phi;
@@ -31,22 +33,6 @@ struct RayData // Data that will be sent back to the CPU
 };
 
 RWStructuredBuffer<RayData> _RayPoints;
-AppendStructuredBuffer<RayData> _appRayPoints;
-
-//-------------------------------------
-//- MESHES
-
-struct MeshObject
-{
-    float4x4 localToWorldMatrix;
-    int indices_offset;
-    int indices_count;
-    int meshObjectType;
-};
-
-StructuredBuffer<MeshObject> _MeshObjects;
-StructuredBuffer<float3> _Vertices;
-StructuredBuffer<int> _Indices;
 
 //-------------------------------------
 //- RAY
@@ -126,8 +112,7 @@ struct RayHit
 {
     float3 position;
     float distance;
-    float3 normal;
-    int type;
+    float3 normal;    
     bool sendNewRay;
 };
 
@@ -136,74 +121,14 @@ RayHit CreateRayHit()
     RayHit hit;
     hit.position = float3(0.0f, 0.0f, 0.0f);
     hit.distance = 1.#INF;
-    hit.normal = float3(0.0f, 0.0f, 0.0f);
-    hit.type = 10;
+    hit.normal = float3(0.0f, 0.0f, 0.0f);    
     hit.sendNewRay = false;
     return hit;
 }
 
 //-------------------------------------
-//- INTERSECTION
-#include "Intersection.cginc"
-
-//-------------------------------------
-//- TRACE
-
-RayHit Trace(Ray ray)
-{
-    RayHit bestHit = CreateRayHit();
-    uint count, stride;
-
-    float yDir = ray.direction.y;
-    // Trace mesh objects
-    _MeshObjects.GetDimensions(count, stride);
-    for (uint i = 0; i < count; i++)
-    {   // since each plane consists of two meshes facing opposite directions, it is only necessary to perform intersection tests for half of the meshes
-        // a ray travelling down should only be tested against meshes facing up, a ray travelling up should only be tested against meshes facing down
-        if (yDir < 0 && ((int)_MeshObjects[i].meshObjectType == 0 || (int)_MeshObjects[i].meshObjectType == 2 || (int)_MeshObjects[i].meshObjectType == 4))
-        {
-            IntersectMeshObject(ray, bestHit, _MeshObjects[i]);
-        }
-        else if (yDir > 0 && ((int)_MeshObjects[i].meshObjectType == 1 || (int)_MeshObjects[i].meshObjectType == 3 || (int)_MeshObjects[i].meshObjectType == 5))
-        {
-            IntersectMeshObject(ray, bestHit, _MeshObjects[i]);
-        }        
-    }
-
-    return bestHit;
-}
-
-//-------------------------------------
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
 #include "HitHandler.cginc"
-
-void CheckHitType(inout Ray ray, inout RayHit hit, uint3 id, uint index1D) //evaluate if the ray hit anything and call the function corresponding to the hit-type
-{   
-    
-    uint2 dest = id.xy;
-    if (hit.type == 0 || hit.type == 1) { //surface
-        Result[dest] = float4(1, 0, 0, 1);
-        SurfaceHit(ray, hit, index1D);
-        ray.nrOfInteractions++;
-        hit.sendNewRay = SendNewRay(ray);
-    }
-    else if (hit.type == 2 || hit.type == 3) { //waterplane
-        Result[dest] = float4(0, 1, 0, 1);
-        WaterplaneHit(hit, index1D);
-    }
-    else if (hit.type == 4 || hit.type == 5) { //seafloor
-        Result[dest] = float4(0, 0, 1, 1);
-        SeafloorHit(ray, hit, index1D);
-        ray.nrOfInteractions++;
-        hit.sendNewRay = SendNewRay(ray);
-    }
-    else { //miss
-        Result[dest] = float4(0, 0, 0, 1);
-        NoHit(ray, index1D);
-        hit.sendNewRay = false;
-    }
-}
-
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -215,20 +140,83 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     // comvert id x and y values to a 1d index, each ray is allocated MAXINTERACTIONS slots for its interactions (surface/bottom hits, turning points)
     uint index1D = (id.y * width + id.x) * _MAXINTERACTIONS; 
 
-    // Transform pixel to [-1,1] range
-    //float2 uv = float2((id.xy) / float2(width, height) * 2.0f - 1.0f);
-
-    // Get a ray for the UVs
-    //Ray ray = CreateCameraRay(uv);
-
     Ray ray = CreateThetaPhiRay(id);
 
-    RayHit hit = Trace(ray);
-    CheckHitType(ray, hit, id, index1D);
+    RayDesc ray2; //description of the ray to be used in tracerayinline
+    ray2.Origin = ray.origin;
+    ray2.Direction = ray.direction;
+    ray2.TMin = 0;
+    ray2.TMax = 1e20f;
 
-    while (hit.sendNewRay) 
-    {        
-        hit = Trace(ray);
-        CheckHitType(ray, hit, id, index1D);
+    RayHit hit = CreateRayHit();
+
+    const uint rayFlags = RAY_FLAG_NONE;
+    UnityRayQuery<rayFlags> rayQuery;
+
+    rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2); // send a first ray
+    rayQuery.Proceed();
+
+    uint2 dest = id.xy;
+    if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
+        hit.position = ray.origin + (ray.direction * rayQuery.CommittedRayT());
+        hit.distance = rayQuery.CommittedRayT();        
+        
+        if (rayQuery.CommittedInstanceID() == 1) { // surface
+            Result[dest] = float4(1, 0, 0, 0);
+            SurfaceHit(ray, hit, index1D);
+            hit.sendNewRay = SendNewRay(ray);
+        }
+        else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
+            Result[dest] = float4(0, 1, 0, 0);
+            WaterplaneHit(hit, index1D);
+        }
+        else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
+            Result[dest] = float4(0, 0, 1, 0);
+            SeafloorHit(ray, hit, index1D);
+            hit.sendNewRay = SendNewRay(ray);
+        }
+    }
+    else
+    {
+        Result[dest] = float4(0, 0, 0, 0);
+        NoHit(ray, index1D);
+        hit.sendNewRay = false;
+    }    
+
+    while (hit.sendNewRay) // spawn new ray from the hit position of the previous ray
+    {   
+        ray2.Origin = ray.origin;
+        ray2.Direction = ray.direction;
+        ray2.TMin = 0;
+        ray2.TMax = 1e20f;
+
+        rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2);
+        rayQuery.Proceed();
+
+        if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
+            hit.position = ray.origin + (ray.direction * rayQuery.CommittedRayT());
+            hit.distance = rayQuery.CommittedRayT();
+
+            if (rayQuery.CommittedInstanceID() == 1) { // surface
+                Result[dest] = float4(1, 0, 0, 0);
+                SurfaceHit(ray, hit, index1D);
+                hit.sendNewRay = SendNewRay(ray);
+            }
+            else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
+                Result[dest] = float4(0, 1, 0, 0);
+                WaterplaneHit(hit, index1D);
+            }
+            else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
+                Result[dest] = float4(0, 0, 1, 0);
+                SeafloorHit(ray, hit, index1D);
+                hit.sendNewRay = SendNewRay(ray);
+            }
+        }
+        else
+        {
+            Result[dest] = float4(0, 0, 0, 0);
+            NoHit(ray, index1D);
+            hit.sendNewRay = false;
+        }
     }
 }

@@ -9,6 +9,7 @@ void SurfaceHit(inout Ray ray, RayHit hit, uint index1D)
     float3 directionTemp = ray.direction;
     float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
     ray.direction = newDirection;
+    ray.nrOfInteractions++;
 }
 
 
@@ -23,6 +24,7 @@ void SeafloorHit(inout Ray ray, RayHit hit, uint index1D)
     float3 directionTemp = ray.direction;
     float3 newDirection = float3(directionTemp.x, directionTemp.y * -1, directionTemp.z);
     ray.direction = newDirection;
+    ray.nrOfInteractions++;
 }
 
 

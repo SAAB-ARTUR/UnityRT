@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Profiling;
+using UnityEngine.UI;
 
 public class Main : MonoBehaviour
 {    
@@ -9,31 +12,22 @@ public class Main : MonoBehaviour
 
     [SerializeField] GameObject srcSphere = null;
     [SerializeField] GameObject targetSphere = null;
-    [SerializeField] GameObject surfaceCombo = null;
-    [SerializeField] GameObject bottomCombo = null;
-    [SerializeField] GameObject waterLayerCombo = null;
+    [SerializeField] GameObject surface = null;
+    [SerializeField] GameObject seafloor = null;
+    [SerializeField] GameObject waterplane = null;
     [SerializeField] Camera secondCamera = null;
     [SerializeField] bool sendRaysContinuosly = false;
     [SerializeField] bool visualizeRays = false;
     [SerializeField] float lineLength = 1;
     [SerializeField] Material lineMaterial = null;
     [SerializeField] GameObject world_manager = null;
-    
+
+    //private Mesh waterplane = null;
 
     private SourceParams.Properties? oldSourceParams = null;
 
     uint cameraWidth = 0;
-    uint cameraHeight = 0;
-
-    private List<GameObject> waterplanes = new List<GameObject>();
-    public static bool _meshObjectsNeedRebuilding = false;
-    private static List<RayTracingObject> _rayTracingObjects = new List<RayTracingObject>();
-    private static List<MeshObject> _meshObjects = new List<MeshObject>();
-    private static List<Vector3> _vertices = new List<Vector3>();
-    private static List<int> _indices = new List<int>();
-    private ComputeBuffer _meshObjectBuffer;
-    private ComputeBuffer _vertexBuffer;
-    private ComputeBuffer _indexBuffer;
+    uint cameraHeight = 0;    
 
     private ComputeBuffer _rayPointsBuffer;
     
@@ -41,7 +35,7 @@ public class Main : MonoBehaviour
     private RenderTexture _target;
 
     private bool doRayTracing = false;
-    private bool lockRayTracing = false;    
+    private bool lockRayTracing = false;
 
     RayData[] rds = null;
 
@@ -54,15 +48,14 @@ public class Main : MonoBehaviour
     LineRenderer srcViewLine3 = null;
     LineRenderer srcViewLine4 = null;
 
-    const float PI = 3.14159265f;
+    RayTracingAccelerationStructure rtas = null;
+    private bool rebuildRTAS = false;
 
-    struct MeshObject
-    {
-        public Matrix4x4 localToWorldMatrix;
-        public int indices_offset;
-        public int indices_count;
-        public MeshObjectType meshObjectType;
-    }
+    SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
+    SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
+    WaterplaneInstanceData waterplaneInstanceData = null;
+
+    const float PI = 3.14159265f;    
 
     struct RayData
     {
@@ -73,12 +66,37 @@ public class Main : MonoBehaviour
 
     private void ReleaseResources()
     {
+        if (rtas != null)
+        {
+            rtas.Release();
+            rtas = null;
+        }
+
+        if (_target)
+        {
+            _target.Release();
+            _target = null;
+        }
+
         cameraHeight = 0;
         cameraWidth = 0;
 
-        _meshObjectBuffer?.Release();
-        _vertexBuffer?.Release();
-        _indexBuffer?.Release();
+        if (surfaceInstanceData != null)
+        {
+            surfaceInstanceData.Dispose();
+            surfaceInstanceData = null;
+        }
+        if (waterplaneInstanceData != null)
+        {
+            waterplaneInstanceData.Dispose();
+            waterplaneInstanceData = null;
+        }
+        if (seafloorInstanceData != null)
+        {
+            seafloorInstanceData.Dispose();
+            seafloorInstanceData = null;
+        }
+
         _rayPointsBuffer?.Release();        
     }
 
@@ -94,14 +112,7 @@ public class Main : MonoBehaviour
 
     private void CreateResources()
     {
-
-        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-
-        if (cameraWidth != Camera.allCameras[1].pixelWidth || cameraHeight != Camera.allCameras[1].pixelHeight)
-        {
-            cameraWidth = (uint)Camera.allCameras[1].pixelWidth;
-            cameraHeight = (uint)Camera.allCameras[1].pixelHeight;
-        }
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
 
         if (_rayPointsBuffer == null)
         {
@@ -111,106 +122,43 @@ public class Main : MonoBehaviour
         if (rds == null)
         {
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
-        }
-    }
-    
-
-
-    
-    #region MeshObjects
-    
-    private void RebuildMeshObjectBuffers()
-    {
-        if (!_meshObjectsNeedRebuilding)
-        {
-            return;
+            Debug.Log(rds.Length);
         }
 
-        Debug.Log("Rebuilding Mesh buffers...");
-
-        _meshObjectsNeedRebuilding = false;        
-
-        // Clear all lists
-        _meshObjects.Clear();
-        _vertices.Clear();
-        _indices.Clear();        
-
-        // Loop over all objects and gather their data
-        foreach (RayTracingObject obj in _rayTracingObjects)
+        if (surfaceInstanceData == null)
         {
-
-            Mesh mesh = obj.GetComponent<MeshFilter>().sharedMesh;
-
-            // Add vertex data
-            int firstVertex = _vertices.Count;
-            
-            // Note: There are objects, that may have the Meshfilter object,
-            // but that do not have a mesh assigned to them yet. This checks for this issue. 
-            if (mesh != null) {
-                _vertices.AddRange(mesh.vertices);
-
-                // Add index data - if the vertex buffer wasn't empty before, the
-                // indices need to be offset
-                int firstIndex = _indices.Count;
-                var indices = mesh.GetIndices(0);
-                _indices.AddRange(indices.Select(index => index + firstVertex));
-
-                // Add the object itself
-                _meshObjects.Add(new MeshObject()
-                {
-                    localToWorldMatrix = obj.transform.localToWorldMatrix,
-                    indices_offset = firstIndex,
-                    indices_count = indices.Length,
-                    meshObjectType = obj.meshObjectType
-                });
-
+            if (surfaceInstanceData != null)
+            {
+                surfaceInstanceData.Dispose();
             }
-            
+            surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
         }        
-
-        CreateComputeBuffer(ref _meshObjectBuffer, _meshObjects, 76);
-        CreateComputeBuffer(ref _vertexBuffer, _vertices, 12);
-        CreateComputeBuffer(ref _indexBuffer, _indices, 4);        
-    }
-    
-
-    public static void RegisterObject(RayTracingObject obj)
-    {
-        _rayTracingObjects.Add(obj);
-        _meshObjectsNeedRebuilding = true;
-    }
-    public static void UnregisterObject(RayTracingObject obj)
-    {
-        _rayTracingObjects.Remove(obj);
-        _meshObjectsNeedRebuilding = true;
-    }
-    #endregion
-
-    private static void CreateComputeBuffer<T>(ref ComputeBuffer buffer, List<T> data, int stride)
-        where T : struct
-    {
-        // Do we already have a compute buffer?
-        if (buffer != null)
+        if (seafloorInstanceData == null)
         {
-            // If no data or buffer doesn't match the given criteria, release it
-            if (data.Count == 0 || buffer.count != data.Count || buffer.stride != stride)
+            if (seafloorInstanceData != null)
             {
-                buffer.Release();
-                buffer = null;
+                seafloorInstanceData.Dispose();
             }
+            seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
         }
 
-        if (data.Count != 0)
+        World world = world_manager.GetComponent<World>();
+        int nrOfWaterplanes = world.GetNrOfWaterplanes();
+        float depth = world.GetWaterDepth();
+        if (nrOfWaterplanes > 0 && (waterplaneInstanceData == null || waterplaneInstanceData.layers != nrOfWaterplanes || waterplaneInstanceData.depth != depth))
         {
-            // If the buffer has been released or wasn't there to
-            // begin with, create it
-            if (buffer == null)
+            if (waterplaneInstanceData != null)
             {
-                buffer = new ComputeBuffer(data.Count, stride);
+                waterplaneInstanceData.Dispose();
             }
-
-            // Set data on the buffer
-            buffer.SetData(data);
+            waterplaneInstanceData = new WaterplaneInstanceData(nrOfWaterplanes, depth);
+        }
+        else if (nrOfWaterplanes <= 0)
+        {
+            if (waterplaneInstanceData != null)
+            {
+                waterplaneInstanceData.Dispose();
+            }
         }
     }
 
@@ -228,12 +176,8 @@ public class Main : MonoBehaviour
         computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
         computeShaderTest.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
         computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);
-
-        SetComputeBuffer("_MeshObjects", _meshObjectBuffer);
-        SetComputeBuffer("_Vertices", _vertexBuffer);
-        SetComputeBuffer("_Indices", _indexBuffer);
+        
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
-
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
@@ -244,11 +188,13 @@ public class Main : MonoBehaviour
         computeShaderTest.SetVector("srcDirection", srcSphere.transform.forward);
 
         computeShaderTest.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
+
+        computeShaderTest.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
     }
 
     private void InitRenderTexture(SourceParams sourceParams)
     {
-        if (_target == null || _target.width != Screen.width/8 || _target.height != Screen.height/8)
+        if (_target == null || _target.width != sourceParams.nphi || _target.height != sourceParams.ntheta)
         {
             // Release render texture if we already have one
             if (_target != null)
@@ -260,20 +206,19 @@ public class Main : MonoBehaviour
             _target = new RenderTexture(sourceParams.nphi, sourceParams.ntheta, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
-            _target.Create();            
+            _target.Create();
         }
     }
 
     private void BuildWorld() {
-
-
         World world = world_manager.GetComponent<World>();
         world.AddSource(srcSphere);
-        world.AddSurface(surfaceCombo);
-        world.AddBottom(bottomCombo);
-        world.AddWaterLayers(waterLayerCombo);
-
-
+        world.AddSurface(surface);
+        world.AddBottom(seafloor);
+        if (world.GetNrOfWaterplanes() > 0)
+        {
+            world.AddWaterplane(waterplane);
+        }        
     }
 
     private void OnEnable()
@@ -284,7 +229,7 @@ public class Main : MonoBehaviour
             secondCameraScript = secondCamera.GetComponent<RayTracingVisualization>();
         }
 
-
+        rtas = new RayTracingAccelerationStructure();
     }
 
     #region SourceViewLines
@@ -375,10 +320,8 @@ public class Main : MonoBehaviour
         srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
 
         srcDirectionLine.material = lineMaterial;
-        srcDirectionLine.material.color = Color.black;
-
+        srcDirectionLine.material.color = Color.black;        
         
-        BuildWorld();   
         Vector3[] viewLines = ViewLines();
 
         // line1
@@ -403,14 +346,15 @@ public class Main : MonoBehaviour
         srcViewLine4 = CreateSrcViewLine("View line4");
 
         srcViewLine4.SetPosition(0, srcSphere.transform.position);
-        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);        
+        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);
+
+        BuildWorld();        
+        rebuildRTAS = true;
     }
 
     // Update is called once per frame
     void Update()
     {   
-
-
         if (srcDirectionLine != null)
         {
             srcDirectionLine.SetPosition(0, srcSphere.transform.position);
@@ -427,6 +371,7 @@ public class Main : MonoBehaviour
             Debug.Log("Reeinit raybuffer");
             // reinit rds arrau
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
+            
             // reinit raydatabuffer
             if (_rayPointsBuffer != null)
             {
@@ -437,6 +382,12 @@ public class Main : MonoBehaviour
             oldSourceParams = sourceParams.ToStruct();
         }
 
+        World world = world_manager.GetComponent<World>();
+        if (world.StateChanged())
+        {
+            BuildWorld();
+            rebuildRTAS = true;
+        }
 
         if (Input.GetKey(KeyCode.C)){
             doRayTracing = true;            
@@ -458,18 +409,28 @@ public class Main : MonoBehaviour
             lockRayTracing = true; // disable raytracing being done several times during one keypress
             // do raytracing
             Debug.Log("RayTrace");
+
             CreateResources();
-            RebuildMeshObjectBuffers();
+
+            if (rebuildRTAS)
+            {
+                BuildRTAS();
+                rebuildRTAS = false;
+            }            
+
             SetShaderParameters();
 
             InitRenderTexture(sourceParams);
+
+            if(_target == null)
+            {
+                Debug.Log("Null");
+            }
             
             computeShaderTest.SetTexture(0, "Result", _target);
 
-            int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
-
-            Debug.Log(sourceParams.ntheta);
+            int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
 
             computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
@@ -512,7 +473,7 @@ public class Main : MonoBehaviour
                 }
 
                 // visualize one line
-                /*for (int i = 0; i < MAXINTERACTIONS; i++)
+                /*for (int i = 0; i < sourceParams.MAXINTERACTIONS; i++)
                 {
                     if (rds[i].set != 12345)
                     {
@@ -550,5 +511,37 @@ public class Main : MonoBehaviour
             }
             lines.Clear();
         }
-    } 
+    }
+
+    void BuildRTAS()
+    {
+        World world = world_manager.GetComponent<World>();
+
+        rtas.ClearInstances();
+
+        // add surface
+        Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
+        Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
+
+        //add seafloor
+        Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
+        Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
+
+        Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
+        Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);
+
+        rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
+        if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
+        {
+            rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
+            Debug.Log(waterplaneInstanceData.matrices.Length);
+        }        
+        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
+
+        rtas.Build();
+        Debug.Log("RTAS built");
+    }    
 }
