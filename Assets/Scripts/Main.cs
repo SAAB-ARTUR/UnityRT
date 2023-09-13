@@ -202,7 +202,7 @@ public class Main : MonoBehaviour
                 _target.Release();                
             }
 
-             // Get a render target for Ray Tracing
+            // Get a render target for Ray Tracing
             _target = new RenderTexture(sourceParams.nphi, sourceParams.ntheta, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
@@ -366,7 +366,8 @@ public class Main : MonoBehaviour
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
         if (sourceParams != oldSourceParams)
-            {            
+            {
+            Debug.Log("Reeinit raybuffer");
             // reinit rds arrau
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             

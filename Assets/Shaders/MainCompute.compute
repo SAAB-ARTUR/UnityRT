@@ -162,25 +162,27 @@ RayHit CreateRayHit()
 #include "HitHandler.cginc"
 
 /*void CheckHitType(inout Ray ray, inout RayHit hit, uint3 id, uint index1D) //evaluate if the ray hit anything and call the function corresponding to the hit-type
-{    
+{   
+    
+    uint2 dest = id.xy;
     if (hit.type == 0 || hit.type == 1) { //surface
-        Result[id.xy] = float4(1, 0, 0, 1);
+        Result[dest] = float4(1, 0, 0, 1);
         SurfaceHit(ray, hit, index1D);
         ray.nrOfInteractions++;
         hit.sendNewRay = SendNewRay(ray);
     }
     else if (hit.type == 2 || hit.type == 3) { //waterplane
-        Result[id.xy] = float4(0, 1, 0, 1);
+        Result[dest] = float4(0, 1, 0, 1);
         WaterplaneHit(hit, index1D);
     }
     else if (hit.type == 4 || hit.type == 5) { //seafloor
-        Result[id.xy] = float4(0, 0, 1, 1);
+        Result[dest] = float4(0, 0, 1, 1);
         SeafloorHit(ray, hit, index1D);
         ray.nrOfInteractions++;
         hit.sendNewRay = SendNewRay(ray);
     }
     else { //miss
-        Result[id.xy] = float4(0, 0, 0, 1);
+        Result[dest] = float4(0, 0, 0, 1);
         NoHit(ray, index1D);
         hit.sendNewRay = false;
     }
