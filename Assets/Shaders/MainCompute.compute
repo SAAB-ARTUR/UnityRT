@@ -1,5 +1,9 @@
 // Each #kernel tells which function to compile; you can have many kernels
+#include "UnityRayQuery.cginc"
+#pragma require inlineraytracing
 #pragma kernel CSMain
+
+RaytracingAccelerationStructure g_AccelStruct;
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
@@ -16,8 +20,6 @@ int _MAXINTERACTIONS;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
-//static const int MAXINTERACTIONS = 1;
-
 int theta;
 int ntheta;
 int phi;
@@ -31,22 +33,6 @@ struct RayData // Data that will be sent back to the CPU
 };
 
 RWStructuredBuffer<RayData> _RayPoints;
-AppendStructuredBuffer<RayData> _appRayPoints;
-
-//-------------------------------------
-//- MESHES
-
-struct MeshObject
-{
-    float4x4 localToWorldMatrix;
-    int indices_offset;
-    int indices_count;
-    int meshObjectType;
-};
-
-StructuredBuffer<MeshObject> _MeshObjects;
-StructuredBuffer<float3> _Vertices;
-StructuredBuffer<int> _Indices;
 
 //-------------------------------------
 //- RAY
@@ -149,7 +135,7 @@ RayHit CreateRayHit()
 //-------------------------------------
 //- TRACE
 
-RayHit Trace(Ray ray)
+/*RayHit Trace(Ray ray)
 {
     RayHit bestHit = CreateRayHit();
     uint count, stride;
@@ -171,7 +157,7 @@ RayHit Trace(Ray ray)
     }
 
     return bestHit;
-}
+}*/
 
 //-------------------------------------
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
@@ -221,12 +207,42 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     Ray ray = CreateThetaPhiRay(id);
 
-    RayHit hit = Trace(ray);
-    CheckHitType(ray, hit, id, index1D);
+    RayDesc ray2; //byt namn
+    ray2.Origin = ray.origin;
+    ray2.Direction = ray.direction;
+    ray2.TMin = 0;
+    ray2.TMax = 1e20f;
 
-    while (hit.sendNewRay) 
+    const uint rayFlags = RAY_FLAG_NONE;
+    UnityRayQuery<rayFlags> rayQuery;
+
+    rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2);
+    rayQuery.Proceed();
+
+    if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
+        //Result[id.xy] = float4(0, 0, 1, 0);
+        //g_Output[id.xy] = rayQuery.CommittedInstanceID() / 3;
+        if (rayQuery.CommittedInstanceID() == 1) { // surface
+            Result[id.xy] = float4(0, 0, 1, 0);
+        }
+        else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
+            Result[id.xy] = float4(0, 1, 0, 0);
+        }
+        else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
+            Result[id.xy] = float4(1, 0, 0, 0);
+        }
+    }
+    else
+    {
+        Result[id.xy] = float4(0, 0, 0, 0);
+    }
+
+    //RayHit hit = Trace(ray);
+    //CheckHitType(ray, hit, id, index1D);
+
+    /*while (hit.sendNewRay) 
     {        
         hit = Trace(ray);
         CheckHitType(ray, hit, id, index1D);
-    }
+    }*/
 }

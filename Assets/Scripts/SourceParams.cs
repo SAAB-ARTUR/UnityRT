@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 {
-
-
     public int theta = 0;
     public int ntheta = 0;
     public int phi = 0;
@@ -32,18 +30,5 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
             return true;
         }
         return false;
-    }
-
-    // Start is called before the first frame update
-
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }

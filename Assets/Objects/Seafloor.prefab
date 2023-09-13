@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 1766843647473224412}
   - component: {fileID: 7227254017386175733}
   - component: {fileID: 527790383871354450}
-  - component: {fileID: 9140806506817206375}
   m_Layer: 0
   m_Name: Seafloor
   m_TagString: Untagged
@@ -107,16 +106,3 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &9140806506817206375
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8210347397363168208}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: da17dc88cd93a904fa282f6c1e7372c2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  meshObjectType: 4

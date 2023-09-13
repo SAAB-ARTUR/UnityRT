@@ -1,4 +1,4 @@
-bool IntersectTriangle_MT97(Ray ray, float3 vert0, float3 vert1, float3 vert2,
+/*bool IntersectTriangle_MT97(Ray ray, float3 vert0, float3 vert1, float3 vert2,
     inout float t, inout float u, inout float v)
 {
     // find vectors for two edges sharing vert0
@@ -36,9 +36,9 @@ bool IntersectTriangle_MT97(Ray ray, float3 vert0, float3 vert1, float3 vert2,
     t = dot(edge2, qvec) * inv_det;
 
     return true;
-}
+}*/
 
-void IntersectMeshObject(Ray ray, inout RayHit bestHit, MeshObject meshObject)
+/*void IntersectMeshObject(Ray ray, inout RayHit bestHit, MeshObject meshObject)
 {
     uint offset = meshObject.indices_offset;
     uint count = offset + meshObject.indices_count;
@@ -60,4 +60,4 @@ void IntersectMeshObject(Ray ray, inout RayHit bestHit, MeshObject meshObject)
             }
         }
     }
-}
+}*/
