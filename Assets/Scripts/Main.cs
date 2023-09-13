@@ -468,8 +468,10 @@ public class Main : MonoBehaviour
             
             computeShaderTest.SetTexture(0, "Result", _target);
 
-            int threadGroupsX = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
-            int threadGroupsY = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
+            int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
+            int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
+
+            Debug.Log(sourceParams.ntheta);
 
             computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
