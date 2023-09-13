@@ -112,8 +112,7 @@ struct RayHit
 {
     float3 position;
     float distance;
-    float3 normal;
-    int type;
+    float3 normal;    
     bool sendNewRay;
 };
 
@@ -122,8 +121,7 @@ RayHit CreateRayHit()
     RayHit hit;
     hit.position = float3(0.0f, 0.0f, 0.0f);
     hit.distance = 1.#INF;
-    hit.normal = float3(0.0f, 0.0f, 0.0f);
-    hit.type = 10;
+    hit.normal = float3(0.0f, 0.0f, 0.0f);    
     hit.sendNewRay = false;
     return hit;
 }
@@ -163,7 +161,7 @@ RayHit CreateRayHit()
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
 #include "HitHandler.cginc"
 
-void CheckHitType(inout Ray ray, inout RayHit hit, uint3 id, uint index1D) //evaluate if the ray hit anything and call the function corresponding to the hit-type
+/*void CheckHitType(inout Ray ray, inout RayHit hit, uint3 id, uint index1D) //evaluate if the ray hit anything and call the function corresponding to the hit-type
 {    
     if (hit.type == 0 || hit.type == 1) { //surface
         Result[id.xy] = float4(1, 0, 0, 1);
@@ -186,7 +184,7 @@ void CheckHitType(inout Ray ray, inout RayHit hit, uint3 id, uint index1D) //eva
         NoHit(ray, index1D);
         hit.sendNewRay = false;
     }
-}
+}*/
 
 
 [numthreads(8,8,1)]
@@ -213,6 +211,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     ray2.TMin = 0;
     ray2.TMax = 1e20f;
 
+    RayHit hit = CreateRayHit();
+
     const uint rayFlags = RAY_FLAG_NONE;
     UnityRayQuery<rayFlags> rayQuery;
 
@@ -220,21 +220,33 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     rayQuery.Proceed();
 
     if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
+        hit.position = ray.origin + (ray.direction * rayQuery.CommittedRayT());
+        hit.distance = rayQuery.CommittedRayT();        
+
         //Result[id.xy] = float4(0, 0, 1, 0);
         //g_Output[id.xy] = rayQuery.CommittedInstanceID() / 3;
         if (rayQuery.CommittedInstanceID() == 1) { // surface
-            Result[id.xy] = float4(0, 0, 1, 0);
+            Result[id.xy] = float4(1, 0, 0, 0);
+            SurfaceHit(ray, hit, index1D);
+            ray.nrOfInteractions++;
+            hit.sendNewRay = SendNewRay(ray);
         }
         else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
             Result[id.xy] = float4(0, 1, 0, 0);
+            WaterplaneHit(hit, index1D);
         }
         else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
-            Result[id.xy] = float4(1, 0, 0, 0);
+            Result[id.xy] = float4(0, 0, 1, 0);
+            SeafloorHit(ray, hit, index1D);
+            ray.nrOfInteractions++;
+            hit.sendNewRay = SendNewRay(ray);
         }
     }
     else
     {
         Result[id.xy] = float4(0, 0, 0, 0);
+        NoHit(ray, index1D);
+        hit.sendNewRay = false;
     }
 
     //RayHit hit = Trace(ray);

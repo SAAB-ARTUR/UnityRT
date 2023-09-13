@@ -231,7 +231,7 @@ MonoBehaviour:
   waterDepth: 10
   sourceDepth: 2
   range: 40
-  nrOfWaterPlanes: 1
+  nrOfWaterPlanes: 0
 --- !u!4 &202712679
 Transform:
   m_ObjectHideFlags: 0
@@ -623,7 +623,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1372857929398669409, guid: f3ac98196a3f4a54f8c5548fd4e15de5, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1372857929398669409, guid: f3ac98196a3f4a54f8c5548fd4e15de5, type: 3}
       propertyPath: m_ReceiveShadows

@@ -122,6 +122,7 @@ public class Main : MonoBehaviour
         if (rds == null)
         {
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
+            Debug.Log(rds.Length);
         }
 
         if (surfaceInstanceData == null)
@@ -368,6 +369,7 @@ public class Main : MonoBehaviour
             {            
             // reinit rds arrau
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
+            
             // reinit raydatabuffer
             if (_rayPointsBuffer != null)
             {
