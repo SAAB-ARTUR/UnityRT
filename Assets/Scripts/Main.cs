@@ -14,12 +14,13 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject targetSphere = null;
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject seafloor = null;
+    [SerializeField] GameObject waterplane = null;
     [SerializeField] Camera secondCamera = null;
     [SerializeField] bool sendRaysContinuosly = false;
     [SerializeField] bool visualizeRays = false;
     [SerializeField] float lineLength = 1;
     [SerializeField] Material lineMaterial = null;
-    [SerializeField] GameObject world_manager = null;    
+    [SerializeField] GameObject world_manager = null;
 
     private SourceParams oldSourceParams = null;
 
@@ -111,13 +112,7 @@ public class Main : MonoBehaviour
 
     private void CreateResources()
     {
-        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-
-        /*if (cameraWidth != Camera.main.pixelWidth || cameraHeight != Camera.main.pixelHeight)
-        {
-            cameraWidth = (uint)Camera.main.pixelWidth;
-            cameraHeight = (uint)Camera.main.pixelHeight;
-        }*/
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
 
         if (_rayPointsBuffer == null)
         {
@@ -136,22 +131,7 @@ public class Main : MonoBehaviour
                 surfaceInstanceData.Dispose();
             }
             surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
-        }
-        /*if (nrOfLayers > 0 && (layersInstanceData == null || layersInstanceData.layers != nrOfLayers || layersInstanceData.depth != depth || layersInstanceData.color1 != color1 || layersInstanceData.color2 != color2))
-        {
-            if (layersInstanceData != null)
-            {
-                layersInstanceData.Dispose();
-            }
-            layersInstanceData = new RayTracingInstanceData(nrOfLayers, depth, color1, color2);
-        }
-        else if (nrOfLayers <= 0)
-        {
-            if (layersInstanceData != null)
-            {
-                layersInstanceData.Dispose();
-            }
-        }*/
+        }        
         if (seafloorInstanceData == null)
         {
             if (seafloorInstanceData != null)
@@ -159,6 +139,25 @@ public class Main : MonoBehaviour
                 seafloorInstanceData.Dispose();
             }
             seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
+        }
+
+        World world = world_manager.GetComponent<World>();
+        int nrOfWaterplanes = world.GetNrOfWaterplanes();
+        float depth = world.GetWaterDepth();
+        if (nrOfWaterplanes > 0 && (waterplaneInstanceData == null || waterplaneInstanceData.layers != nrOfWaterplanes || waterplaneInstanceData.depth != depth))
+        {
+            if (waterplaneInstanceData != null)
+            {
+                waterplaneInstanceData.Dispose();
+            }
+            waterplaneInstanceData = new WaterplaneInstanceData(nrOfWaterplanes, depth);
+        }
+        else if (nrOfWaterplanes <= 0)
+        {
+            if (waterplaneInstanceData != null)
+            {
+                waterplaneInstanceData.Dispose();
+            }
         }
     }
 
@@ -215,6 +214,10 @@ public class Main : MonoBehaviour
         world.AddSource(srcSphere);
         world.AddSurface(surface);
         world.AddBottom(seafloor);
+        if (world.GetNrOfWaterplanes() > 0)
+        {
+            world.AddWaterplane(waterplane);
+        }        
     }
 
     private void OnEnable()
@@ -378,9 +381,7 @@ public class Main : MonoBehaviour
         World world = world_manager.GetComponent<World>();
         if (world.StateChanged())
         {
-            world.AddSurface(surface); // rebuild planes to the correct size
-            world.AddBottom(seafloor);
-            rebuildRTAS = true;
+            BuildWorld();
         }
 
         if (Input.GetKey(KeyCode.C)){
@@ -509,6 +510,8 @@ public class Main : MonoBehaviour
 
     void BuildRTAS()
     {
+        World world = world_manager.GetComponent<World>();
+
         rtas.ClearInstances();
 
         // add surface
@@ -519,10 +522,18 @@ public class Main : MonoBehaviour
         //add seafloor
         Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
         Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
-        RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);        
+        RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
+
+        Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
+        Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);
 
         rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
-        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 2);
+        if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
+        {
+            rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
+        }        
+        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
 
         rtas.Build();
         Debug.Log("RTAS built");

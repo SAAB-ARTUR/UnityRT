@@ -94,36 +94,32 @@ public class World : MonoBehaviour
         bottom.transform.localPosition = center;
     }
 
-    /*public void AddWaterLayers(GameObject _waterLayerParent) {
+    public void AddWaterplane(GameObject waterplane) {
 
         // Figure out the depths of the layers
-        float dx = waterDepth / nrOfWaterPlanes;
-        List<float> waterPlanesDepths = new List<float>();
+        float dx = waterDepth / (nrOfWaterPlanes + 1);
+        //List<float> waterPlanesDepths = new List<float>();
+                
+        Vector3 center = state.position + Vector3.down * dx;
+        Mesh m1 = PlaneMesh(center);
 
-        for (int i = 0; i < nrOfWaterPlanes; i++)
-        {
+        waterplane.GetComponent<MeshFilter>().mesh = m1;
+        waterplane.transform.parent = this.transform;
 
-            Vector3 center = state.position + Vector3.down * dx * i;
-            Mesh m1 = PlaneMesh(Vector3.zero, false);
-            Mesh m2 = PlaneMesh(Vector3.zero, true);
+        //GameObject wl = Instantiate(_waterLayerParent);
+        //DualPlane dp = wl.GetComponent<DualPlane>();
+        //dp.topMesh.GetComponent<MeshFilter>().mesh = m1;
+        //dp.bottomMesh.GetComponent<MeshFilter>().mesh = m2;
 
-            GameObject wl = Instantiate(_waterLayerParent);
-            DualPlane dp = wl.GetComponent<DualPlane>();
-            dp.topMesh.GetComponent<MeshFilter>().mesh = m1;
-            dp.bottomMesh.GetComponent<MeshFilter>().mesh = m2;
+        //dp.transform.parent = this.transform;
+        //dp.transform.position = center;
 
-            dp.transform.parent = this.transform;
-            dp.transform.position = center;
-
-            waterPlanes.Add(dp);
-            waterPlanesDepths.Add(dx * i);
-
-        }
-
-        waterLayers = waterPlanes.ToArray();
-        waterLayerDepths = waterPlanesDepths.ToArray();
-
-    }*/
+        //waterPlanes.Add(dp);
+        //waterPlanesDepths.Add(dx * i);
+        
+        //waterLayers = waterPlanes.ToArray();
+        //waterLayerDepths = waterPlanesDepths.ToArray();
+    }
 
     private Vector3 mean(Vector3[] vectors) { 
         
@@ -170,40 +166,7 @@ public class World : MonoBehaviour
 
         return surfaceMesh;
     }
-
-    private Mesh SeafloorPlaneMesh(Vector3 center)
-    {
-        Mesh surfaceMesh = new Mesh()
-        {
-            name = "Plane Mesh"
-        };
-
-        Vector3[] square = new Vector3[] {
-            new Vector3(0, -waterDepth, 0), new Vector3(range, -waterDepth, 0f), new Vector3(0f, -waterDepth, range), new Vector3(range, -waterDepth, range)
-        };
-        Vector3 center_local = mean(square);
-        square = square.Select(x => { return x - center_local + center; }).ToArray();
-
-        surfaceMesh.vertices = square;
-
-        surfaceMesh.normals = new Vector3[] {
-            Vector3.back, Vector3.back, Vector3.back, Vector3.back
-        };
-
-        surfaceMesh.tangents = new Vector4[] {
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f)
-        };
-
-        surfaceMesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
-        };
-
-        return surfaceMesh;
-    }
-
+   
     // Update is called once per framuie
 
     /*void SetPlaneDepthStationary(DualPlane dp, float depth) {
@@ -254,5 +217,15 @@ public class World : MonoBehaviour
             sourceSphere.transform.position = p;
           //  this.transform.position = p;
         }        
+    }
+
+    public int GetNrOfWaterplanes()
+    {
+        return nrOfWaterPlanes;
+    }
+
+    public float GetWaterDepth()
+    {
+        return waterDepth;
     }
 }
