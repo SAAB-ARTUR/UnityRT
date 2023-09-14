@@ -81,6 +81,11 @@ public class Main : MonoBehaviour
             seafloorInstanceData.Dispose();
             seafloorInstanceData = null;
         }
+        if (targetInstanceData != null)
+        {
+            targetInstanceData.Dispose();
+            targetInstanceData = null;
+        }
 
         _rayPointsBuffer?.Release();        
     }
