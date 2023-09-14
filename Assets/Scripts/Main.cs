@@ -332,14 +332,15 @@ public class Main : MonoBehaviour
                 Vector3 srcOrigin = srcSphere.transform.position;
 
                 // visualize all lines
-                for (int i = 0; i < rds.Length; i++)
+                for (int i = 0; i < rds.Length/sourceParams.MAXINTERACTIONS; i++)
                 {
-                    if (rds[i].set != 12345)
+                    List<Vector3> positions = new List<Vector3>();
+                    if (rds[i*sourceParams.MAXINTERACTIONS].set != 12345) // check if the ray hit something
                     {
                         // skip to next ray
-                        int mod = i % sourceParams.MAXINTERACTIONS;
-                        int step = sourceParams.MAXINTERACTIONS - mod - 1;
-                        i += step;
+                        //int mod = i % sourceParams.MAXINTERACTIONS;
+                        //int step = sourceParams.MAXINTERACTIONS - mod - 1;
+                        //i += step;
                         continue;
                     }
 
@@ -349,16 +350,25 @@ public class Main : MonoBehaviour
                     line.positionCount = 2;
                     line.useWorldSpace = true;
 
-                    if (i % sourceParams.MAXINTERACTIONS == 0) // first interaction for a line, draw line from source to first interaction
-                    {
-                        line.SetPosition(0, srcOrigin);
-                    }
-                    else
-                    {
-                        line.SetPosition(0, rds[i - 1].origin);
-                    }
+                    // add ray source and first hit
+                    positions.Add(srcOrigin);
+                    positions.Add(rds[i * sourceParams.MAXINTERACTIONS].origin);
+                    Debug.Log("första tillagd");
 
-                    line.SetPosition(1, rds[i].origin);
+                    for (int j = 1; j < sourceParams.MAXINTERACTIONS; j++)
+                    {
+                        if (rds[i*sourceParams.MAXINTERACTIONS + j].set != 12345) // check if the next ray hit or miss
+                        {
+                            break;
+                        }
+                        positions.Add(rds[i * sourceParams.MAXINTERACTIONS + j].origin); // add next hit
+                        Debug.Log("Nästa tillagd");
+                    }
+                    Debug.Log(positions.ToArray().Length);
+                    line.positionCount = positions.Count;
+                    line.SetPositions(positions.ToArray());
+                    
+                    
                     lines.Add(line);                    
                 }
 
