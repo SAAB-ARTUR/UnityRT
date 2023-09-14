@@ -120,7 +120,7 @@ public class World : MonoBehaviour
         Mesh m1 = PlaneMesh(center);
 
         waterplane.GetComponent<MeshFilter>().mesh = m1;
-        waterplane.transform.parent = this.transform;
+        //waterplane.transform.parent = this.transform;
 
         Color temp = waterplane.GetComponent<MeshRenderer>().material.color;
         temp.a = 0;
