@@ -275,6 +275,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e43025a00209674f9273d2c35dba485, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  upper_limit_y: Infinity
+  lower_limit_y: -Infinity
   boost: 3.5
   positionLerpTime: 0.2
   mouseSensitivityCurve:
@@ -583,11 +585,9 @@ MonoBehaviour:
   surface: {fileID: 631925276}
   seafloor: {fileID: 2030398151}
   waterplane: {fileID: 44206118}
-  secondCamera: {fileID: 2086378707}
+  sourceCamera: {fileID: 2086378707}
   sendRaysContinuosly: 0
   visualizeRays: 1
-  lineLength: 1
-  lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   world_manager: {fileID: 202712677}
 --- !u!114 &963194230
 MonoBehaviour:
@@ -798,6 +798,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e43025a00209674f9273d2c35dba485, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  upper_limit_y: Infinity
+  lower_limit_y: -Infinity
   boost: 3.5
   positionLerpTime: 0.2
   mouseSensitivityCurve:
@@ -981,6 +983,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e43025a00209674f9273d2c35dba485, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  upper_limit_y: Infinity
+  lower_limit_y: -Infinity
   boost: 3.5
   positionLerpTime: 0.2
   mouseSensitivityCurve:

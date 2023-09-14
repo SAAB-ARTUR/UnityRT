@@ -211,7 +211,7 @@ public class Main : MonoBehaviour
 
     private void BuildWorld() {
         World world = world_manager.GetComponent<World>();
-        world.AddSource(secondCamera);
+        world.AddSource(sourceCamera);
         world.AddSurface(surface);
         world.AddBottom(seafloor);
         if (world.GetNrOfWaterplanes() > 0)
