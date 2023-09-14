@@ -26,8 +26,6 @@ public class World : MonoBehaviour
     private State state0 = null;
     private State state;
 
-
-
     private Camera sourceSphere;
     private GameObject surface;
     private GameObject bottom;
@@ -85,9 +83,6 @@ public class World : MonoBehaviour
         controller.upper_limit_z = range/2;
         controller.lower_limit_z = -range/2;
         controller.JumpTo(Vector3.down * sourceDepth);
-        //this.sourceSphere.transform.parent = this.transform;
-
-        //this.sourceSphere.transform.localPosition = Vector3.down * sourceDepth;
     }
 
     public void AddSurface(GameObject _surface) 
@@ -219,7 +214,9 @@ public class World : MonoBehaviour
         state0 = state;
         state = getCurrentState();        
 
-        Vector3 worldPos = this.transform.position;        
+        Vector3 worldPos = this.transform.position;     
+        
+
 
         // Ensure planes stay at the same location
         //SetPlaneDepthStationary(this.surface, 0);

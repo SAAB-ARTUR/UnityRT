@@ -900,7 +900,7 @@ GameObject:
   - component: {fileID: 2086378705}
   - component: {fileID: 2086378709}
   m_Layer: 0
-  m_Name: RayHitCamera
+  m_Name: SourceCamera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
