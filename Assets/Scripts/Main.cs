@@ -20,7 +20,7 @@ public class Main : MonoBehaviour
     [SerializeField] bool visualizeRays = false;    
     [SerializeField] GameObject world_manager = null;
 
-    private SourceParams oldSourceParams = null;   
+    private SourceParams.Properties? oldSourceParams = null;
 
     private ComputeBuffer _rayPointsBuffer;
     
@@ -244,7 +244,8 @@ public class Main : MonoBehaviour
     {   
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
-        if (sourceParams != oldSourceParams)
+        
+        if (sourceParams.HasChanged(oldSourceParams))
             {
             //Debug.Log("Reeinit raybuffer");
             // reinit rds array
@@ -257,7 +258,7 @@ public class Main : MonoBehaviour
             }
             _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS, raydatabytesize);            
             
-            oldSourceParams = (SourceParams)sourceParams.Clone();
+            oldSourceParams = sourceParams.ToStruct();
         }
 
         World world = world_manager.GetComponent<World>();
