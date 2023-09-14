@@ -70,6 +70,8 @@ namespace UnityTemplateProjects
                 z = Mathf.Lerp(z, target.z, positionLerpPct);
             }
 
+
+
             public void UpdateTransform(Transform t)
             {
                 t.eulerAngles = new Vector3(pitch, yaw, roll);
@@ -189,6 +191,21 @@ namespace UnityTemplateProjects
             m_InterpolatingCameraState.LerpTowards(m_TargetCameraState, positionLerpPct, rotationLerpPct);
 
             m_InterpolatingCameraState.UpdateTransform(transform);
+        }
+
+        public bool ReachedTarget() {
+
+            CameraState a = m_InterpolatingCameraState;
+            CameraState b = m_TargetCameraState;
+
+            return (a.yaw == b.yaw &&
+                a.pitch == b.pitch &&
+                a.roll == b.roll &&
+                a.x == b.x &&
+                a.y == b.y &&
+                a.z == b.z);
+       
+
         }
 
         public void JumpTo(Vector3 position) {

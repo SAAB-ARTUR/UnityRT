@@ -4,6 +4,7 @@ namespace UnityTemplateProjects
 {
     public class SimpleCameraController : MonoBehaviour
     {
+
         class CameraState
         {
             public float yaw;
@@ -155,6 +156,43 @@ namespace UnityTemplateProjects
 
             m_InterpolatingCameraState.UpdateTransform(transform);
         }
+
+        public void JumpTo(Vector3 position)
+        {
+
+            m_TargetCameraState.x = position.x;
+            m_TargetCameraState.y = position.y;
+            m_TargetCameraState.z = position.z;
+
+
+        }
+
+
+        public bool ReachedTarget()
+        {
+
+            CameraState a = m_InterpolatingCameraState;
+            CameraState b = m_TargetCameraState;
+
+            return (a.yaw == b.yaw &&
+                a.pitch == b.pitch &&
+                a.roll == b.roll &&
+                a.x == b.x &&
+                a.y == b.y &&
+                a.z == b.z);
+
+
+
+        }
+
+        public void RotateTo(float yaw, float pitch, float roll) {
+
+            m_TargetCameraState.yaw = yaw;
+            m_TargetCameraState.pitch = pitch;
+            m_TargetCameraState.roll = roll;
+
+        }
+
     }
 
 }
