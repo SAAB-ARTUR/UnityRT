@@ -46,6 +46,13 @@ void NoHit(Ray ray, uint index1D)
 
 }
 
+void TargetHit(inout Ray ray, RayHit hit, uint index1D)
+{
+    _RayPoints[index1D + ray.nrOfInteractions].origin = hit.position;
+    _RayPoints[index1D + ray.nrOfInteractions].set = 12345;
+    ray.nrOfInteractions++;
+}
+
 
 bool SendNewRay(Ray ray)
 {

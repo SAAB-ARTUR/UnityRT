@@ -9,27 +9,22 @@ using UnityEngine.UIElements;
 using UnityTemplateProjects;
 
 public class World : MonoBehaviour
-{
-    
+{    
     [SerializeField] float waterDepth = 0;
     [SerializeField] float sourceDepth = 0;
     [SerializeField] float range = 0;
-    [SerializeField] int nrOfWaterPlanes = 0;
-    //[SerializeField] Material waterplaneMaterial;
+    [SerializeField] int nrOfWaterplanes = 0;
 
-    private class State {
-
+    private class State 
+    {
         public float depth;
         public float range;
-        public int nrOfWaterPlanes;
-        public Vector3 position;
+        public int nrOfWaterplanes;
+        public Vector3 position;        
     }
 
     private State state0 = null;
     private State state;
-    
-    private float[] waterLayerDepths = { };
-
 
 
 
@@ -45,7 +40,7 @@ public class World : MonoBehaviour
         // Set initial state
         state.depth = waterDepth;
         state.range = range;
-        state.nrOfWaterPlanes = nrOfWaterPlanes;
+        state.nrOfWaterplanes = nrOfWaterplanes;
         state.position = Vector3.zero;
     }
 
@@ -55,7 +50,7 @@ public class World : MonoBehaviour
         // Set initial state
         state.depth = waterDepth;
         state.range = range;
-        state.nrOfWaterPlanes = nrOfWaterPlanes;
+        state.nrOfWaterplanes = nrOfWaterplanes;
         state.position = this.transform.position;
 
         return state;
@@ -67,10 +62,9 @@ public class World : MonoBehaviour
             return true;
         }
 
-        if (state.depth != state0.depth || state.range != state0.range || state.nrOfWaterPlanes != state0.nrOfWaterPlanes || ! state.position.Equals(state0.position)) {
+        if (state.depth != state0.depth || state.range != state0.range || state.nrOfWaterplanes != state0.nrOfWaterplanes || ! state.position.Equals(state0.position)) {
             Debug.Log("Change in world");
             return true;
-
         }
 
         return false;
@@ -100,7 +94,8 @@ public class World : MonoBehaviour
         //_surface.transform.parent = this.transform;
         this.surface = _surface;
     }
-    public void AddBottom(GameObject bottom) {
+    public void AddBottom(GameObject bottom) 
+    {
         Vector3 center = Vector3.down * waterDepth;
         Mesh m1 = DoublePlaneMesh(center);
 
@@ -111,11 +106,10 @@ public class World : MonoBehaviour
         this.bottom = bottom;
     }
 
-    public void AddWaterplane(GameObject waterplane) {
-
-        // Figure out the depths of the layers
-        float dx = waterDepth / (nrOfWaterPlanes + 1);
-        //List<float> waterPlanesDepths = new List<float>();
+    public void AddWaterplane(GameObject waterplane) 
+    {
+        // Create one waterplane, more waterplanes (if wanted) are created in main when the waterplane is added to the raytracing acceleration structure
+        float dx = waterDepth / (nrOfWaterplanes + 1);
                 
         Vector3 center = Vector3.down * dx;
         Mesh m1 = SinglePlaneMesh(center);
@@ -123,30 +117,14 @@ public class World : MonoBehaviour
         waterplane.GetComponent<MeshFilter>().mesh = m1;
         //waterplane.transform.parent = this.transform;
 
+        // make plane invisible in the normal scene
         Color temp = waterplane.GetComponent<MeshRenderer>().material.color;
         temp.a = 0;
         waterplane.GetComponent<MeshRenderer>().material.color = temp;
-
-        //GameObject wl = Instantiate(_waterLayerParent);
-        //DualPlane dp = wl.GetComponent<DualPlane>();
-        //dp.topMesh.GetComponent<MeshFilter>().mesh = m1;
-        //dp.bottomMesh.GetComponent<MeshFilter>().mesh = m2;
-
-        //dp.transform.parent = this.transform;
-        //dp.transform.position = center;
-
-        //waterPlanes.Add(dp);
-        //waterPlanesDepths.Add(dx * i);
-
-        //waterLayers = waterPlanes.ToArray();
-        //waterLayerDepths = waterPlanesDepths.ToArray();
-
-        this.waterLayers.Add(waterplane);
-
     }
 
-    private Vector3 mean(Vector3[] vectors) { 
-        
+    private Vector3 mean(Vector3[] vectors) 
+    {        
         int n_vec = vectors.Length;
 
         Vector3 sum = Vector3.zero;
@@ -298,7 +276,7 @@ public class World : MonoBehaviour
 
     public int GetNrOfWaterplanes()
     {
-        return nrOfWaterPlanes;
+        return nrOfWaterplanes;
     }
 
     public float GetWaterDepth()
