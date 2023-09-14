@@ -93,7 +93,7 @@ public class World : MonoBehaviour
 
     public void AddSurface(GameObject _surface) {
         // TODO
-        Mesh m1 = PlaneMesh(Vector3.zero);
+        Mesh m1 = DoublePlaneMesh(Vector3.zero);
 
         _surface.GetComponent<MeshFilter>().mesh = m1;
 
@@ -102,7 +102,7 @@ public class World : MonoBehaviour
     }
     public void AddBottom(GameObject bottom) {
         Vector3 center = Vector3.down * waterDepth;
-        Mesh m1 = PlaneMesh(center);
+        Mesh m1 = DoublePlaneMesh(center);
 
         bottom.GetComponent<MeshFilter>().mesh = m1;
         //bottom.transform.parent = this.transform;    
@@ -118,7 +118,7 @@ public class World : MonoBehaviour
         //List<float> waterPlanesDepths = new List<float>();
                 
         Vector3 center = Vector3.down * dx;
-        Mesh m1 = PlaneMesh(center);
+        Mesh m1 = SinglePlaneMesh(center);
 
         waterplane.GetComponent<MeshFilter>().mesh = m1;
         //waterplane.transform.parent = this.transform;
@@ -158,7 +158,7 @@ public class World : MonoBehaviour
         return sum / n_vec;
     }
 
-    private Mesh PlaneMesh(Vector3 center)
+    private Mesh DoublePlaneMesh(Vector3 center)
     {
         Mesh surfaceMesh = new Mesh()
         {
@@ -201,7 +201,40 @@ public class World : MonoBehaviour
 
         return surfaceMesh;
     }
-   
+
+    private Mesh SinglePlaneMesh(Vector3 center)
+    {
+        Mesh surfaceMesh = new Mesh()
+        {
+            name = "Plane Mesh"
+        };
+
+        Vector3[] square = new Vector3[] {
+            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range), // Upper plane
+        };
+        Vector3 center_local = mean(square);
+        square = square.Select(x => { return x - center_local + center; }).ToArray();
+
+        surfaceMesh.vertices = square;
+
+        surfaceMesh.normals = new Vector3[] {
+            Vector3.back, Vector3.back, Vector3.back, Vector3.back,
+        };
+
+        surfaceMesh.tangents = new Vector4[] {
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+        };
+
+        surfaceMesh.triangles = new int[] {
+            0, 2, 1, 1, 2, 3,
+        };
+
+        return surfaceMesh;
+    }
+
     // Update is called once per framuie
 
     /*
