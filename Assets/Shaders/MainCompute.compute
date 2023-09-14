@@ -175,6 +175,11 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             SeafloorHit(ray, hit, index1D);
             hit.sendNewRay = SendNewRay(ray);
         }
+        else if (rayQuery.CommittedInstanceID() == 4) { // target
+            Result[dest] = float4(1, 0, 1, 0);
+            TargetHit(ray, hit, index1D);
+            hit.sendNewRay = false;
+        }
     }
     else
     {
@@ -210,6 +215,11 @@ void CSMain (uint3 id : SV_DispatchThreadID)
                 Result[dest] = float4(0, 0, 1, 0);
                 SeafloorHit(ray, hit, index1D);
                 hit.sendNewRay = SendNewRay(ray);
+            }
+            else if (rayQuery.CommittedInstanceID() == 4) { // target
+                Result[dest] = float4(1, 0, 1, 0);
+                TargetHit(ray, hit, index1D);
+                hit.sendNewRay = false;
             }
         }
         else

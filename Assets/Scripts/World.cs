@@ -8,8 +8,7 @@ using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 
 public class World : MonoBehaviour
-{
-    
+{    
     [SerializeField] float waterDepth = 0;
     [SerializeField] float sourceDepth = 0;
     [SerializeField] float range = 0;
@@ -21,7 +20,7 @@ public class World : MonoBehaviour
         public float depth;
         public float range;
         public int nrOfWaterPlanes;
-        public Vector3 position;
+        public Vector3 position;        
     }
 
     private State state0 = null;
@@ -31,6 +30,7 @@ public class World : MonoBehaviour
 
 
     private GameObject sourceSphere;
+    private GameObject targetSphere;
 
     // Start is called before the first frame update
     void Start()
@@ -76,6 +76,13 @@ public class World : MonoBehaviour
         this.sourceSphere.transform.parent = this.transform;
 
         this.sourceSphere.transform.localPosition = Vector3.down * sourceDepth;
+    }
+
+    public void AddTarget(GameObject target)
+    {
+        //Debug.Log("Added source");
+        this.targetSphere = target;
+        this.targetSphere.transform.parent = this.transform;        
     }
 
     public void AddSurface(GameObject surface) {

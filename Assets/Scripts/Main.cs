@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 public class Main : MonoBehaviour
 {    
-    public ComputeShader computeShaderTest = null;
+    public ComputeShader computeShader = null;
 
     [SerializeField] GameObject srcSphere = null;
     [SerializeField] GameObject targetSphere = null;
@@ -54,8 +54,11 @@ public class Main : MonoBehaviour
     SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
     SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
     WaterplaneInstanceData waterplaneInstanceData = null;
+    TargetInstanceData targetInstanceData = null;
 
-    const float PI = 3.14159265f;    
+    const float PI = 3.14159265f;
+
+    private Vector3 oldTargetPostion;
 
     struct RayData
     {
@@ -160,36 +163,45 @@ public class Main : MonoBehaviour
                 waterplaneInstanceData.Dispose();
             }
         }
+
+        if (targetInstanceData == null)
+        {
+            if (targetInstanceData != null)
+            {
+                targetInstanceData.Dispose();
+            }
+            targetInstanceData = new TargetInstanceData();
+        }
     }
 
     private void SetComputeBuffer(string name, ComputeBuffer buffer)
     {
         if (buffer != null)
         {        
-            computeShaderTest.SetBuffer(0, name, buffer);
+            computeShader.SetBuffer(0, name, buffer);
         }
     }
 
     private void SetShaderParameters()
     {
-        computeShaderTest.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
-        computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
-        computeShaderTest.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
-        computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);
+        computeShader.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
+        computeShader.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
+        computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
+        computeShader.SetFloat("_Seed", UnityEngine.Random.value);
         
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
-        computeShaderTest.SetInt("theta", sourceParams.theta);
-        computeShaderTest.SetInt("ntheta", sourceParams.ntheta);
-        computeShaderTest.SetInt("phi", sourceParams.phi);
-        computeShaderTest.SetInt("nphi", sourceParams.nphi);
-        computeShaderTest.SetVector("srcDirection", srcSphere.transform.forward);
+        computeShader.SetInt("theta", sourceParams.theta);
+        computeShader.SetInt("ntheta", sourceParams.ntheta);
+        computeShader.SetInt("phi", sourceParams.phi);
+        computeShader.SetInt("nphi", sourceParams.nphi);
+        computeShader.SetVector("srcDirection", srcSphere.transform.forward);
 
-        computeShaderTest.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
+        computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
 
-        computeShaderTest.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
+        computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
     }
 
     private void InitRenderTexture(SourceParams sourceParams)
@@ -310,8 +322,8 @@ public class Main : MonoBehaviour
     {        
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
-        Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
-        targetRenderer.material.SetColor("_Color", Color.red);
+        //Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
+        //targetRenderer.material.SetColor("_Color", Color.red);
         Debug.Log("Start");
 
         srcDirectionLine = CreateSrcViewLine("SourceDirectionLine");
@@ -350,6 +362,8 @@ public class Main : MonoBehaviour
 
         BuildWorld();        
         rebuildRTAS = true;
+
+        oldTargetPostion = targetSphere.transform.position;
     }
 
     // Update is called once per frame
@@ -367,7 +381,7 @@ public class Main : MonoBehaviour
 
         if (sourceParams != oldSourceParams)
             {
-            Debug.Log("Reeinit raybuffer");
+            //Debug.Log("Reeinit raybuffer");
             // reinit rds arrau
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             
@@ -385,6 +399,12 @@ public class Main : MonoBehaviour
         if (world.StateChanged())
         {
             BuildWorld();
+            rebuildRTAS = true;
+        }
+
+        if (oldTargetPostion != targetSphere.transform.position)
+        {
+            oldTargetPostion = targetSphere.transform.position;
             rebuildRTAS = true;
         }
 
@@ -426,12 +446,12 @@ public class Main : MonoBehaviour
                 Debug.Log("Null");
             }
             
-            computeShaderTest.SetTexture(0, "Result", _target);
+            computeShader.SetTexture(0, "Result", _target);
 
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
 
-            computeShaderTest.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
             if (visualizeRays)
             {
@@ -537,8 +557,35 @@ public class Main : MonoBehaviour
         {
             rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
             Debug.Log(waterplaneInstanceData.matrices.Length);
-        }        
+        }
         rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
+
+        Mesh targetMesh = targetSphere.GetComponent<MeshFilter>().mesh;
+        Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
+
+        targetSphere.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
+
+        Material targetMaterial = targetSphere.GetComponent<MeshRenderer>().material;
+
+        Mesh realTargetMesh = new Mesh();
+        realTargetMesh.vertices = transformed_vertices;
+        realTargetMesh.triangles = targetMesh.triangles;
+        realTargetMesh.normals = targetMesh.normals;
+        realTargetMesh.tangents = targetMesh.tangents;
+
+        RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
+
+        /*for (int i = targetMesh.vertices.Length - 1; i < targetMesh.vertices.Length; i++)
+        {
+            Debug.Log("x: " + (targetMesh.vertices[i].x + targetSphere.transform.position.x)  + " y: " + (targetMesh.vertices[i].y + targetSphere.transform.position.y) + " z: " + (targetMesh.vertices[i].z + targetSphere.transform.position.z));
+        }
+        Debug.Log(srcSphere.transform.position);*/
+
+
+
+        rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);
+        //rtas.AddInstance(targetConfig, targetInstanceData.matrices[0], id: 4);
+        Debug.Log("RTAS instance count: " + rtas.GetInstanceCount());
 
         rtas.Build();
         Debug.Log("RTAS built");
