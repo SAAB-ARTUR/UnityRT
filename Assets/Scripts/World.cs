@@ -219,9 +219,7 @@ public class World : MonoBehaviour
         state0 = state;
         state = getCurrentState();        
 
-        Vector3 worldPos = this.transform.position;
-
-        Debug.Log(sourceSphere.transform.position);
+        Vector3 worldPos = this.transform.position;        
 
         // Ensure planes stay at the same location
         //SetPlaneDepthStationary(this.surface, 0);
