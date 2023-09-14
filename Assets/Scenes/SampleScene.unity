@@ -247,7 +247,7 @@ MonoBehaviour:
   waterDepth: 10
   sourceDepth: 2
   range: 40
-  nrOfWaterPlanes: 0
+  nrOfWaterplanes: 0
 --- !u!4 &202712679
 Transform:
   m_ObjectHideFlags: 0
@@ -843,6 +843,20 @@ MonoBehaviour:
   phi: 60
   _nphi: 64
   _maxInteractions: 1
+--- !u!114 &2026214323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026214310}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20aedf8b7b4483c4391f6dac777a7e29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  lineLength: 1
 --- !u!1 &2030398151 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8210347397363168208, guid: 1a45cba1cb6983640a73c334161fbab6, type: 3}
@@ -1050,6 +1064,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1801918301974408492, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2026214319}
+    - targetCorrespondingSourceObject: {fileID: 1801918301974408492, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2026214323}
   m_SourcePrefab: {fileID: 100100000, guid: 5071202b2836f5642bbd93243bc54144, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

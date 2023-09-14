@@ -15,18 +15,16 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject waterplane = null;
-    [SerializeField] Camera secondCamera = null;
+    [SerializeField] Camera sourceCamera = null;
     [SerializeField] bool sendRaysContinuosly = false;
-    [SerializeField] bool visualizeRays = false;
-    [SerializeField] float lineLength = 1;
-    [SerializeField] Material lineMaterial = null;
+    [SerializeField] bool visualizeRays = false;    
     [SerializeField] GameObject world_manager = null;
 
     private SourceParams oldSourceParams = null;   
 
     private ComputeBuffer _rayPointsBuffer;
     
-    RayTracingVisualization secondCameraScript = null;
+    RayTracingVisualization sourceCameraScript = null;
     private RenderTexture _target;
 
     private bool doRayTracing = false;
@@ -37,21 +35,13 @@ public class Main : MonoBehaviour
     LineRenderer line = null;
     private List<LineRenderer> lines = new List<LineRenderer>();
 
-    LineRenderer srcDirectionLine = null;
-    LineRenderer srcViewLine1 = null;
-    LineRenderer srcViewLine2 = null;
-    LineRenderer srcViewLine3 = null;
-    LineRenderer srcViewLine4 = null;
-
     RayTracingAccelerationStructure rtas = null;
     private bool rebuildRTAS = false;
 
     SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
     SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
     WaterplaneInstanceData waterplaneInstanceData = null;
-    TargetInstanceData targetInstanceData = null;
-
-    const float PI = 3.14159265f;
+    TargetInstanceData targetInstanceData = null;    
 
     private Vector3 oldTargetPostion;
 
@@ -228,86 +218,13 @@ public class Main : MonoBehaviour
     private void OnEnable()
     {
         Debug.Log("OnEnable");
-        if (secondCamera != null)
+        if (sourceCamera != null)
         {
-            secondCameraScript = secondCamera.GetComponent<RayTracingVisualization>();
+            sourceCameraScript = sourceCamera.GetComponent<RayTracingVisualization>();
         }
 
         rtas = new RayTracingAccelerationStructure();
     }
-
-    #region SourceViewLines
-    private LineRenderer CreateSrcViewLine(string name)
-    {
-        LineRenderer viewLine = new GameObject(name).AddComponent<LineRenderer>();
-        viewLine.startWidth = 0.01f;
-        viewLine.endWidth = 0.01f;
-        viewLine.positionCount = 2;
-        viewLine.useWorldSpace = true;        
-
-        viewLine.material = lineMaterial;
-        viewLine.material.color = Color.black;
-
-        return viewLine;
-    }
-
-    private void UpdateSourceViewLines()
-    {
-        Vector3[] viewLines = ViewLines();
-
-        srcViewLine1.SetPosition(0, srcSphere.transform.position);
-        srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
-
-        srcViewLine2.SetPosition(0, srcSphere.transform.position);
-        srcViewLine2.SetPosition(1, srcSphere.transform.position + viewLines[1] * lineLength);
-
-        srcViewLine3.SetPosition(0, srcSphere.transform.position);
-        srcViewLine3.SetPosition(1, srcSphere.transform.position + viewLines[2] * lineLength);
-
-        srcViewLine4.SetPosition(0, srcSphere.transform.position);
-        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);
-    }
-
-    Vector3[] ViewLines()
-    {
-        // angles for srcSphere's forward vector (which is of length 1 meaning that r can be removed from all equations below)
-
-        SourceParams srcParams = srcSphere.GetComponent<SourceParams>();
-
-        float origin_theta = (float)Math.Acos(srcSphere.transform.forward.y);
-        float origin_phi = (float)Math.Atan2(srcSphere.transform.forward.z, srcSphere.transform.forward.x);
-
-        float theta_rad = srcParams.theta * PI / 180; //convert to radians
-        float phi_rad = srcParams.phi * PI / 180;
-
-        float s0 = (float)Math.Sin(origin_phi);
-        float c0 = (float)Math.Cos(origin_phi);
-
-        // create angular spans in both dimensions
-        float[] theta_offsets = new float[2] { origin_theta - theta_rad / 2, origin_theta + theta_rad / 2 };
-        float[] phi_offsets = new float[2] { origin_phi - phi_rad / 2, origin_phi + phi_rad / 2 };
-
-        Vector3[] viewLines = new Vector3[4];
-
-        int k = 0;
-        for (int i = 0; i < 2; i++) // loop over phi
-        {
-            float s1 = (float)Math.Sin(phi_offsets[i] - origin_phi);
-            float c1 = (float)Math.Cos(phi_offsets[i] - origin_phi);
-
-            for (int j = 0; j < 2; j++) // loop over theta
-            {
-                float x = c0 * c1 * (float)Math.Sin(theta_offsets[j]) - s0 * s1;
-                float z = s0 * c1 * (float)Math.Sin(theta_offsets[j]) + c0 * s1;
-                float y = c1 * (float)Math.Cos(theta_offsets[j]);
-                viewLines[k] = new Vector3(x, y, z);
-                k++;
-            }
-        }
-
-        return viewLines;
-    }
-    #endregion
 
     // Start is called before the first frame update
     void Start()
@@ -315,40 +232,6 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
         Debug.Log("Start");
-
-        srcDirectionLine = CreateSrcViewLine("SourceDirectionLine");
-
-        srcDirectionLine.SetPosition(0, srcSphere.transform.position);
-        srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
-
-        srcDirectionLine.material = lineMaterial;
-        srcDirectionLine.material.color = Color.black;        
-        
-        Vector3[] viewLines = ViewLines();
-
-        // line1
-        srcViewLine1 = CreateSrcViewLine("View line1");        
-
-        srcViewLine1.SetPosition(0, srcSphere.transform.position);
-        srcViewLine1.SetPosition(1, srcSphere.transform.position + viewLines[0] * lineLength);
-
-        // line2
-        srcViewLine2 = CreateSrcViewLine("View line2");            
-
-        srcViewLine2.SetPosition(0, srcSphere.transform.position);
-        srcViewLine2.SetPosition(1, srcSphere.transform.position + viewLines[1] * lineLength);
-
-        // line3
-        srcViewLine3 = CreateSrcViewLine("View line3");
-
-        srcViewLine3.SetPosition(0, srcSphere.transform.position);
-        srcViewLine3.SetPosition(1, srcSphere.transform.position + viewLines[2] * lineLength);
-
-        // line4
-        srcViewLine4 = CreateSrcViewLine("View line4");
-
-        srcViewLine4.SetPosition(0, srcSphere.transform.position);
-        srcViewLine4.SetPosition(1, srcSphere.transform.position + viewLines[3] * lineLength);
 
         BuildWorld();        
         rebuildRTAS = true;
@@ -359,20 +242,12 @@ public class Main : MonoBehaviour
     // Update is called once per frame
     void Update()
     {   
-        if (srcDirectionLine != null)
-        {
-            srcDirectionLine.SetPosition(0, srcSphere.transform.position);
-            srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
-
-            UpdateSourceViewLines();
-        }
-
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
         if (sourceParams != oldSourceParams)
             {
             //Debug.Log("Reeinit raybuffer");
-            // reinit rds arrau
+            // reinit rds array
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             
             // reinit raydatabuffer
@@ -509,7 +384,7 @@ public class Main : MonoBehaviour
                 }*/
             }            
 
-            secondCameraScript.receiveData(_target);            
+            sourceCameraScript.receiveData(_target);
         }
 
         if (!visualizeRays)
@@ -532,24 +407,27 @@ public class Main : MonoBehaviour
         Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
         Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
         RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
+        rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
 
-        //add seafloor
+        // add seafloor
         Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
         Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
         RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
+        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
 
+        // add waterplane(s)
         Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
         Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
-        RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);
-
-        rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
+        RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);        
         if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
         {
             rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
             Debug.Log(waterplaneInstanceData.matrices.Length);
-        }
-        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
+        }        
 
+        // targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
+        // are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
+        // necessary on all predefined meshes
         Mesh targetMesh = targetSphere.GetComponent<MeshFilter>().mesh;
         Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
 
@@ -565,17 +443,7 @@ public class Main : MonoBehaviour
 
         RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
 
-        /*for (int i = targetMesh.vertices.Length - 1; i < targetMesh.vertices.Length; i++)
-        {
-            Debug.Log("x: " + (targetMesh.vertices[i].x + targetSphere.transform.position.x)  + " y: " + (targetMesh.vertices[i].y + targetSphere.transform.position.y) + " z: " + (targetMesh.vertices[i].z + targetSphere.transform.position.z));
-        }
-        Debug.Log(srcSphere.transform.position);*/
-
-
-
         rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);
-        //rtas.AddInstance(targetConfig, targetInstanceData.matrices[0], id: 4);
-        Debug.Log("RTAS instance count: " + rtas.GetInstanceCount());
 
         rtas.Build();
         Debug.Log("RTAS built");
