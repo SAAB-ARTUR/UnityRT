@@ -327,8 +327,7 @@ public class Main : MonoBehaviour
             if (visualizeRays)
             {
                 _rayPointsBuffer.GetData(rds);
-
-                // do something with rds
+                
                 Vector3 srcOrigin = srcSphere.transform.position;
 
                 // visualize all lines
@@ -336,11 +335,7 @@ public class Main : MonoBehaviour
                 {
                     List<Vector3> positions = new List<Vector3>();
                     if (rds[i*sourceParams.MAXINTERACTIONS].set != 12345) // check if the ray hit something
-                    {
-                        // skip to next ray
-                        //int mod = i % sourceParams.MAXINTERACTIONS;
-                        //int step = sourceParams.MAXINTERACTIONS - mod - 1;
-                        //i += step;
+                    {                        
                         continue;
                     }
 
@@ -352,8 +347,7 @@ public class Main : MonoBehaviour
 
                     // add ray source and first hit
                     positions.Add(srcOrigin);
-                    positions.Add(rds[i * sourceParams.MAXINTERACTIONS].origin);
-                    Debug.Log("första tillagd");
+                    positions.Add(rds[i * sourceParams.MAXINTERACTIONS].origin);                    
 
                     for (int j = 1; j < sourceParams.MAXINTERACTIONS; j++)
                     {
@@ -361,15 +355,12 @@ public class Main : MonoBehaviour
                         {
                             break;
                         }
-                        positions.Add(rds[i * sourceParams.MAXINTERACTIONS + j].origin); // add next hit
-                        Debug.Log("Nästa tillagd");
+                        positions.Add(rds[i * sourceParams.MAXINTERACTIONS + j].origin); // add next hit                        
                     }
-                    Debug.Log(positions.ToArray().Length);
+                    
                     line.positionCount = positions.Count;
-                    line.SetPositions(positions.ToArray());
-                    
-                    
-                    lines.Add(line);                    
+                    line.SetPositions(positions.ToArray());                    
+                    lines.Add(line);
                 }
 
                 // visualize one line
