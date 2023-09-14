@@ -1,9 +1,15 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace UnityTemplateProjects
 {
     public class SimpleSourceController : MonoBehaviour
     {
+
+        public float upper_limit_y = float.PositiveInfinity;
+
+        public float lower_limit_y = float.NegativeInfinity;
+
         class CameraState
         {
             public float yaw;
@@ -13,6 +19,11 @@ namespace UnityTemplateProjects
             public float y;
             public float z;
 
+            public float upper_limit_y = float.PositiveInfinity;
+            public float lower_limit_y = float.NegativeInfinity;
+
+
+
             public void SetFromTransform(Transform t)
             {
                 pitch = t.eulerAngles.x;
@@ -21,6 +32,18 @@ namespace UnityTemplateProjects
                 x = t.position.x;
                 y = t.position.y;
                 z = t.position.z;
+
+                ApplyBounds();
+            }
+
+            public void ApplyBounds() {
+
+                if (y > upper_limit_y) { 
+                    y = upper_limit_y;
+                }
+                if (y < lower_limit_y) { 
+                    y = lower_limit_y;
+                }
             }
 
             public void Translate(Vector3 translation)
@@ -30,6 +53,9 @@ namespace UnityTemplateProjects
                 x += rotatedTranslation.x;
                 y += rotatedTranslation.y;
                 z += rotatedTranslation.z;
+
+                ApplyBounds();
+                
             }
 
             public void LerpTowards(CameraState target, float positionLerpPct, float rotationLerpPct)
@@ -108,6 +134,14 @@ namespace UnityTemplateProjects
 
         void Update()
         {
+
+            m_TargetCameraState.lower_limit_y = lower_limit_y;
+            m_TargetCameraState.upper_limit_y = upper_limit_y;
+
+            m_InterpolatingCameraState.lower_limit_y = lower_limit_y;
+            m_InterpolatingCameraState.upper_limit_y = upper_limit_y;
+
+
             // Hide and lock cursor when right mouse button pressed
             if (Input.GetMouseButtonDown(1) && Input.GetKey(KeyCode.Period))
             {

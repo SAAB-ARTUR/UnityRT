@@ -6,6 +6,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UIElements;
+using UnityTemplateProjects;
 
 public class World : MonoBehaviour
 {
@@ -30,7 +31,12 @@ public class World : MonoBehaviour
     private float[] waterLayerDepths = { };
 
 
-    private GameObject sourceSphere;
+
+
+    private Camera sourceSphere;
+    private GameObject surface;
+    private GameObject bottom;
+    private List<GameObject> waterLayers;
 
     // Start is called before the first frame update
     void Start()
@@ -70,28 +76,38 @@ public class World : MonoBehaviour
         return false;
     }
 
-    public void AddSource(GameObject test) {
+    public void AddSource(Camera test) {
         //Debug.Log("Added source");
         this.sourceSphere = test;
-        this.sourceSphere.transform.parent = this.transform;
 
-        this.sourceSphere.transform.localPosition = Vector3.down * sourceDepth;
+        Debug.Log("Applying. Please wait");
+
+        SimpleSourceController controller = test.GetComponent<SimpleSourceController>();    
+        controller.upper_limit_y = 0;
+        controller.lower_limit_y = -waterDepth;
+        //this.sourceSphere.transform.parent = this.transform;
+
+        //this.sourceSphere.transform.localPosition = Vector3.down * sourceDepth;
     }
 
-    public void AddSurface(GameObject surface) {
+    public void AddSurface(GameObject _surface) {
         // TODO
         Mesh m1 = PlaneMesh(Vector3.zero);
 
-        surface.GetComponent<MeshFilter>().mesh = m1;
+        _surface.GetComponent<MeshFilter>().mesh = m1;
 
-        surface.transform.parent = this.transform;
+        //_surface.transform.parent = this.transform;
+        this.surface = _surface;
     }
     public void AddBottom(GameObject bottom) {
         Vector3 center = Vector3.down * waterDepth;
         Mesh m1 = PlaneMesh(center);
 
         bottom.GetComponent<MeshFilter>().mesh = m1;
-        bottom.transform.parent = this.transform;        
+        //bottom.transform.parent = this.transform;    
+        //bottom.transform.localPosition = center;
+        
+        this.bottom = bottom;
     }
 
     public void AddWaterplane(GameObject waterplane) {
@@ -123,6 +139,9 @@ public class World : MonoBehaviour
 
         //waterLayers = waterPlanes.ToArray();
         //waterLayerDepths = waterPlanesDepths.ToArray();
+
+        this.waterLayers.Add(waterplane);
+
     }
 
     private Vector3 mean(Vector3[] vectors) { 
@@ -173,12 +192,14 @@ public class World : MonoBehaviour
    
     // Update is called once per framuie
 
-    /*void SetPlaneDepthStationary(DualPlane dp, float depth) {
-        Vector3 pos = dp.transform.position;
+    /*
+    void SetPlaneDepthStationary(GameObject dp, float depth) {
+        Vector3 pos = sourceSphere.transform.position;
         pos.y = -depth;
         dp.transform.position = pos;
         dp.transform.rotation = Quaternion.Euler(0, 0, 0);
-    }*/
+    }
+    */
 
     void Update()
     {
@@ -187,24 +208,30 @@ public class World : MonoBehaviour
 
         Vector3 worldPos = this.transform.position;
 
-        this.transform.position = sourceSphere.transform.position;
-        Vector3 newPos = this.transform.position;
-        newPos.y = worldPos.y;
-        this.transform.position = newPos;
+        // Ensure planes stay at the same location
+        //SetPlaneDepthStationary(this.surface, 0);
+        //SetPlaneDepthStationary(this.bottom, this.waterDepth);
 
 
-        float sourceDept2 = sourceSphere.transform.position.y;
+
+        //Vector3 newPos = this.transform.position;
+        //newPos.y = worldPos.y;
+        //this.transform.position = newPos;
+
+
+
         //Debug.Log(sourceDept2);
 
         //SetPlaneDepthStationary(surface, 0);
         //for (int i = 0; i<waterLayers.Length; i++)
         //{
 
-          //  SetPlaneDepthStationary(waterLayers[i], waterLayerDepths[i]);
+        //  SetPlaneDepthStationary(waterLayers[i], waterLayerDepths[i]);
 
         //}
         //SetPlaneDepthStationary(bottom, waterDepth);
 
+        /*
         if (sourceDept2 > 0 )
         {
 
@@ -221,6 +248,7 @@ public class World : MonoBehaviour
             sourceSphere.transform.position = p;
           //  this.transform.position = p;
         }        
+        */
     }
 
     public int GetNrOfWaterplanes()

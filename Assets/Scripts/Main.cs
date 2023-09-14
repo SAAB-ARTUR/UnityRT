@@ -172,8 +172,8 @@ public class Main : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        computeShaderTest.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
-        computeShaderTest.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
+        computeShaderTest.SetMatrix("_CameraToWorld", secondCamera.cameraToWorldMatrix);
+        computeShaderTest.SetMatrix("_CameraInverseProjection", secondCamera.projectionMatrix.inverse);
         computeShaderTest.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
         computeShaderTest.SetFloat("_Seed", UnityEngine.Random.value);
         
@@ -185,7 +185,7 @@ public class Main : MonoBehaviour
         computeShaderTest.SetInt("ntheta", sourceParams.ntheta);
         computeShaderTest.SetInt("phi", sourceParams.phi);
         computeShaderTest.SetInt("nphi", sourceParams.nphi);
-        computeShaderTest.SetVector("srcDirection", srcSphere.transform.forward);
+        computeShaderTest.SetVector("srcDirection", secondCamera.transform.forward);
 
         computeShaderTest.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
 
@@ -212,7 +212,7 @@ public class Main : MonoBehaviour
 
     private void BuildWorld() {
         World world = world_manager.GetComponent<World>();
-        world.AddSource(srcSphere);
+        world.AddSource(secondCamera);
         world.AddSurface(surface);
         world.AddBottom(seafloor);
         if (world.GetNrOfWaterplanes() > 0)
@@ -314,10 +314,12 @@ public class Main : MonoBehaviour
         targetRenderer.material.SetColor("_Color", Color.red);
         Debug.Log("Start");
 
+        
         srcDirectionLine = CreateSrcViewLine("SourceDirectionLine");
-
-        srcDirectionLine.SetPosition(0, srcSphere.transform.position);
-        srcDirectionLine.SetPosition(1, srcSphere.transform.position + srcSphere.transform.forward * lineLength);
+        
+        srcDirectionLine.SetPosition(0, Vector3.zero);
+        srcDirectionLine.SetPosition(1, Vector3.zero + srcSphere.transform.forward * lineLength);
+        srcDirectionLine.transform.parent = secondCamera.transform;
 
         srcDirectionLine.material = lineMaterial;
         srcDirectionLine.material.color = Color.black;        
