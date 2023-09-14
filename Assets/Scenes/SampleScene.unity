@@ -577,14 +577,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2a98a3eadcf2a74ea3722f21f138f2d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  computeShaderTest: {fileID: 7200000, guid: 54b5e8440abef8d48b4dfadc2e8f5ec8, type: 3}
+  computeShader: {fileID: 7200000, guid: 54b5e8440abef8d48b4dfadc2e8f5ec8, type: 3}
   srcSphere: {fileID: 2026214310}
   targetSphere: {fileID: 2001379511}
   surface: {fileID: 631925276}
   seafloor: {fileID: 2030398151}
   waterplane: {fileID: 44206118}
   secondCamera: {fileID: 2086378707}
-  sendRaysContinuosly: 1
+  sendRaysContinuosly: 0
   visualizeRays: 1
   lineLength: 1
   lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}

@@ -22,12 +22,7 @@ public class Main : MonoBehaviour
     [SerializeField] Material lineMaterial = null;
     [SerializeField] GameObject world_manager = null;
 
-    //private Mesh waterplane = null;
-
-    private SourceParams oldSourceParams = null;
-
-    uint cameraWidth = 0;
-    uint cameraHeight = 0;    
+    private SourceParams oldSourceParams = null;   
 
     private ComputeBuffer _rayPointsBuffer;
     
@@ -80,9 +75,6 @@ public class Main : MonoBehaviour
             _target.Release();
             _target = null;
         }
-
-        cameraHeight = 0;
-        cameraWidth = 0;
 
         if (surfaceInstanceData != null)
         {
@@ -184,7 +176,7 @@ public class Main : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        computeShader.SetMatrix("_CameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
+        computeShader.SetMatrix("_SourceCameraToWorld", Camera.allCameras[1].cameraToWorldMatrix);
         computeShader.SetMatrix("_CameraInverseProjection", Camera.allCameras[1].projectionMatrix.inverse);
         computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
         computeShader.SetFloat("_Seed", UnityEngine.Random.value);
@@ -322,8 +314,6 @@ public class Main : MonoBehaviour
     {        
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
-        //Renderer targetRenderer = targetSphere.GetComponent<Renderer>();
-        //targetRenderer.material.SetColor("_Color", Color.red);
         Debug.Log("Start");
 
         srcDirectionLine = CreateSrcViewLine("SourceDirectionLine");
@@ -402,7 +392,7 @@ public class Main : MonoBehaviour
             rebuildRTAS = true;
         }
 
-        if (oldTargetPostion != targetSphere.transform.position)
+        if (oldTargetPostion != targetSphere.transform.position) // flytta till world??
         {
             oldTargetPostion = targetSphere.transform.position;
             rebuildRTAS = true;
