@@ -277,6 +277,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upper_limit_y: Infinity
   lower_limit_y: -Infinity
+  upper_limit_x: Infinity
+  lower_limit_x: -Infinity
+  upper_limit_z: Infinity
+  lower_limit_z: -Infinity
   boost: 3.5
   positionLerpTime: 0.2
   mouseSensitivityCurve:
@@ -800,6 +804,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upper_limit_y: Infinity
   lower_limit_y: -Infinity
+  upper_limit_x: Infinity
+  lower_limit_x: -Infinity
+  upper_limit_z: Infinity
+  lower_limit_z: -Infinity
   boost: 3.5
   positionLerpTime: 0.2
   mouseSensitivityCurve:
@@ -878,7 +886,7 @@ GameObject:
   - component: {fileID: 2086378705}
   - component: {fileID: 2086378709}
   m_Layer: 0
-  m_Name: RayHitCamera
+  m_Name: SourceCamera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -985,6 +993,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upper_limit_y: Infinity
   lower_limit_y: -Infinity
+  upper_limit_x: Infinity
+  lower_limit_x: -Infinity
+  upper_limit_z: Infinity
+  lower_limit_z: -Infinity
   boost: 3.5
   positionLerpTime: 0.2
   mouseSensitivityCurve:
