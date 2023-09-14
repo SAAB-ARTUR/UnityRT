@@ -366,6 +366,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Surface
       objectReference: {fileID: 0}
+    - target: {fileID: 2473202346131908017, guid: 903bf70f737c5684a843c78df618d70d, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 8470697508531695461, guid: 903bf70f737c5684a843c78df618d70d, type: 3}
       propertyPath: m_Materials.Array.size
       value: 1
@@ -377,7 +381,7 @@ PrefabInstance:
     - target: {fileID: 8470697508531695461, guid: 903bf70f737c5684a843c78df618d70d, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
-      objectReference: {fileID: 2100000, guid: 2dc4c332b77ab3748a7e527958a8700e, type: 2}
+      objectReference: {fileID: 2100000, guid: b37817c423030f34ca5faed25d01ff51, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -591,7 +595,7 @@ MonoBehaviour:
   seafloor: {fileID: 2030398151}
   waterplane: {fileID: 44206118}
   sourceCamera: {fileID: 2086378707}
-  sendRaysContinuosly: 1
+  sendRaysContinuosly: 0
   visualizeRays: 1
   world_manager: {fileID: 202712677}
 --- !u!114 &963194230
@@ -745,9 +749,17 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 2dc4c332b77ab3748a7e527958a8700e, type: 2}
+    - target: {fileID: 7227254017386175733, guid: 1a45cba1cb6983640a73c334161fbab6, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: b37817c423030f34ca5faed25d01ff51, type: 2}
     - target: {fileID: 8210347397363168208, guid: 1a45cba1cb6983640a73c334161fbab6, type: 3}
       propertyPath: m_Name
       value: Seafloor
+      objectReference: {fileID: 0}
+    - target: {fileID: 8210347397363168208, guid: 1a45cba1cb6983640a73c334161fbab6, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 8437383686065117955, guid: 1a45cba1cb6983640a73c334161fbab6, type: 3}
       propertyPath: m_LocalPosition.x
@@ -965,7 +977,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 55
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 8400000, guid: aecc657b676223246990e0b5e28f77dd, type: 2}
   m_TargetDisplay: 0
