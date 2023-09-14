@@ -1,5 +1,3 @@
-using Unity.PlasticSCM.Editor.WebApi;
-using Unity.VisualScripting;
 using UnityEngine;
 
 namespace UnityTemplateProjects
