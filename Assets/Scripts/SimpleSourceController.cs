@@ -8,8 +8,11 @@ namespace UnityTemplateProjects
     {
 
         public float upper_limit_y = float.PositiveInfinity;
-
         public float lower_limit_y = float.NegativeInfinity;
+        public float upper_limit_x = float.PositiveInfinity;
+        public float lower_limit_x = float.NegativeInfinity;
+        public float upper_limit_z = float.PositiveInfinity;
+        public float lower_limit_z = float.NegativeInfinity;
 
         class CameraState
         {
@@ -22,7 +25,10 @@ namespace UnityTemplateProjects
 
             public float upper_limit_y = float.PositiveInfinity;
             public float lower_limit_y = float.NegativeInfinity;
-
+            public float upper_limit_x = float.PositiveInfinity;
+            public float lower_limit_x = float.NegativeInfinity;
+            public float upper_limit_z = float.PositiveInfinity;
+            public float lower_limit_z = float.NegativeInfinity;
 
 
             public void SetFromTransform(Transform t)
@@ -37,13 +43,34 @@ namespace UnityTemplateProjects
                 ApplyBounds();
             }
 
-            public void ApplyBounds() {
+            public void ApplyBounds() 
+            {
+                // check x bounds
+                if (x > upper_limit_x)
+                {
+                    x = upper_limit_x;
+                }
+                else if (x < lower_limit_x)
+                {
+                    x = lower_limit_x;
+                }
 
+                // check y bounds
                 if (y > upper_limit_y) { 
                     y = upper_limit_y;
                 }
-                if (y < lower_limit_y) { 
+                else if (y < lower_limit_y) { 
                     y = lower_limit_y;
+                }
+
+                // check z bounds
+                if (z > upper_limit_z)
+                {
+                    z = upper_limit_z;
+                }
+                else if (z < lower_limit_z)
+                {
+                    z = lower_limit_z;
                 }
             }
 
@@ -136,11 +163,19 @@ namespace UnityTemplateProjects
         void Update()
         {
 
+            m_TargetCameraState.lower_limit_x = lower_limit_x;
+            m_TargetCameraState.upper_limit_x = upper_limit_x;
             m_TargetCameraState.lower_limit_y = lower_limit_y;
             m_TargetCameraState.upper_limit_y = upper_limit_y;
+            m_TargetCameraState.lower_limit_z = lower_limit_z;
+            m_TargetCameraState.upper_limit_z = upper_limit_z;
 
+            m_InterpolatingCameraState.lower_limit_x = lower_limit_x;
+            m_InterpolatingCameraState.upper_limit_x = upper_limit_x;
             m_InterpolatingCameraState.lower_limit_y = lower_limit_y;
             m_InterpolatingCameraState.upper_limit_y = upper_limit_y;
+            m_InterpolatingCameraState.lower_limit_z = lower_limit_z;
+            m_InterpolatingCameraState.upper_limit_z = upper_limit_z;
 
 
             // Hide and lock cursor when right mouse button pressed

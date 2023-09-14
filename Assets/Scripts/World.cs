@@ -31,7 +31,7 @@ public class World : MonoBehaviour
     private Camera sourceSphere;
     private GameObject surface;
     private GameObject bottom;
-    private List<GameObject> waterLayers;
+    //private List<GameObject> waterLayers;
 
     // Start is called before the first frame update
     void Start()
@@ -77,21 +77,25 @@ public class World : MonoBehaviour
         Debug.Log("Applying. Please wait");
 
         SimpleSourceController controller = test.GetComponent<SimpleSourceController>();    
+        
+        controller.upper_limit_x = range/2;
+        controller.lower_limit_x = -range/2;
         controller.upper_limit_y = 0;
         controller.lower_limit_y = -waterDepth;
+        controller.upper_limit_z = range/2;
+        controller.lower_limit_z = -range/2;
         controller.JumpTo(Vector3.down * sourceDepth);
         //this.sourceSphere.transform.parent = this.transform;
 
         //this.sourceSphere.transform.localPosition = Vector3.down * sourceDepth;
     }
 
-    public void AddSurface(GameObject _surface) {
-        // TODO
+    public void AddSurface(GameObject _surface) 
+    {
         Mesh m1 = DoublePlaneMesh(Vector3.zero);
 
         _surface.GetComponent<MeshFilter>().mesh = m1;
-
-        //_surface.transform.parent = this.transform;
+        
         this.surface = _surface;
     }
     public void AddBottom(GameObject bottom) 
@@ -100,8 +104,6 @@ public class World : MonoBehaviour
         Mesh m1 = DoublePlaneMesh(center);
 
         bottom.GetComponent<MeshFilter>().mesh = m1;
-        //bottom.transform.parent = this.transform;    
-        //bottom.transform.localPosition = center;
         
         this.bottom = bottom;
     }
@@ -115,7 +117,6 @@ public class World : MonoBehaviour
         Mesh m1 = SinglePlaneMesh(center);
 
         waterplane.GetComponent<MeshFilter>().mesh = m1;
-        //waterplane.transform.parent = this.transform;
 
         // make plane invisible in the normal scene
         Color temp = waterplane.GetComponent<MeshRenderer>().material.color;
@@ -213,23 +214,14 @@ public class World : MonoBehaviour
         return surfaceMesh;
     }
 
-    // Update is called once per framuie
-
-    /*
-    void SetPlaneDepthStationary(GameObject dp, float depth) {
-        Vector3 pos = sourceSphere.transform.position;
-        pos.y = -depth;
-        dp.transform.position = pos;
-        dp.transform.rotation = Quaternion.Euler(0, 0, 0);
-    }
-    */
-
     void Update()
     {
         state0 = state;
         state = getCurrentState();        
 
         Vector3 worldPos = this.transform.position;
+
+        Debug.Log(sourceSphere.transform.position);
 
         // Ensure planes stay at the same location
         //SetPlaneDepthStationary(this.surface, 0);
