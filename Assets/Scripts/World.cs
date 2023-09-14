@@ -85,6 +85,7 @@ public class World : MonoBehaviour
         SimpleSourceController controller = test.GetComponent<SimpleSourceController>();    
         controller.upper_limit_y = 0;
         controller.lower_limit_y = -waterDepth;
+        controller.JumpTo(Vector3.down * sourceDepth);
         //this.sourceSphere.transform.parent = this.transform;
 
         //this.sourceSphere.transform.localPosition = Vector3.down * sourceDepth;
@@ -165,7 +166,8 @@ public class World : MonoBehaviour
         };
 
         Vector3[] square = new Vector3[] {
-            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range)
+            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range), // Upper plane
+            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range) // lower plane
         };
         Vector3 center_local = mean(square);
         square = square.Select(x => { return x - center_local + center; }).ToArray();
@@ -173,10 +175,19 @@ public class World : MonoBehaviour
         surfaceMesh.vertices = square;
 
         surfaceMesh.normals = new Vector3[] {
-            Vector3.back, Vector3.back, Vector3.back, Vector3.back
+            Vector3.back, Vector3.back, Vector3.back, Vector3.back,
+
+            Vector3.forward, 
+            Vector3.forward, 
+            Vector3.forward, 
+            Vector3.forward,
         };
 
         surfaceMesh.tangents = new Vector4[] {
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
@@ -184,7 +195,8 @@ public class World : MonoBehaviour
         };
         
         surfaceMesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3
+            0, 2, 1, 1, 2, 3,
+            4, 5, 6, 5, 7, 6,
         };
 
         return surfaceMesh;

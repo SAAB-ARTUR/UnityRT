@@ -1,3 +1,4 @@
+using Unity.PlasticSCM.Editor.WebApi;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -189,6 +190,24 @@ namespace UnityTemplateProjects
 
             m_InterpolatingCameraState.UpdateTransform(transform);
         }
+
+        public void JumpTo(Vector3 position) {
+
+            // Framerate-independent interpolation
+            // Calculate the lerp amount, such that we get 99% of the way to our target in the specified time
+            var positionLerpPct = 1f - Mathf.Exp((Mathf.Log(1f - 0.99f) / positionLerpTime) * Time.deltaTime);
+            var rotationLerpPct = 1f - Mathf.Exp((Mathf.Log(1f - 0.99f) / rotationLerpTime) * Time.deltaTime);
+
+            m_TargetCameraState.x = position.x;
+            m_TargetCameraState.y = position.y;
+            m_TargetCameraState.z = position.z;
+
+            //m_InterpolatingCameraState.LerpTowards(m_TargetCameraState, positionLerpPct, rotationLerpPct);
+
+            //m_InterpolatingCameraState.UpdateTransform(transform);
+
+        } 
+
     }
 
 }
