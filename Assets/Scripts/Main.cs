@@ -15,9 +15,7 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject waterplane = null;
-    [SerializeField] Camera sourceCamera = null;
-    [SerializeField] bool sendRaysContinuosly = false;
-    [SerializeField] bool visualizeRays = false;    
+    [SerializeField] Camera sourceCamera = null; 
     [SerializeField] GameObject world_manager = null;
 
     private SourceParams.Properties? oldSourceParams = null;
@@ -288,7 +286,7 @@ public class Main : MonoBehaviour
             lockRayTracing = false;
         }        
 
-        if ((!lockRayTracing && doRayTracing) || sendRaysContinuosly) // do raytracing if the user has pressed key C. only do it once though. or do it continously
+        if ((!lockRayTracing && doRayTracing) || sourceParams.sendRaysContinously) // do raytracing if the user has pressed key C. only do it once though. or do it continously
         {
             foreach (LineRenderer line in lines)
             {
@@ -324,7 +322,7 @@ public class Main : MonoBehaviour
 
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
-            if (visualizeRays)
+            if (sourceParams.visualizeRays)
             {
                 _rayPointsBuffer.GetData(rds);
                 
@@ -394,7 +392,7 @@ public class Main : MonoBehaviour
             sourceCameraScript.receiveData(_target);
         }
 
-        if (!visualizeRays)
+        if (!sourceParams.visualizeRays)
         {
             foreach (LineRenderer line in lines)
             {
