@@ -38,6 +38,8 @@ StepOutput Step(
     double zmin = min(soundSpeedProfile.SSP[Layer].r, depth);
     double zmax = min(soundSpeedProfile.SSP[Layer + 1].r, depth);
     
+    
+    
     double h0 = deltas;
     h0 = ReduceStep(x0, Tray0, zmin, zmax, phase0.c, deltas, h0);
     
@@ -77,7 +79,7 @@ StepOutput Step(
     double q = q0 + h1 * (w0 * phase0.c * p0 + w1 * phase1.c * p1);
     
     
-    double tau = tau0 + h1 * (w0 / c0 + w1 / c1);
+    double tau = tau0 + h1 * (w0 / phase0.c + w1 / phase1.c);
     double len = len0 + h1;
     
     SSPOutput phase2 = ssp(x.g, soundSpeedProfile, phase1.Layer);
@@ -93,7 +95,7 @@ StepOutput Step(
     StepOutput result;
     result.x = x;
     result.Tray = Tray;
-    result.p = radians;
+    result.p = p;
     result.q = q;
     result.tau = tau;
     result.len = len;
@@ -106,7 +108,7 @@ StepOutput Step(
 
 
 
-
+/*
 double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c,  double deltas, double h)
 {
     
@@ -135,3 +137,4 @@ double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, 
     
     return h;
 }
+*/
