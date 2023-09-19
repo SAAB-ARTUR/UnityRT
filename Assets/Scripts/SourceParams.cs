@@ -7,8 +7,6 @@ using UnityEngine;
 
 public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 {
-
-
     public struct Properties {
         public int ntheta;
         public float theta;
@@ -16,13 +14,12 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         public float phi;
         public int nphi;
         public int MAXINTERACTIONS;
-
+        public bool sendRaysContinously;
+        public bool visualizeRays;
     }
-
 
     const int MIN_SIZE_ANG = 8;
     const int MIN_INTERACTIONS = 1;
-
 
     public int theta = 0;
     [SerializeField]
@@ -34,7 +31,6 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
             else { _ntheta = MIN_SIZE_ANG; }
         }
     }
-
 
     public int phi = 0;
     [SerializeField]
@@ -49,7 +45,6 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         }
     }
 
-
     public int MAXINTERACTIONS {
         get { return _maxInteractions; }
         set
@@ -62,7 +57,8 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
     [SerializeField]
     private int _maxInteractions;
 
-
+    public bool sendRaysContinously = false;
+    public bool visualizeRays = false;
 
     private void OnValidate()
     {   
@@ -79,6 +75,8 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         s.phi = phi;
         s.nphi = nphi;
         s.MAXINTERACTIONS = MAXINTERACTIONS;
+        s.sendRaysContinously = sendRaysContinously;
+        s.visualizeRays = visualizeRays;
         return s;
 
     }
@@ -93,7 +91,8 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         p.nphi = nphi;
 
         p.MAXINTERACTIONS = MAXINTERACTIONS;
-
+        p.sendRaysContinously = sendRaysContinously;
+        p.visualizeRays = visualizeRays;
         return p;
 
     }
