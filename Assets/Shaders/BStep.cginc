@@ -15,7 +15,7 @@ struct StepOutput
     
 };
 
-StepOutput Step(
+StepOutput bstep(
     SSP soundSpeedProfile, 
     double2 x0, 
     double2 Tray0, 
