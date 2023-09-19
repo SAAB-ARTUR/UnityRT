@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class SettingsButton : MonoBehaviour
 {
@@ -11,7 +12,7 @@ public class SettingsButton : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        panel.SetActive(panelEnabled);
+        panel.SetActive(panelEnabled);        
     }
 
     // Update is called once per frame
