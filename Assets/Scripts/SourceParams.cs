@@ -81,8 +81,8 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
     }
 
-    public Properties ToStruct() { 
-    
+    public Properties ToStruct() 
+    {     
         Properties p = new Properties();
         p.theta = theta;
         p.ntheta = ntheta;
@@ -97,8 +97,8 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
     }
 
-    public bool HasChanged(Properties? p) {
-
+    public bool HasChanged(Properties? p) 
+    {
         if (p is null) {
             return true;
         }
@@ -106,7 +106,6 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         Properties pp = this.ToStruct();
 
         return !pp.Equals(p);
-
     }
 
     public bool Equals(SourceParams other)
@@ -124,6 +123,4 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         }
         return false;
     }
-
-
 }

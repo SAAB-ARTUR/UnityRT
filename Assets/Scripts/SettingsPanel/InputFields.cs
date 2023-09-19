@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class InputFields : MonoBehaviour
 {
@@ -30,14 +29,7 @@ public class InputFields : MonoBehaviour
         World world = world_manager.GetComponent<World>();
         range.text = world.range.ToString();
         depth.text = world.waterDepth.ToString();
-        nrOfWaterplanes.text = world.nrOfWaterplanes.ToString();
-           
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        nrOfWaterplanes.text = world.nrOfWaterplanes.ToString();           
     }
 
     public void OnNthetaChange()
