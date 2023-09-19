@@ -29,7 +29,7 @@ public class InputFields : MonoBehaviour
         World world = world_manager.GetComponent<World>();
         range.text = world.range.ToString();
         depth.text = world.waterDepth.ToString();
-        nrOfWaterplanes.text = world.nrOfWaterplanes.ToString();           
+        nrOfWaterplanes.text = world.GetNrOfWaterplanes().ToString();           
     }
 
     public void OnNthetaChange()
@@ -110,7 +110,7 @@ public class InputFields : MonoBehaviour
             world.waterDepth = numericValue;
         }
     }
-    public void OnNrOfWaterlayersChange()
+    public void OnNrOfWaterlayersChange() // den här funktionen ska troligtvis bort om antalet vattenplan helt definieras av SSP-filen
     {
         string str = nrOfWaterplanes.text;
         bool isNumber = int.TryParse(str, out int numericValue);        
@@ -118,7 +118,7 @@ public class InputFields : MonoBehaviour
         if (isNumber && numericValue > 0)
         {
             World world = world_manager.GetComponent<World>();
-            world.nrOfWaterplanes = numericValue;
+            world.SetNrOfWaterplanes(numericValue);
         }
     }
 }

@@ -90,7 +90,8 @@ public class Main : MonoBehaviour
             targetInstanceData = null;
         }
 
-        _rayPointsBuffer?.Release();        
+        _rayPointsBuffer?.Release();
+        _SSPBuffer?.Release();
     }
 
     void OnDestroy()
@@ -275,10 +276,25 @@ public class Main : MonoBehaviour
         }
 
         World world = world_manager.GetComponent<World>();
+
+        if (_SSPFileReader.SSPFileHasChanged())
+        {
+            Debug.Log("The SSP file has been changed.");
+            _SSPFileReader.AckSSPFileHasChanged();
+            SSP = _SSPFileReader.GetSSPData();
+            if (_SSPBuffer != null)
+            {
+                _SSPBuffer.Release();
+            }
+            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float));
+            world.SetNrOfWaterplanes(SSP.Count);
+        }        
+        
         if (world.StateChanged())
         {
             BuildWorld();
             rebuildRTAS = true;
+            Debug.Log("jhkjdhdjkhk1111222");
         }
 
         if (oldTargetPostion != targetSphere.transform.position) // flytta till world??
@@ -294,19 +310,7 @@ public class Main : MonoBehaviour
         {
             doRayTracing = false;
             lockRayTracing = false;
-        }
-
-        if (_SSPFileReader.SSPFileHasChanged())
-        {
-            Debug.Log("The SSP file has been changed.");
-            _SSPFileReader.AckSSPFileHasChanged();
-            SSP = _SSPFileReader.GetSSPData();
-            if (_SSPBuffer != null)
-            {
-                _SSPBuffer.Release();
-            }
-            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float));
-        }
+        }        
         
         //
         // CHECK FOR UPDATES OVER //

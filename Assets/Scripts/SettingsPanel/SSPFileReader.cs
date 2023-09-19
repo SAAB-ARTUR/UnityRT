@@ -9,8 +9,6 @@ using UnityEngine.UI;
 
 public class SSPFileReader : MonoBehaviour
 {    
-    [SerializeField] Button filePickerButton = null;
-    
     private bool filepathHasChanged = false;
     private List<float> SSP = null;    
 
@@ -24,8 +22,7 @@ public class SSPFileReader : MonoBehaviour
             string filename = filepath.Split("/").Last(); // print only filename and extension on the button, not the entire path
 
             GameObject.Find("Button - Filepicker").GetComponentInChildren<Text>().text = filename;
-
-            //filepath = _filepath;
+            
             filepathHasChanged = true;
             ReadSSPFromFile(filepath);
         }
@@ -38,7 +35,7 @@ public class SSPFileReader : MonoBehaviour
 
     public void AckSSPFileHasChanged() // Main.cs calls this function to acknowledge the change
     {
-        if (filepathHasChanged) // only update if a change has actually happened
+        if (filepathHasChanged) // only update if a change has happened
         {
             filepathHasChanged = false;
         }            
