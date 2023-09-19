@@ -6,12 +6,16 @@ using TMPro;
 
 public class InputFields : MonoBehaviour
 {
+    [SerializeField] GameObject srcSphere = null;
     [SerializeField] InputField ntheta = null;
     [SerializeField] InputField nphi = null;
     [SerializeField] InputField maxInteractions = null;
     [SerializeField] InputField theta = null;
-    [SerializeField] InputField phi = null;
-    [SerializeField] GameObject srcSphere = null;
+    [SerializeField] InputField phi = null;    
+    [SerializeField] GameObject world_manager = null;    
+    [SerializeField] InputField range = null;
+    [SerializeField] InputField depth = null;
+    [SerializeField] InputField nrOfWaterplanes = null;
 
     // Start is called before the first frame update
     void Start()
@@ -22,6 +26,12 @@ public class InputFields : MonoBehaviour
         maxInteractions.text = sourceParams.MAXINTERACTIONS.ToString();
         theta.text = sourceParams.theta.ToString();
         phi.text = sourceParams.phi.ToString();
+
+        World world = world_manager.GetComponent<World>();
+        range.text = world.range.ToString();
+        depth.text = world.waterDepth.ToString();
+        nrOfWaterplanes.text = world.nrOfWaterplanes.ToString();
+           
     }
 
     // Update is called once per frame
@@ -83,6 +93,40 @@ public class InputFields : MonoBehaviour
         {
             SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
             sourceParams.MAXINTERACTIONS = numericValue;
+        }
+    }
+
+    public void OnRangeChange()
+    {
+        string str = range.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            World world = world_manager.GetComponent<World>();
+            world.range = numericValue;
+        }
+    }
+    public void OnDepthChange()
+    {
+        string str = depth.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            World world = world_manager.GetComponent<World>();
+            world.waterDepth = numericValue;
+        }
+    }
+    public void OnNrOfWaterlayersChange()
+    {
+        string str = nrOfWaterplanes.text;
+        bool isNumber = int.TryParse(str, out int numericValue);        
+
+        if (isNumber && numericValue > 0)
+        {
+            World world = world_manager.GetComponent<World>();
+            world.nrOfWaterplanes = numericValue;
         }
     }
 }

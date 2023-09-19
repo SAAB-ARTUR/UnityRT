@@ -9,11 +9,47 @@ using UnityEngine.UIElements;
 using UnityTemplateProjects;
 
 public class World : MonoBehaviour
-{    
-    [SerializeField] float waterDepth = 0;
+{
     [SerializeField] float sourceDepth = 0;
-    [SerializeField] float range = 0;
-    [SerializeField] int nrOfWaterplanes = 0;
+
+    public int range
+    {
+        get { return _range; }
+        set
+        {
+            if (value > 0) { _range = value; }
+            else { _range = 0; }
+        }
+    }
+
+    [SerializeField]
+    private int _range;
+
+    public int waterDepth
+    {
+        get { return _waterDepth; }
+        set
+        {
+            if (value > 0) { _waterDepth = value; }
+            else { _waterDepth = 0; }
+        }
+    }
+
+    [SerializeField]
+    private int _waterDepth;
+
+    public int nrOfWaterplanes
+    {
+        get { return _nrOfWaterplanes; }
+        set
+        {
+            if (value > 0) { _nrOfWaterplanes = value; }
+            else { _nrOfWaterplanes = 0; }
+        }
+    }
+
+    [SerializeField]
+    private int _nrOfWaterplanes;
 
     private class State 
     {
