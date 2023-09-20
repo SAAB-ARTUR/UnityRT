@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.srejonkhan.another-file-browser": "https://github.com/SrejonKhan/AnotherFileBrowser.git",
     "com.unity.collab-proxy": "2.0.7",
     "com.unity.feature.development": "1.0.2",
     "com.unity.mathematics": "1.3.1",

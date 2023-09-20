@@ -3,9 +3,9 @@ using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using AnotherFileBrowser.Windows; // https://github.com/SrejonKhan/AnotherFileBrowser Used to open file explorer to be able to select a file.
 
 public class SSPFileReader : MonoBehaviour
 {    
@@ -22,18 +22,20 @@ public class SSPFileReader : MonoBehaviour
 
     public void OnSSPButtonPress()
     {
-        string filepath = EditorUtility.OpenFilePanel("Select File", "Assets/SSP", "txt");
-        Debug.Log(filepath);
-        if (filepath != "")
-        {
-            Debug.Log("File has been picked");
-            string filename = filepath.Split("/").Last(); // print only filename and extension on the button, not the entire path
+        BrowserProperties bp = new BrowserProperties();
+        bp.filter = "txt files (*.txt)|*.txt|All Files (*.*)|*.*";
+        bp.filterIndex = 0;
+        new FileBrowser().OpenFileBrowser(bp, path =>
+        {            
+            if (path != "")
+            {
+                string filename = path.Split("\\").Last(); // print only filename and extension on the button, not the entire path
 
-            GameObject.Find("Button - Filepicker").GetComponentInChildren<Text>().text = filename;
-            
-            filepathHasChanged = true;
-            ReadSSPFromFile(filepath);
-        }
+                GameObject.Find("Button - Filepicker").GetComponentInChildren<Text>().text = filename;
+                filepathHasChanged = true;
+                ReadSSPFromFile(path);
+            }
+        });        
     }
 
     public bool SSPFileHasChanged()
