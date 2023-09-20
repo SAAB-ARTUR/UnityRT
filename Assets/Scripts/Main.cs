@@ -287,7 +287,7 @@ public class Main : MonoBehaviour
                 _SSPBuffer.Release();
             }
             _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
-            world.SetNrOfWaterplanes(SSP.Count);
+            world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
         }        
         

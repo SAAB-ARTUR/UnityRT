@@ -106,6 +106,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2); // send a first ray
     rayQuery.Proceed();
 
+    
     uint2 dest = id.xy;
     if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
         hit.position = ray.origin + (ray.direction * rayQuery.CommittedRayT());
@@ -119,6 +120,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
             Result[dest] = float4(0, 1, 0, 0);
             WaterplaneHit(hit, index1D);
+            //hit.sendNewRay = SendNewRay(ray);
+
         }
         else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
             Result[dest] = float4(0, 0, 1, 0);
@@ -137,7 +140,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         NoHit(ray, index1D);
         hit.sendNewRay = false;
     }    
-
+    
+    
     while (hit.sendNewRay) // spawn new ray from the hit position of the previous ray
     {   
         ray2.Origin = ray.origin;
@@ -160,11 +164,12 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
                 Result[dest] = float4(0, 1, 0, 0);
                 WaterplaneHit(hit, index1D);
+                hit.sendNewRay = false;  //SendNewRay(ray);
             }
             else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
                 Result[dest] = float4(0, 0, 1, 0);
                 SeafloorHit(ray, hit, index1D);
-                hit.sendNewRay = SendNewRay(ray);
+                hit.sendNewRay = SendNewRay(ray); // SendNewRay(ray);
             }
             else if (rayQuery.CommittedInstanceID() == 4) { // target
                 Result[dest] = float4(1, 0, 1, 0);
@@ -179,4 +184,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             hit.sendNewRay = false;
         }
     }
+
+
 }
