@@ -13,6 +13,8 @@ Exempel: Om threadGroupsX = 16, threadGroupsY = 16, threadGroupsZ = 1 och det i 
 Kontroller:  
 Med hjälp av högerklick och tangenterna W,A,S,D,Q,E kan man styra den vänstra vyn. Med hjälp av högerklick medan tangenten punkt/kolon hålls ner och tangenterna U,H,J,K,Y,I kan man flytta den gröna sfären. Klicka C för att skicka rays, eller klicka i rutan i maincamera-komponenten som gör att rays skickas vid varje Update()-anrop. Genom att klicka R kan användaren toggla mellan en fri-kamera eller en kamera som är låst till att följa sändaren. 
 
+20 september: En settings-panel har lagts till där användaren har smidig åtkomst till inställningar. Det är möjligt att läsa in en fil som definierar hastighetsprofilen för vattnet. Hastighetsprofilen definierar också antalet vattenplan samt vattendjupet. Det är dags att börja med shader-kod.
+
 14 september: Rays kan nu träffa ett mål (definierad av en röd sfär). Sändaren kan inte placeras utanför miljön, användaren kan toggla mellan en fri-kamera och att följa sändaren. Världen är inte längre sändar-centrisk utan världen är låst och sändaren kan placeras inuti världen. Yt/botten-plan är dubbla för att de ska synas från båda håll i den normala vyn. Allmänt robustare kod. 
 
 13 september: Compute-shadern bygger nu på inlineraytracing med en accelerationsstruktur. Unity-miljön är omgjord för att definiera källan som centrum i världen. 
