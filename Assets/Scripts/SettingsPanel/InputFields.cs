@@ -12,9 +12,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField theta = null;
     [SerializeField] InputField phi = null;    
     [SerializeField] GameObject world_manager = null;    
-    [SerializeField] InputField range = null;
-    [SerializeField] InputField depth = null;
-    [SerializeField] InputField nrOfWaterplanes = null;
+    [SerializeField] InputField range = null;    
 
     // Start is called before the first frame update
     void Start()
@@ -27,9 +25,7 @@ public class InputFields : MonoBehaviour
         phi.text = sourceParams.phi.ToString();
 
         World world = world_manager.GetComponent<World>();
-        range.text = world.range.ToString();
-        depth.text = world.waterDepth.ToString();
-        nrOfWaterplanes.text = world.GetNrOfWaterplanes().ToString();           
+        range.text = world.range.ToString();        
     }
 
     public void OnNthetaChange()
@@ -97,28 +93,6 @@ public class InputFields : MonoBehaviour
         {
             World world = world_manager.GetComponent<World>();
             world.range = numericValue;
-        }
-    }
-    public void OnDepthChange()
-    {
-        string str = depth.text;
-        bool isNumber = int.TryParse(str, out int numericValue);
-
-        if (isNumber && numericValue > 0)
-        {
-            World world = world_manager.GetComponent<World>();
-            world.waterDepth = numericValue;
-        }
-    }
-    public void OnNrOfWaterlayersChange() // den här funktionen ska troligtvis bort om antalet vattenplan helt definieras av SSP-filen
-    {
-        string str = nrOfWaterplanes.text;
-        bool isNumber = int.TryParse(str, out int numericValue);        
-
-        if (isNumber && numericValue > 0)
-        {
-            World world = world_manager.GetComponent<World>();
-            world.SetNrOfWaterplanes(numericValue);
         }
     }
 }

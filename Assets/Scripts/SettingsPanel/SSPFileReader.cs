@@ -10,7 +10,15 @@ using UnityEngine.UI;
 public class SSPFileReader : MonoBehaviour
 {    
     private bool filepathHasChanged = false;
-    private List<float> SSP = null;    
+    private List<SSP_Data> SSP = null;
+
+    public struct SSP_Data
+    {
+        public float depth;
+        public float velocity;
+        public float derivative1;
+        public float derivative2;
+    }
 
     public void OnSSPButtonPress()
     {
@@ -43,7 +51,7 @@ public class SSPFileReader : MonoBehaviour
 
     private void ReadSSPFromFile(string filepath)
     {
-        SSP = new List<float>();
+        SSP = new List<SSP_Data>();
         string line;
 
         try
@@ -53,19 +61,36 @@ public class SSPFileReader : MonoBehaviour
 
             while (line != null) // read lines until the end and add the values to the SSP-list
             {                
-                string velocity = line.Split().Last();
-
-                bool isNumber = float.TryParse(velocity, out float numericValue);
-
-                if (isNumber && numericValue > 0)
+                string[] items = line.Split();
+                SSP_Data data = new SSP_Data();
+                int i = 0;
+                foreach (string item in items)
                 {
-                    SSP.Add(numericValue);
+                    bool isNumber = float.TryParse(item, out float numericValue);
+                    if (isNumber)
+                    {
+                        switch (i)
+                        {
+                            case 0:
+                                data.depth = numericValue;
+                                break;
+                            case 1:
+                                data.velocity = numericValue;
+                                break;
+                            case 2:
+                                data.derivative1 = numericValue;
+                                break;
+                            case 3:
+                                data.derivative2 = numericValue;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    i++;
                 }
-                else // incorrect format, delete list
-                {
-                    SSP.Clear();                    
-                    break;
-                }
+                SSP.Add(data);
+
                 line = sr.ReadLine();
             }
             sr.Close(); // close file
@@ -76,7 +101,7 @@ public class SSPFileReader : MonoBehaviour
         }
     }
 
-    public List<float> GetSSPData()
+    public List<SSP_Data> GetSSPData()
     {
         return SSP;
     }

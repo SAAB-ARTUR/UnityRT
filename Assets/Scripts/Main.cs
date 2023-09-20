@@ -45,7 +45,7 @@ public class Main : MonoBehaviour
     private Vector3 oldTargetPostion;
 
     private SSPFileReader _SSPFileReader = null;
-    private List<float> SSP = null;
+    private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
     struct RayData
@@ -181,7 +181,7 @@ public class Main : MonoBehaviour
         computeShader.SetFloat("_Seed", UnityEngine.Random.value);
         
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
-        // SetComputeBuffer("_SSPBuffer", _SSPBuffer); lägg till den här när stöd för hastighetsprofiler har lagts till i GPU-koden
+        SetComputeBuffer("_SSPBuffer", _SSPBuffer);
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
@@ -286,15 +286,15 @@ public class Main : MonoBehaviour
             {
                 _SSPBuffer.Release();
             }
-            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float));
+            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
             world.SetNrOfWaterplanes(SSP.Count);
+            world.SetWaterDepth(SSP.Last().depth);
         }        
         
         if (world.StateChanged())
         {
             BuildWorld();
-            rebuildRTAS = true;
-            Debug.Log("jhkjdhdjkhk1111222");
+            rebuildRTAS = true;            
         }
 
         if (oldTargetPostion != targetSphere.transform.position) // flytta till world??

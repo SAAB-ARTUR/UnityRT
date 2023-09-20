@@ -23,35 +23,11 @@ public class World : MonoBehaviour
     }
 
     [SerializeField]
-    private int _range;
-
-    public int waterDepth
-    {
-        get { return _waterDepth; }
-        set
-        {
-            if (value > 0) { _waterDepth = value; }
-            else { _waterDepth = 0; }
-        }
-    }
-
-    [SerializeField]
-    private int _waterDepth;
-
-    /*public int nrOfWaterplanes
-    {
-        get { return _nrOfWaterplanes; }
-        set
-        {
-            if (value > 0) { _nrOfWaterplanes = value; }
-            else { _nrOfWaterplanes = 0; }
-        }
-    }*/
+    private int _range;    
+    
+    private float waterDepth = 0.0f;
 
     private int nrOfWaterplanes = 0;
-
-    /*[SerializeField]
-    private int _nrOfWaterplanes;*/
 
     private class State 
     {
@@ -311,5 +287,10 @@ public class World : MonoBehaviour
     public float GetWaterDepth()
     {
         return waterDepth;
+    }
+
+    public void SetWaterDepth(float depth)
+    {
+        waterDepth = depth;
     }
 }
