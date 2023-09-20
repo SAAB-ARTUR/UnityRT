@@ -24,6 +24,16 @@ int phi;
 int nphi;
 float3 srcDirection;
 
+struct SSP_Data 
+{
+    float depth;
+    float velocity;
+    float derivative1;
+    float derivative2;
+};
+
+StructuredBuffer<SSP_Data> _SSPBuffer;
+
 struct RayData // Data that will be sent back to the CPU
 {
     float3 origin;

@@ -23,33 +23,11 @@ public class World : MonoBehaviour
     }
 
     [SerializeField]
-    private int _range;
+    private int _range;    
+    
+    private float waterDepth = 0.0f;
 
-    public int waterDepth
-    {
-        get { return _waterDepth; }
-        set
-        {
-            if (value > 0) { _waterDepth = value; }
-            else { _waterDepth = 0; }
-        }
-    }
-
-    [SerializeField]
-    private int _waterDepth;
-
-    public int nrOfWaterplanes
-    {
-        get { return _nrOfWaterplanes; }
-        set
-        {
-            if (value > 0) { _nrOfWaterplanes = value; }
-            else { _nrOfWaterplanes = 0; }
-        }
-    }
-
-    [SerializeField]
-    private int _nrOfWaterplanes;
+    private int nrOfWaterplanes = 0;
 
     private class State 
     {
@@ -64,8 +42,7 @@ public class World : MonoBehaviour
 
     private Camera sourceSphere;
     private GameObject surface;
-    private GameObject bottom;
-    //private List<GameObject> waterLayers;
+    private GameObject bottom;    
 
     // Start is called before the first frame update
     void Start()
@@ -302,8 +279,18 @@ public class World : MonoBehaviour
         return nrOfWaterplanes;
     }
 
+    public void SetNrOfWaterplanes(int value)
+    {
+        nrOfWaterplanes = value;
+    }
+
     public float GetWaterDepth()
     {
         return waterDepth;
+    }
+
+    public void SetWaterDepth(float depth)
+    {
+        waterDepth = depth;
     }
 }

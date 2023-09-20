@@ -17,38 +17,43 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject waterplane = null;
     [SerializeField] Camera sourceCamera = null; 
     [SerializeField] GameObject world_manager = null;
+    [SerializeField] GameObject btnFilePicker = null;
 
     private SourceParams.Properties? oldSourceParams = null;
 
     private ComputeBuffer _rayPointsBuffer;
     
-    RayTracingVisualization sourceCameraScript = null;
+    private RayTracingVisualization sourceCameraScript = null;
     private RenderTexture _target;
 
     private bool doRayTracing = false;
     private bool lockRayTracing = false;
 
-    RayData[] rds = null;
+    private RayData[] rds = null;
 
-    LineRenderer line = null;
+    private LineRenderer line = null;
     private List<LineRenderer> lines = new List<LineRenderer>();
 
-    RayTracingAccelerationStructure rtas = null;
+    private RayTracingAccelerationStructure rtas = null;
     private bool rebuildRTAS = false;
 
-    SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
-    SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
-    WaterplaneInstanceData waterplaneInstanceData = null;
-    TargetInstanceData targetInstanceData = null;    
+    private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
+    private SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
+    private WaterplaneInstanceData waterplaneInstanceData = null;
+    private TargetInstanceData targetInstanceData = null;    
 
     private Vector3 oldTargetPostion;
+
+    private SSPFileReader _SSPFileReader = null;
+    private List<SSPFileReader.SSP_Data> SSP = null;
+    private ComputeBuffer _SSPBuffer;
 
     struct RayData
     {
         public Vector3 origin;
         public int set;
     };
-    private int raydatabytesize = 16;
+    private int raydatabytesize = 16; // update this if the struct RayData is modified
 
     private void ReleaseResources()
     {
@@ -85,7 +90,8 @@ public class Main : MonoBehaviour
             targetInstanceData = null;
         }
 
-        _rayPointsBuffer?.Release();        
+        _rayPointsBuffer?.Release();
+        _SSPBuffer?.Release();
     }
 
     void OnDestroy()
@@ -175,6 +181,7 @@ public class Main : MonoBehaviour
         computeShader.SetFloat("_Seed", UnityEngine.Random.value);
         
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
+        SetComputeBuffer("_SSPBuffer", _SSPBuffer);
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
@@ -186,7 +193,7 @@ public class Main : MonoBehaviour
 
         computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
 
-        computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
+        computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);        
     }
 
     private void InitRenderTexture(SourceParams sourceParams)
@@ -240,13 +247,17 @@ public class Main : MonoBehaviour
         rebuildRTAS = true;
 
         oldTargetPostion = targetSphere.transform.position;
+
+        _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
     }
 
     // Update is called once per frame
     void Update()
     {   
+        //
+        // CHECK FOR UPDATES
+        //
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-
         
         if (sourceParams.HasChanged(oldSourceParams))
             {
@@ -265,10 +276,25 @@ public class Main : MonoBehaviour
         }
 
         World world = world_manager.GetComponent<World>();
+
+        if (_SSPFileReader.SSPFileHasChanged())
+        {
+            Debug.Log("The SSP file has been changed.");
+            _SSPFileReader.AckSSPFileHasChanged();
+            SSP = _SSPFileReader.GetSSPData();
+            if (_SSPBuffer != null)
+            {
+                _SSPBuffer.Release();
+            }
+            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
+            world.SetNrOfWaterplanes(SSP.Count);
+            world.SetWaterDepth(SSP.Last().depth);
+        }        
+        
         if (world.StateChanged())
         {
             BuildWorld();
-            rebuildRTAS = true;
+            rebuildRTAS = true;            
         }
 
         if (oldTargetPostion != targetSphere.transform.position) // flytta till world??
@@ -285,6 +311,10 @@ public class Main : MonoBehaviour
             doRayTracing = false;
             lockRayTracing = false;
         }        
+        
+        //
+        // CHECK FOR UPDATES OVER //
+        //
 
         if ((!lockRayTracing && doRayTracing) || sourceParams.sendRaysContinously) // do raytracing if the user has pressed key C. only do it once though. or do it continously
         {
