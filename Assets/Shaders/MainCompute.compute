@@ -119,7 +119,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         }
         else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
             Result[dest] = float4(0, 1, 0, 0);
-            WaterplaneHit(hit, index1D);
+            WaterplaneHit(ray, hit, index1D);
             //hit.sendNewRay = SendNewRay(ray);
 
         }
@@ -163,7 +163,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             }
             else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
                 Result[dest] = float4(0, 1, 0, 0);
-                WaterplaneHit(hit, index1D);
+                WaterplaneHit(ray, hit, index1D);
                 hit.sendNewRay = false;  //SendNewRay(ray);
             }
             else if (rayQuery.CommittedInstanceID() == 3) { // seafloor

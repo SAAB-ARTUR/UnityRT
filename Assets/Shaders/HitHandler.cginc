@@ -28,12 +28,14 @@ void SeafloorHit(inout Ray ray, RayHit hit, uint index1D)
 }
 
 
-void WaterplaneHit(RayHit hit, uint index1D)
+void WaterplaneHit(inout Ray ray, RayHit hit, uint index1D)
 {
     // kod för när ett vattenplan träffats här... (förhoppningsvis bör vi kunna skriva en funktion som ser likadan ut oavsett vilket vattenplan som träffats. 
     // vissa variabelvärden ändras beroende på djup och sånt men ekvationerna bör se likadana ut.)
 
     // do nothing for now
+    _RayPoints[index1D + ray.nrOfInteractions].set = 400;
+    _RayPoints[index1D + ray.nrOfInteractions].origin = float3(0, 1000, 0);
 }
 
 
