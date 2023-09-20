@@ -1,9 +1,118 @@
 
-#include "BSSP.cginc"
+/*
+struct SSP
+{
+    // 0: Default (Linear? Jonas: otherwise)
+    // 1: Q: Quadratic 
+    uint type;
+    
+    // Contains points on speed profile
+    // data[0] is the first depth 
+    // data[0].r (Jonas z) is the depth of the sound speed profile point
+    // data[0].g (Jonas c) is the corresponding sound speed. 
+    // data[0].b (Jonas cz) is the corresponding change in the sound speed profile. 
+    RWTexture1D<double3> SSP;
+    
+    
+    
+};
+
+struct SSPOutput
+{
+    double c;
+    double cz;
+    double czz;
+    uint Layer;
+};
+
+
+/* 
+Tabulates  the sound speed profile and its derivatives
+Also returns a vector Layer indicating the layer a depth point is in
+
+Layer is the index of the layer that each ray is in
+SSP.z and SSP.c contains the depth/sound speed values
+*/
+/*
+SSPOutput ssp(double z, SSP soundSpeedProfile, uint Layer)
+{
+    uint len;
+    soundSpeedProfile.SSP.GetDimensions(len);
+    
+    
+    
+    while (z >= soundSpeedProfile.SSP[Layer].r && Layer < len)
+    {
+        Layer = Layer + 1;
+    }
+    
+    while (z < soundSpeedProfile.SSP[Layer].r && Layer > 0)
+    {
+        Layer = Layer - 1;
+    }
+    
+    double w = z - soundSpeedProfile.SSP[Layer].r;
+    
+    double c, cz, czz;
+    switch (soundSpeedProfile.type)
+    {
+        default:
+            {
+                c = soundSpeedProfile.SSP[Layer].g + w * soundSpeedProfile.SSP[Layer].b;
+                cz = soundSpeedProfile.SSP[Layer].b;
+                czz = 0.0;
+            }
+    }
+    
+    // Construct and return the output
+    SSPOutput result;
+    result.c = c;
+    result.cz = cz;
+    result.czz = czz;
+    result.Layer = Layer;
+    
+    return result;
+
+}
+
+double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, double deltas, double h)
+{
+    
+    // Reduces the ray step size to make sure we land on interfaces and boundries
+    double2 cTray = c * Tray;
+    double2 x = x0 + h * cTray; // Make a trial step
+    
+    
+    // This could probably be solved by the acceleration struct? 
+    if (x.y < zmin)
+    {
+        
+        h = (zmin - x0.y) / cTray.y;
+        
+    }
+    if (x.y > zmax)
+    {
+        
+        h = (zmax - x0.y) / cTray.y;
+        
+    }
+    
+    
+    // Ensure that we make at least a little step. 
+    h = max(h, 0.000001 * deltas);
+    
+    return h;
+}
+*/
+
+//#include "BSSP.cginc"
 #include "BStep.cginc"
 #include "BReflect.cginc"
 
-struct Ray
+
+
+
+struct BRay
 {
 
     uint ntop;
@@ -18,14 +127,13 @@ struct Ray
 
 struct TraceOutput
 {
-    
-    RWTexture1D<double2> xray; 
-    Ray ray;
+   
+    BRay ray;
     double beta;
     
 };
 
-TraceOutput trace(
+TraceOutput btrace(
     SSP soundSpeedProfile, 
     double alpha, 
     double dalpha, 
@@ -34,12 +142,10 @@ TraceOutput trace(
     double depth, 
     double deltas, 
     uint maxtop,   
-    uint maxbot, 
-    RWTexture1D<double2> xrayBuf
+    uint maxbot
 )
 {
 
-    
     xrayBuf[0] = xs;
     
     SSPOutput initialSsp = ssp(xs.g, soundSpeedProfile, 1);
@@ -164,7 +270,7 @@ TraceOutput trace(
      
     // Create the output
     TraceOutput result;
-    Ray r;
+    BRay r;
     r.curve = curve;
     r.delay = delay;
     r.nbot = nbot;
@@ -174,7 +280,7 @@ TraceOutput trace(
     r.ncaust = ncaust;
     
     
-    result.xray = xrayBuf;
+    //result.xray = xrayBuf;
     result.beta = beta;
     result.ray = r;
     

@@ -1,11 +1,20 @@
 // Each #kernel tells which function to compile; you can have many kernels
-#include "UnityRayQuery.cginc"
+// #include "UnityRayQuery.cginc"
+
 #pragma require inlineraytracing
 #pragma kernel CSMain
 
 RaytracingAccelerationStructure g_AccelStruct;
 
 RWTexture2D<float4> Result;
+
+
+
+RWStructuredBuffer<double3> SSPData;
+RWStructuredBuffer<double2> xrayBuf;
+
+
+double depth;
 
 float4x4 _SourceCameraToWorld;
 float4x4 _CameraInverseProjection;
@@ -24,7 +33,8 @@ int phi;
 int nphi;
 float3 srcDirection;
 
-struct SSP_Data 
+
+struct SSP_Data
 {
     float depth;
     float velocity;
@@ -32,7 +42,10 @@ struct SSP_Data
     float derivative2;
 };
 
+
+
 StructuredBuffer<SSP_Data> _SSPBuffer;
+#include "BSSP.cginc"
 
 struct RayData // Data that will be sent back to the CPU
 {
@@ -79,6 +92,7 @@ RayHit CreateRayHit()
 //-------------------------------------
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
 #include "HitHandler.cginc"
+#include "BTrace.cginc"
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -91,7 +105,25 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     uint index1D = (id.y * width + id.x) * _MAXINTERACTIONS; 
 
     Ray ray = CreateThetaPhiRay(id);
+    
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
+    //soundSpeedProfile.SSP = _SSPBuffer; 
+    
+    double3 raydir = normalize(ray.direction);
 
+    double alpha = acos(raydir.y);
+    double2 xs = { 0.0, mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+    double2 xr = { 0.0, 0.0 }; // TODO: Replace with reciever coordinates
+    double deltas = 5.0;
+    
+    //TraceOutput t = trace(soundSpeedProfile, alpha, 1.0, xs, xr, depth, deltas, 5, 5);
+    
+    
+    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5);
+    
+    /*
+    
     RayDesc ray2; //description of the ray to be used in tracerayinline
     ray2.Origin = ray.origin;
     ray2.Direction = ray.direction;
@@ -184,6 +216,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             hit.sendNewRay = false;
         }
     }
+*/
 
 
 }

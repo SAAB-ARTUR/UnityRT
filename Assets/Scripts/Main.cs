@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Profiling;
 using UnityEngine.UI;
+using Unity.Mathematics;
+using UnityEngine.AI;
 
 public class Main : MonoBehaviour
 {    
@@ -22,6 +24,9 @@ public class Main : MonoBehaviour
     private SourceParams.Properties? oldSourceParams = null;
 
     private ComputeBuffer _rayPointsBuffer;
+    
+    // BellhopBuffer
+
     
     private RayTracingVisualization sourceCameraScript = null;
     private RenderTexture _target;
@@ -47,6 +52,10 @@ public class Main : MonoBehaviour
     private SSPFileReader _SSPFileReader = null;
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
+
+    private int bellhop_size = 4096;
+    private ComputeBuffer xrayBuf;
+    private double2[] bds = null;
 
     struct RayData
     {
@@ -92,6 +101,7 @@ public class Main : MonoBehaviour
 
         _rayPointsBuffer?.Release();
         _SSPBuffer?.Release();
+        xrayBuf?.Release();
     }
 
     void OnDestroy()
@@ -113,10 +123,17 @@ public class Main : MonoBehaviour
             _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta*sourceParams.nphi*sourceParams.MAXINTERACTIONS, raydatabytesize);
         }
 
+        if (xrayBuf == null) {
+            xrayBuf = new ComputeBuffer(bellhop_size, 2*sizeof(double));
+        }
+
         if (rds == null)
         {
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             Debug.Log(rds.Length);
+        }
+        if (bds == null) {
+            bds = new double2[bellhop_size];
         }
 
         if (surfaceInstanceData == null)
@@ -182,6 +199,7 @@ public class Main : MonoBehaviour
         
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
         SetComputeBuffer("_SSPBuffer", _SSPBuffer);
+        SetComputeBuffer("xrayBuf", xrayBuf);
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
@@ -192,6 +210,9 @@ public class Main : MonoBehaviour
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);
 
         computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
+
+        // Bellhop
+        computeShader.SetFloat("depth", world_manager.GetComponent<World>().GetWaterDepth());
 
         computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);        
     }
@@ -351,6 +372,9 @@ public class Main : MonoBehaviour
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
 
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+
+            xrayBuf.GetData(bds);
+            Debug.Log(bds[0]);
 
             if (sourceParams.visualizeRays)
             {

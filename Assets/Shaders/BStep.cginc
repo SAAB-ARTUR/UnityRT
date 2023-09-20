@@ -1,5 +1,5 @@
 
-#include "BSSP.cginc"
+//#include "BSSP.cginc"
 
 struct StepOutput
 {
@@ -35,8 +35,8 @@ StepOutput bstep(
     double csq0 = phase0.c * phase0.c;
     double cnn0_csq0 = phase0.czz * Tray0.r * Tray0.r;
     
-    double zmin = min(soundSpeedProfile.SSP[Layer].r, depth);
-    double zmax = min(soundSpeedProfile.SSP[Layer + 1].r, depth);
+    double zmin = min(_SSPBuffer[Layer].depth, depth);
+    double zmax = min(_SSPBuffer[Layer + 1].depth, depth);
     
     
     

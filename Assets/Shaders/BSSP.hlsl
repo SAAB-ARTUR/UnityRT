@@ -1,5 +1,4 @@
 
-
 struct SSP
 {
     // 0: Default (Linear? Jonas: otherwise)
@@ -11,6 +10,9 @@ struct SSP
     // data[0].r (Jonas z) is the depth of the sound speed profile point
     // data[0].g (Jonas c) is the corresponding sound speed. 
     // data[0].b (Jonas cz) is the corresponding change in the sound speed profile. 
+    RWTexture1D<double3> SSP; 
+    
+    
     
 };
 
@@ -32,31 +34,29 @@ SSP.z and SSP.c contains the depth/sound speed values
 */
 SSPOutput ssp(double z, SSP soundSpeedProfile, uint Layer)
 {
-    uint len;
-    uint stride;
-    _SSPBuffer.GetDimensions(len, stride);
+    uint len; soundSpeedProfile.SSP.GetDimensions(len);
     
     
     
-    while (z >= _SSPBuffer[Layer].depth && Layer < len)
+    while (z >= soundSpeedProfile.SSP[Layer].r && Layer < len)
     {
         Layer = Layer + 1;
     }
     
-    while (z < _SSPBuffer[Layer].depth && Layer > 0)
+    while (z < soundSpeedProfile.SSP[Layer].r && Layer > 0)
     {
         Layer = Layer - 1;
     }
     
-    double w = z - _SSPBuffer[Layer].depth;
+    double w = z - soundSpeedProfile.SSP[Layer].r;
     
     double c, cz, czz;
     switch (soundSpeedProfile.type)
     {
         default:
             {
-                c = _SSPBuffer[Layer].velocity + w * _SSPBuffer[Layer].derivative1;
-                cz = _SSPBuffer[Layer].derivative1;
+                c = soundSpeedProfile.SSP[Layer].g + w * soundSpeedProfile.SSP[Layer].b;
+                cz = soundSpeedProfile.SSP[Layer].b;
                 czz = 0.0;
             }
     }
