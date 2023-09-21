@@ -110,6 +110,7 @@ double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, 
 #include "BReflect.cginc"
 
 
+uint2 elem = { 17,17 };
 
 
 struct BRay
@@ -142,12 +143,27 @@ TraceOutput btrace(
     double depth, 
     double deltas, 
     uint maxtop,   
-    uint maxbot
+    uint maxbot,
+    uint3 id, 
+    uint width
 )
 {
-
-    xrayBuf[0] = xs;
+        
+    // https://coderwall.com/p/fzni3g/bidirectional-translation-between-1d-and-3d-arrays
+    // I want x -> iteration index
+    // y -> phi
+    // z -> theta
+    uint offset = _BELLHOPSIZE * id.x + id.y * _BELLHOPSIZE * width;
     
+    
+    if (id.y == elem.y && id.x == elem.x)
+    {
+        
+        xrayBuf[0 + offset] = xs;
+        double2 tmpData = { 15, 15 };
+        xrayBuf[0 + offset] = tmpData;
+    }
+     
     SSPOutput initialSsp = ssp(xs.g, soundSpeedProfile, 1);
     
     // Initial conditions
@@ -214,7 +230,17 @@ TraceOutput btrace(
             
         }
         
-        xrayBuf[istep+1] = stepOutput.x;
+        
+        
+        if (true) // (id.x == elem.x && id.y == elem.y)
+        {
+            //xrayBuf[istep+1 + offset] = stepOutput.x;
+            double2 tmpData = id.xy; //{ 16, 16 };
+            
+            xrayBuf[istep + offset] = tmpData;
+        }
+        //xrayBuf[istep + offset] = id.xy;
+        
         
         // Reset for the next step
         c = stepOutput.c; 

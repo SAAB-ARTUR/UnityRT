@@ -53,7 +53,7 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
-    private int bellhop_size = 4096;
+    private int bellhop_size = 2; //4096;
     private ComputeBuffer xrayBuf;
     private double2[] bds = null;
 
@@ -124,7 +124,10 @@ public class Main : MonoBehaviour
         }
 
         if (xrayBuf == null) {
-            xrayBuf = new ComputeBuffer(bellhop_size, 2*sizeof(double));
+            Debug.Log("Allocating xraybuf. Please wait...");
+            xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 2*sizeof(double));
+            //xrayBuf = new ComputeBuffer(bellhop_size, 2 * sizeof(double));
+            Debug.Log("Allocating xraybuf. Done!");
         }
 
         if (rds == null)
@@ -133,7 +136,11 @@ public class Main : MonoBehaviour
             Debug.Log(rds.Length);
         }
         if (bds == null) {
-            bds = new double2[bellhop_size];
+            Debug.Log("Allocating bds. Please wait...");
+            bds = new double2[bellhop_size * sourceParams.nphi * sourceParams.ntheta];
+            //bds = new double2[bellhop_size];
+
+            Debug.Log("Allocating bds. Done!");
         }
 
         if (surfaceInstanceData == null)
@@ -210,6 +217,7 @@ public class Main : MonoBehaviour
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);
 
         computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
+        computeShader.SetInt("_BELLHOPSIZE", bellhop_size);
 
         // Bellhop
         computeShader.SetFloat("depth", world_manager.GetComponent<World>().GetWaterDepth());
@@ -270,6 +278,14 @@ public class Main : MonoBehaviour
         oldTargetPostion = targetSphere.transform.position;
 
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
+    }
+
+    int GetStartIndexBellhop(int i, int j) {
+
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+
+
+        return i * bellhop_size + j * bellhop_size * sourceParams.ntheta + 1;
     }
 
     // Update is called once per frame
@@ -371,10 +387,21 @@ public class Main : MonoBehaviour
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
 
+            Debug.Log("Starting Bellhop on GPU....");
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+            Debug.Log("Bellhop Done!");
 
+            Debug.Log("Copying Bellhop data to CPU....");
             xrayBuf.GetData(bds);
-            Debug.Log(bds[0]);
+            Debug.Log("Data copy to CPU Done!");
+
+
+
+
+            for (int iterid = -5; iterid < bellhop_size + 5; iterid++) {
+                Debug.Log(iterid.ToString() + " " + bds[iterid + GetStartIndexBellhop(16, 17)]);
+            }
+
 
             if (sourceParams.visualizeRays)
             {

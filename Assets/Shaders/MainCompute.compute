@@ -23,6 +23,7 @@ float2 _PixelOffset;
 float2 _Pixel;
 
 int _MAXINTERACTIONS;
+int _BELLHOPSIZE;
 
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
@@ -120,7 +121,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     //TraceOutput t = trace(soundSpeedProfile, alpha, 1.0, xs, xr, depth, deltas, 5, 5);
     
     
-    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5);
+    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5, id, width);
     
     /*
     
