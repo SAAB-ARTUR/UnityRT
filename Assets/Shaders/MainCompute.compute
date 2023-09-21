@@ -33,6 +33,7 @@ int ntheta;
 int phi;
 int nphi;
 float3 srcDirection;
+float3 receiverPosition;
 
 
 struct SSP_Data
@@ -114,9 +115,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     double3 raydir = normalize(ray.direction);
 
     double alpha = acos(raydir.y);
-    double2 xs = { 0.0, mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
-    double2 xr = { 0.0, 0.0 }; // TODO: Replace with reciever coordinates
-    double deltas = 5.0;
+    double2 xs = { 0.0,  - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+    double2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), -receiverPosition.y};
+    double deltas = 1.1;
     
     //TraceOutput t = trace(soundSpeedProfile, alpha, 1.0, xs, xr, depth, deltas, 5, 5);
     

@@ -53,7 +53,7 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
-    private int bellhop_size = 2; //4096;
+    private int bellhop_size = 3; //4096;
     private ComputeBuffer xrayBuf;
     private double2[] bds = null;
 
@@ -215,6 +215,7 @@ public class Main : MonoBehaviour
         computeShader.SetInt("phi", sourceParams.phi);
         computeShader.SetInt("nphi", sourceParams.nphi);
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);
+        computeShader.SetVector("receiverPosition", targetSphere.transform.position);
 
         computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
         computeShader.SetInt("_BELLHOPSIZE", bellhop_size);
@@ -280,12 +281,12 @@ public class Main : MonoBehaviour
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
     }
 
-    int GetStartIndexBellhop(int i, int j) {
+    int GetStartIndexBellhop(int idx, int idy) {
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
 
-        return i * bellhop_size + j * bellhop_size * sourceParams.ntheta + 1;
+        return (idy * sourceParams.nphi + idx) * bellhop_size;
     }
 
     // Update is called once per frame
@@ -324,8 +325,12 @@ public class Main : MonoBehaviour
                 _SSPBuffer.Release();
             }
             _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
+
+            _SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
+
             world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
+ 
         }        
         
         if (world.StateChanged())
@@ -398,8 +403,8 @@ public class Main : MonoBehaviour
 
 
 
-            for (int iterid = -5; iterid < bellhop_size + 5; iterid++) {
-                Debug.Log(iterid.ToString() + " " + bds[iterid + GetStartIndexBellhop(16, 17)]);
+            for (int iterid = 0; iterid < 2 * bellhop_size; iterid++) {
+                Debug.Log(iterid.ToString() + " " + bds[iterid + GetStartIndexBellhop(63, 32)]);
             }
 
 

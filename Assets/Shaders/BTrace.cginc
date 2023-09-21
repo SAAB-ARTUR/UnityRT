@@ -153,18 +153,12 @@ TraceOutput btrace(
     // I want x -> iteration index
     // y -> phi
     // z -> theta
-    uint offset = _BELLHOPSIZE * id.x + id.y * _BELLHOPSIZE * width;
+    uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
     
     
-    if (id.y == elem.y && id.x == elem.x)
-    {
-        
-        xrayBuf[0 + offset] = xs;
-        double2 tmpData = { 15, 15 };
-        xrayBuf[0 + offset] = tmpData;
-    }
+
      
-    SSPOutput initialSsp = ssp(xs.g, soundSpeedProfile, 1);
+    SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
     
     // Initial conditions
     
@@ -182,16 +176,25 @@ TraceOutput btrace(
     
     double xxs = 1;
     double q0 = 0;
-    uint istep = 0;
+    uint istep = 1;
     
     
     double2 x0;
     double tau0;
     double len0;
     
-    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot)
+    if (true)//(id.y == elem.y && id.x == elem.x)
     {
-        istep++;
+        
+        //xrayBuf[0 + offset] = xs;
+        double2 tmpData = id.xy;
+        xrayBuf[0 + offset] = double2(Layer, 1400);
+        
+    }
+    
+    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
+    {
+        
         
         // Apply caustic phase change
         if (q <= 0 && q0 > 0 || q >= 0 && q0 < 0)
@@ -200,7 +203,7 @@ TraceOutput btrace(
         }
         
         // Save data from previous step
-        double2 x0 = x;
+        x0 = x;
         q0 = q;
         tau0 = tau;
         len0 = len;
@@ -237,7 +240,7 @@ TraceOutput btrace(
             //xrayBuf[istep+1 + offset] = stepOutput.x;
             double2 tmpData = id.xy; //{ 16, 16 };
             
-            xrayBuf[istep + offset] = tmpData;
+            xrayBuf[istep + offset] = double2(c, 1400);
         }
         //xrayBuf[istep + offset] = id.xy;
         
@@ -248,9 +251,13 @@ TraceOutput btrace(
         q = stepOutput.q;
         tau = stepOutput.tau;
         len = stepOutput.len;
-        // Distance left to the reciever
-        xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.x - x.y);
         
+        // Distance left to the reciever
+        xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
+        
+        xrayBuf[istep + offset] = double2(xxs, 0.0);
+        
+        istep++;
         
     }
     
