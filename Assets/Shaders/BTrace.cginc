@@ -145,7 +145,8 @@ TraceOutput btrace(
     uint maxtop,   
     uint maxbot,
     uint3 id, 
-    uint width
+    uint width,
+    double3 raydir
 )
 {
         
@@ -183,15 +184,10 @@ TraceOutput btrace(
     double tau0;
     double len0;
     
-    if (true)//(id.y == elem.y && id.x == elem.x)
-    {
+
         
-        //xrayBuf[0 + offset] = xs;
-        double2 tmpData = id.xy;
-        xrayBuf[0 + offset] = double2(Layer, 1400);
-        
-    }
-    
+    xrayBuf[0 + offset] = xs;
+
     while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
     {
         
@@ -216,7 +212,7 @@ TraceOutput btrace(
         
         // Reflection to top and bottom
         // TODO: Accelerate with the acceleration structure
-        if (stepOutput.x.g <= 0)
+        if (stepOutput.x.y <= 0)
         {
             ntop++;
             Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
@@ -224,7 +220,7 @@ TraceOutput btrace(
             p = reflection.p;
         }
         
-        if (stepOutput.x.g >= depth)
+        if (stepOutput.x.y >= depth)
         {
             nbot++; 
             Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
@@ -233,18 +229,7 @@ TraceOutput btrace(
             
         }
         
-        
-        
-        if (true) // (id.x == elem.x && id.y == elem.y)
-        {
-            //xrayBuf[istep+1 + offset] = stepOutput.x;
-            double2 tmpData = id.xy; //{ 16, 16 };
-            
-            xrayBuf[istep + offset] = double2(c, 1400);
-        }
-        //xrayBuf[istep + offset] = id.xy;
-        
-        
+
         // Reset for the next step
         c = stepOutput.c; 
         x = stepOutput.x;
@@ -255,7 +240,7 @@ TraceOutput btrace(
         // Distance left to the reciever
         xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
         
-        xrayBuf[istep + offset] = double2(xxs, 0.0);
+        xrayBuf[istep + offset] = x;
         
         istep++;
         

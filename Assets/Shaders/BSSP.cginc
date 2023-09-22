@@ -36,8 +36,6 @@ SSPOutput ssp(double z, SSP soundSpeedProfile, uint Layer)
     uint stride;
     _SSPBuffer.GetDimensions(len, stride);
     
-    
-    
     while (z >= _SSPBuffer[Layer].depth && Layer < len)
     {
         Layer = Layer + 1;
@@ -46,7 +44,7 @@ SSPOutput ssp(double z, SSP soundSpeedProfile, uint Layer)
     while (z < _SSPBuffer[Layer].depth && Layer > 0)
     {
         Layer = Layer - 1;
-    }
+    }    
     
     double w = z - _SSPBuffer[Layer].depth;
     
@@ -69,7 +67,6 @@ SSPOutput ssp(double z, SSP soundSpeedProfile, uint Layer)
     result.Layer = Layer;
     
     return result;
-
 }
 
 
@@ -81,6 +78,8 @@ double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, 
     double2 cTray = c * Tray;
     double2 x = x0 + h * cTray; // Make a trial step
     
+
+    // LITE OKLART OM ALLT GÅR RÄTT TILL HÄR!!!!!!!
     
     // This could probably be solved by the acceleration struct? 
     if (x.y < zmin)
@@ -98,7 +97,7 @@ double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, 
     
     
     // Ensure that we make at least a little step. 
-    h = max(h, 0.000001 * deltas);
+    h = max(h, 0.000001 * deltas); // 0.2 2e-1 * 1e-6
     
     return h;
 }

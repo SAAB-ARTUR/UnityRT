@@ -215,6 +215,7 @@ public class Main : MonoBehaviour
         computeShader.SetInt("phi", sourceParams.phi);
         computeShader.SetInt("nphi", sourceParams.nphi);
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);
+        computeShader.SetVector("srcPosition", srcSphere.transform.position);
         computeShader.SetVector("receiverPosition", targetSphere.transform.position);
 
         computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
@@ -404,7 +405,7 @@ public class Main : MonoBehaviour
 
 
             for (int iterid = 0; iterid < 2 * bellhop_size; iterid++) {
-                Debug.Log(iterid.ToString() + " " + bds[iterid + GetStartIndexBellhop(63, 32)]);
+                Debug.Log(iterid.ToString() + " " + bds[iterid + GetStartIndexBellhop(32, 32)]);
             }
 
 

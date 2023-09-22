@@ -33,6 +33,7 @@ int ntheta;
 int phi;
 int nphi;
 float3 srcDirection;
+float3 srcPosition;
 float3 receiverPosition;
 
 
@@ -111,18 +112,21 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     SSP soundSpeedProfile;
     soundSpeedProfile.type = 0;
     //soundSpeedProfile.SSP = _SSPBuffer; 
+
+    ray.direction.y = -1 * ray.direction.y; //invert since unity and bellhop code has opposite directions for depth
     
     double3 raydir = normalize(ray.direction);
 
-    double alpha = acos(raydir.y);
+    double alpha = asin(raydir.y);
     double2 xs = { 0.0,  - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+    //double2 xs = { 0.0,  -srcPosition.y };
     double2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), -receiverPosition.y};
-    double deltas = 1.1;
+    double deltas = 1.0;
     
     //TraceOutput t = trace(soundSpeedProfile, alpha, 1.0, xs, xr, depth, deltas, 5, 5);
     
     
-    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5, id, width);
+    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5, id, width, raydir);
     
     /*
     

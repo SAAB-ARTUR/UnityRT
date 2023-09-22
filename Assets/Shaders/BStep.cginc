@@ -30,7 +30,7 @@ StepOutput bstep(
 {
     
     
-    SSPOutput phase0 = ssp(x0.r, soundSpeedProfile, Layer);
+    SSPOutput phase0 = ssp(x0.x, soundSpeedProfile, Layer);
     
     double csq0 = phase0.c * phase0.c;
     double cnn0_csq0 = phase0.czz * Tray0.r * Tray0.r;
