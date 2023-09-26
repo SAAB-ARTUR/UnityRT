@@ -111,6 +111,15 @@ double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, 
 
 uint2 elem = { 17,17 };
 
+float3 toCartesian(float phi, float2 rz) {
+
+    float radius = rz.x;
+    float depth = rz.y;
+
+    return float3(radius * cos(phi) + srcPosition.x, -depth, radius * sin(phi) + srcPosition.z);
+
+}
+
 struct BRay
 {
     uint ntop;
