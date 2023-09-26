@@ -1,11 +1,17 @@
 // Each #kernel tells which function to compile; you can have many kernels
-#include "UnityRayQuery.cginc"
-#pragma require inlineraytracing
+//#include "UnityRayQuery.cginc"
+//#pragma require inlineraytracing
 #pragma kernel CSMain
 
-RaytracingAccelerationStructure g_AccelStruct;
+//RaytracingAccelerationStructure g_AccelStruct;
 
 RWTexture2D<float4> Result;
+
+RWStructuredBuffer<float3> SSPData;
+RWStructuredBuffer<float2> xrayBuf;
+
+
+float depth;
 
 float4x4 _SourceCameraToWorld;
 float4x4 _CameraInverseProjection;
@@ -14,6 +20,7 @@ float2 _PixelOffset;
 float2 _Pixel;
 
 int _MAXINTERACTIONS;
+int _BELLHOPSIZE;
 
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
@@ -23,6 +30,8 @@ int ntheta;
 int phi;
 int nphi;
 float3 srcDirection;
+float3 srcPosition;
+float3 receiverPosition;
 
 struct SSP_Data 
 {
@@ -33,6 +42,7 @@ struct SSP_Data
 };
 
 StructuredBuffer<SSP_Data> _SSPBuffer;
+#include "BSSP.cginc"
 
 struct RayData // Data that will be sent back to the CPU
 {
@@ -53,6 +63,7 @@ struct Ray
     int nrOfInteractions;
 };
 
+#include "BTrace.cginc"
 #include "RayCreation.cginc"
 
 //-------------------------------------
@@ -92,98 +103,18 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     Ray ray = CreateThetaPhiRay(id);
 
-    RayDesc ray2; //description of the ray to be used in tracerayinline
-    ray2.Origin = ray.origin;
-    ray2.Direction = ray.direction;
-    ray2.TMin = 0;
-    ray2.TMax = 1e20f;
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
 
-    RayHit hit = CreateRayHit();
+    float3 raydir = normalize(ray.direction);
 
-    const uint rayFlags = RAY_FLAG_NONE;
-    UnityRayQuery<rayFlags> rayQuery;
+    float alpha = asin(raydir.y);
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+    //double2 xs = { 0.0,  -srcPosition.y };
+    float2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), receiverPosition.y };
+    float deltas = 1.0;
 
-    rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2); // send a first ray
-    rayQuery.Proceed();
-
-    
-    uint2 dest = id.xy;
-    if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
-        hit.position = ray.origin + (ray.direction * rayQuery.CommittedRayT());
-        hit.distance = rayQuery.CommittedRayT();        
-        
-        if (rayQuery.CommittedInstanceID() == 1) { // surface
-            Result[dest] = float4(1, 0, 0, 0);
-            SurfaceHit(ray, hit, index1D);
-            hit.sendNewRay = SendNewRay(ray);
-        }
-        else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
-            Result[dest] = float4(0, 1, 0, 0);
-            WaterplaneHit(ray, hit, index1D);
-            //hit.sendNewRay = SendNewRay(ray);
-
-        }
-        else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
-            Result[dest] = float4(0, 0, 1, 0);
-            SeafloorHit(ray, hit, index1D);
-            hit.sendNewRay = SendNewRay(ray);
-        }
-        else if (rayQuery.CommittedInstanceID() == 4) { // target
-            Result[dest] = float4(1, 0, 1, 0);
-            TargetHit(ray, hit, index1D);
-            hit.sendNewRay = false;
-        }
-    }
-    else
-    {
-        Result[dest] = float4(0, 0, 0, 0);
-        NoHit(ray, index1D);
-        hit.sendNewRay = false;
-    }    
-    
-    
-    while (hit.sendNewRay) // spawn new ray from the hit position of the previous ray
-    {   
-        ray2.Origin = ray.origin;
-        ray2.Direction = ray.direction;
-        ray2.TMin = 0;
-        ray2.TMax = 1e20f;
-
-        rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray2);
-        rayQuery.Proceed();
-
-        if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
-            hit.position = ray.origin + (ray.direction * rayQuery.CommittedRayT());
-            hit.distance = rayQuery.CommittedRayT();
-
-            if (rayQuery.CommittedInstanceID() == 1) { // surface
-                Result[dest] = float4(1, 0, 0, 0);
-                SurfaceHit(ray, hit, index1D);
-                hit.sendNewRay = SendNewRay(ray);
-            }
-            else if (rayQuery.CommittedInstanceID() == 2) { // waterplane
-                Result[dest] = float4(0, 1, 0, 0);
-                WaterplaneHit(ray, hit, index1D);
-                hit.sendNewRay = false;  //SendNewRay(ray);
-            }
-            else if (rayQuery.CommittedInstanceID() == 3) { // seafloor
-                Result[dest] = float4(0, 0, 1, 0);
-                SeafloorHit(ray, hit, index1D);
-                hit.sendNewRay = SendNewRay(ray); // SendNewRay(ray);
-            }
-            else if (rayQuery.CommittedInstanceID() == 4) { // target
-                Result[dest] = float4(1, 0, 1, 0);
-                TargetHit(ray, hit, index1D);
-                hit.sendNewRay = false;
-            }
-        }
-        else
-        {
-            Result[dest] = float4(0, 0, 0, 0);
-            NoHit(ray, index1D);
-            hit.sendNewRay = false;
-        }
-    }
+    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5, id, width, raydir); //-depth för att depth fortfarande är definierad som positiv i C#-koden
 
 
 }

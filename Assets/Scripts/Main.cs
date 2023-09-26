@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -45,6 +46,10 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
+    private int bellhop_size = 3; //4096;
+    private ComputeBuffer xrayBuf;
+    private float2[] bds = null;
+
     struct RayData
     {
         public Vector3 origin;
@@ -89,6 +94,7 @@ public class Main : MonoBehaviour
 
         _rayPointsBuffer?.Release();
         _SSPBuffer?.Release();
+        xrayBuf?.Release();
     }
 
     void OnDestroy()
@@ -110,10 +116,27 @@ public class Main : MonoBehaviour
             _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta*sourceParams.nphi*sourceParams.MAXINTERACTIONS, raydatabytesize);
         }
 
+        if (xrayBuf == null)
+        {
+            Debug.Log("Allocating xraybuf. Please wait...");
+            xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 2 * sizeof(float));
+            //xrayBuf = new ComputeBuffer(bellhop_size, 2 * sizeof(double));
+            Debug.Log("Allocating xraybuf. Done!");
+        }
+
         if (rds == null)
         {
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             Debug.Log(rds.Length);
+        }
+
+        if (bds == null)
+        {
+            Debug.Log("Allocating bds. Please wait...");
+            bds = new float2[bellhop_size * sourceParams.nphi * sourceParams.ntheta];
+            //bds = new double2[bellhop_size];
+
+            Debug.Log("Allocating bds. Done!");
         }
 
         if (surfaceInstanceData == null)
@@ -172,13 +195,34 @@ public class Main : MonoBehaviour
 
     private void SetShaderParameters()
     {
+        //computeShader.SetMatrix("_SourceCameraToWorld", sourceCamera.cameraToWorldMatrix);
+        //computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);
+        //computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
+        //computeShader.SetFloat("_Seed", UnityEngine.Random.value);
+        
+        //SetComputeBuffer("_RayPoints", _rayPointsBuffer);
+        //SetComputeBuffer("_SSPBuffer", _SSPBuffer);
+
+        //SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+
+        //computeShader.SetInt("theta", sourceParams.theta);
+        //computeShader.SetInt("ntheta", sourceParams.ntheta);
+        //computeShader.SetInt("phi", sourceParams.phi);
+        //computeShader.SetInt("nphi", sourceParams.nphi);
+        //computeShader.SetVector("srcDirection", srcSphere.transform.forward);
+
+        //computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
+
+        //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
+
         computeShader.SetMatrix("_SourceCameraToWorld", sourceCamera.cameraToWorldMatrix);
         computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);
         computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
         computeShader.SetFloat("_Seed", UnityEngine.Random.value);
-        
+
         SetComputeBuffer("_RayPoints", _rayPointsBuffer);
         SetComputeBuffer("_SSPBuffer", _SSPBuffer);
+        SetComputeBuffer("xrayBuf", xrayBuf);
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
 
@@ -187,10 +231,17 @@ public class Main : MonoBehaviour
         computeShader.SetInt("phi", sourceParams.phi);
         computeShader.SetInt("nphi", sourceParams.nphi);
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);
+        computeShader.SetVector("srcPosition", srcSphere.transform.position);
+        computeShader.SetVector("receiverPosition", targetSphere.transform.position);
 
         computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
+        computeShader.SetInt("_BELLHOPSIZE", bellhop_size);
 
-        computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);        
+        // Bellhop
+        computeShader.SetFloat("depth", world_manager.GetComponent<World>().GetWaterDepth());
+
+        //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
+
     }
 
     private void InitRenderTexture(SourceParams sourceParams)
@@ -248,9 +299,16 @@ public class Main : MonoBehaviour
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
     }
 
+    int GetStartIndexBellhop(int idx, int idy)
+    {
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+
+        return (idy * sourceParams.nphi + idx) * bellhop_size;
+    }
+
     // Update is called once per frame
     void Update()
-    {   
+    {        
         //
         // CHECK FOR UPDATES
         //
@@ -279,11 +337,14 @@ public class Main : MonoBehaviour
             Debug.Log("The SSP file has been changed.");
             _SSPFileReader.AckSSPFileHasChanged();
             SSP = _SSPFileReader.GetSSPData();
+
+            Debug.Log(SSP[0].velocity);
             if (_SSPBuffer != null)
             {
                 _SSPBuffer.Release();
             }
             _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
+            _SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
             world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
         }        
@@ -347,7 +408,18 @@ public class Main : MonoBehaviour
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
 
+            Debug.Log("Starting Bellhop on GPU....");
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+            Debug.Log("Bellhop Done!");
+
+            Debug.Log("Copying Bellhop data to CPU...."); 
+            xrayBuf.GetData(bds);
+            Debug.Log("Data copy to CPU Done!");
+
+            for (int iterid = 0; iterid < bellhop_size; iterid++)
+            {
+                Debug.Log(iterid.ToString() + " " + bds[iterid + GetStartIndexBellhop(32, 32)]);
+            }
 
             if (sourceParams.visualizeRays)
             {
@@ -431,53 +503,53 @@ public class Main : MonoBehaviour
 
     void BuildRTAS()
     {
-        World world = world_manager.GetComponent<World>();
+        //World world = world_manager.GetComponent<World>();
 
-        rtas.ClearInstances();
+        //rtas.ClearInstances();
 
-        // add surface
-        Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
-        Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
-        RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
-        rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
+        //// add surface
+        //Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
+        //Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
+        //RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
+        //rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
 
-        // add seafloor
-        Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
-        Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
-        RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
-        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
+        //// add seafloor
+        //Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
+        //Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
+        //RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
+        //rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
 
-        // add waterplane(s)
-        Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
-        Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
-        RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);        
-        if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
-        {
-            rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
-            Debug.Log(waterplaneInstanceData.matrices.Length);
-        }        
+        //// add waterplane(s)
+        //Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
+        //Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
+        //RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);        
+        //if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
+        //{
+        //    rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
+        //    Debug.Log(waterplaneInstanceData.matrices.Length);
+        //}        
 
-        // targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
-        // are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
-        // necessary on all predefined meshes
-        Mesh targetMesh = targetSphere.GetComponent<MeshFilter>().mesh;
-        Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
+        //// targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
+        //// are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
+        //// necessary on all predefined meshes
+        //Mesh targetMesh = targetSphere.GetComponent<MeshFilter>().mesh;
+        //Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
 
-        targetSphere.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
+        //targetSphere.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
 
-        Material targetMaterial = targetSphere.GetComponent<MeshRenderer>().material;
+        //Material targetMaterial = targetSphere.GetComponent<MeshRenderer>().material;
 
-        Mesh realTargetMesh = new Mesh();
-        realTargetMesh.vertices = transformed_vertices;
-        realTargetMesh.triangles = targetMesh.triangles;
-        realTargetMesh.normals = targetMesh.normals;
-        realTargetMesh.tangents = targetMesh.tangents;
+        //Mesh realTargetMesh = new Mesh();
+        //realTargetMesh.vertices = transformed_vertices;
+        //realTargetMesh.triangles = targetMesh.triangles;
+        //realTargetMesh.normals = targetMesh.normals;
+        //realTargetMesh.tangents = targetMesh.tangents;
 
-        RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
+        //RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
 
-        rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);
+        //rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);
 
-        rtas.Build();
-        Debug.Log("RTAS built");
+        //rtas.Build();
+        //Debug.Log("RTAS built");
     }    
 }

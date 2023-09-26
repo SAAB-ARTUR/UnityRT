@@ -86,7 +86,7 @@ public class World : MonoBehaviour
         controller.upper_limit_x = range/2;
         controller.lower_limit_x = -range/2;
         controller.upper_limit_y = 0;
-        controller.lower_limit_y = -waterDepth;
+        controller.lower_limit_y = waterDepth;
         controller.upper_limit_z = range/2;
         controller.lower_limit_z = -range/2;
         controller.JumpTo(Vector3.down * sourceDepth);
@@ -102,7 +102,7 @@ public class World : MonoBehaviour
     }
     public void AddBottom(GameObject bottom) 
     {
-        Vector3 center = Vector3.down * waterDepth;
+        Vector3 center = Vector3.up * waterDepth;
         Mesh m1 = DoublePlaneMesh(center);
 
         bottom.GetComponent<MeshFilter>().mesh = m1;
@@ -115,7 +115,7 @@ public class World : MonoBehaviour
         // Create one waterplane, more waterplanes (if wanted) are created in main when the waterplane is added to the raytracing acceleration structure
         float dx = waterDepth / (nrOfWaterplanes + 1);
                 
-        Vector3 center = Vector3.down * dx;
+        Vector3 center = Vector3.up * dx;
         Mesh m1 = SinglePlaneMesh(center);
 
         waterplane.GetComponent<MeshFilter>().mesh = m1;
@@ -221,7 +221,7 @@ public class World : MonoBehaviour
         state0 = state;
         state = getCurrentState();        
 
-        Vector3 worldPos = this.transform.position;     
+        //Vector3 worldPos = this.transform.position;     
         
 
 

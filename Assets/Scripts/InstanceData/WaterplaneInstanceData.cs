@@ -25,7 +25,7 @@ sealed class WaterplaneInstanceData : IDisposable
         {
             float y = layer * delta;
 
-            matrices[index] = float4x4.Translate(new Vector3(0, -y, 0));
+            matrices[index] = float4x4.Translate(new Vector3(0, y, 0));
 
             index++;
         }

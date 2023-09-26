@@ -67,13 +67,17 @@ public class SSPFileReader : MonoBehaviour
                 SSP_Data data = new SSP_Data();
                 int i = 0;
                 foreach (string item in items)
-                {
+                {                    
                     bool isNumber = float.TryParse(item, out float numericValue);
                     if (isNumber)
                     {
                         switch (i)
                         {
                             case 0:
+                                if (numericValue > 0)
+                                {
+                                    numericValue = -numericValue; // depth needs to be negative
+                                }
                                 data.depth = numericValue;
                                 break;
                             case 1:
