@@ -8,7 +8,7 @@
 RWTexture2D<float4> Result;
 
 RWStructuredBuffer<float3> SSPData;
-RWStructuredBuffer<float2> xrayBuf;
+RWStructuredBuffer<float3> xrayBuf;
 
 
 float depth;
@@ -99,7 +99,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     Result.GetDimensions(width, height);
 
     // comvert id x and y values to a 1d index, each ray is allocated MAXINTERACTIONS slots for its interactions (surface/bottom hits, turning points)
-    uint index1D = (id.y * width + id.x) * _MAXINTERACTIONS; 
+    //uint index1D = (id.y * width + id.x) * _MAXINTERACTIONS; 
 
     Ray ray = CreateThetaPhiRay(id);
 
@@ -119,3 +119,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 
 }
+
+
+//# pragma kernel ClearBuffer
+//[numthreads(8, 8, 1)]

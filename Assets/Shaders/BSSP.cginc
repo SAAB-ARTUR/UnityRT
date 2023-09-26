@@ -34,12 +34,12 @@ SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer, uint istep, uint offse
     _SSPBuffer.GetDimensions(len, stride);
 
     /*if (ba) {
-        xrayBuf[istep + offset] = float2(z, Layer);
+        xrayBuf[istep + offset] = float3(z, Layer, 112346);
     }*/
 
 
     // search through deeper layers
-    while (z <= _SSPBuffer[Layer + 1].depth && Layer < len) //remember that z should be negative, hence the <= operation
+    while (z <= _SSPBuffer[Layer + 1].depth && Layer < len - 1) //remember that z should be negative, hence the <= operation
     {
         Layer = Layer + 1;
     }
@@ -53,6 +53,8 @@ SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer, uint istep, uint offse
     /*if (ba) {
         xrayBuf[istep + offset] = float2(z, Layer);
     }*/
+
+    
 
     float w = z - _SSPBuffer[Layer].depth;
 
@@ -71,6 +73,10 @@ SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer, uint istep, uint offse
     c = _SSPBuffer[Layer].velocity + w * _SSPBuffer[Layer].derivative1;
     cz = _SSPBuffer[Layer].derivative1;
     czz = 0.0;
+
+    /*if (ba) {
+        xrayBuf[istep + offset] = float3(c, z, _SSPBuffer[Layer].depth);
+    }*/
 
     // Construct and return the output
     SSPOutput result;

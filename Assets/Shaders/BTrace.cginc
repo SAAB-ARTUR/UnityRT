@@ -116,7 +116,7 @@ float3 toCartesian(float phi, float2 rz) {
     float radius = rz.x;
     float depth = rz.y;
 
-    return float3(radius * cos(phi) + srcPosition.x, -depth, radius * sin(phi) + srcPosition.z);
+    return float3(radius * cos(phi) + srcPosition.x, depth, radius * sin(phi) + srcPosition.z);
 
 }
 
@@ -150,7 +150,8 @@ TraceOutput btrace(
     uint maxbot,
     uint3 id,
     uint width,
-    float3 raydir
+    float3 raydir,
+    float phi
 )
 {
         
@@ -181,67 +182,86 @@ TraceOutput btrace(
 
     float2 x0;
     float tau0;
-    float len0;
-        
-    xrayBuf[0 + offset] = xs;
+    float len0;    
 
+    float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));    
+    float current_distance = original_distance;
+    float previous_distance = original_distance;
+    float3 x0_cart;
+    float3 x_cart;
+        
+    xrayBuf[0 + offset] = toCartesian(phi, xs);
+    //xrayBuf[0 + offset] = float3(offset, 12, original_distance);
     //xrayBuf[0 + offset] = double2(c, Layer);
     //xrayBuf[0 + offset] = double2(x);
+    uint index = 0;
 
-    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
+    //while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
+    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
     {
         // Apply caustic phase change
         if (q <= 0 && q0 > 0 || q >= 0 && q0 < 0)
         {
             ncaust++;
         }
-        
+
         // Save data from previous step
         x0 = x;
         q0 = q;
         tau0 = tau;
         len0 = len;
-        
+        previous_distance = current_distance;
+
+        //xrayBuf[0 + offset] = float3(Tray,354);
+
         // Take a step
-        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer, istep, offset);
-        
+        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer, istep, offset, index);
+
         Tray = stepOutput.Tray;
         p = stepOutput.p;
-        
+
         // Reflection to top and bottom
         // TODO: Accelerate with the acceleration structure
         if (stepOutput.x.y >= 0)
         {
             ntop++;
-            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
+            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q, istep, offset);
             Tray = reflection.Tray;
             p = reflection.p;
         }
-        
+
         if (stepOutput.x.y <= depth)
         {
-            nbot++; 
-            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
+            nbot++;
+            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q, istep, offset);
             Tray = reflection.Tray;
             p = reflection.p;
-            
+
         }
 
         // Reset for the next step
-        c = stepOutput.c; 
+        c = stepOutput.c;
         x = stepOutput.x;
         q = stepOutput.q;
         tau = stepOutput.tau;
         len = stepOutput.len;
-        
-        // Distance left to the reciever
-        xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
-        
-        xrayBuf[istep + offset] = x;
-        //xrayBuf[istep + offset + 1] = float2(ntop, nbot);
 
+        //float3 x0_cart = toCartesian(phi, x0);
+        //float3 xy_cart = toCartesian(phi, xr);
+        x_cart = toCartesian(phi, x);
+        
+        // distance between ray and receiver
+        current_distance = sqrt(pow((x_cart.x - receiverPosition.x), 2) + pow((x_cart.y - receiverPosition.y), 2) + pow((x_cart.z - receiverPosition.z), 2));
+
+        // Distance left to the receiver
+        //xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
+
+        xrayBuf[istep + offset] = x_cart;
+        //xrayBuf[istep + offset] = float3(current_distance, x);
+        //xrayBuf[istep + offset + 1] = float2(ntop, nbot);
+        //xrayBuf[istep + offset] = float3(Tray, 14);
         istep++;
-     }
+    }
 
     // Calculate ray tangent
     float tr = x.x - x0.x;

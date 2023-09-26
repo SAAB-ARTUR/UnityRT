@@ -46,9 +46,9 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
-    private int bellhop_size = 3; //4096;
+    private int bellhop_size = 10; //4096;
     private ComputeBuffer xrayBuf;
-    private float2[] bds = null;
+    private float3[] bds = null;
 
     struct RayData
     {
@@ -119,7 +119,7 @@ public class Main : MonoBehaviour
         if (xrayBuf == null)
         {
             Debug.Log("Allocating xraybuf. Please wait...");
-            xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 2 * sizeof(float));
+            xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             //xrayBuf = new ComputeBuffer(bellhop_size, 2 * sizeof(double));
             Debug.Log("Allocating xraybuf. Done!");
         }
@@ -133,7 +133,7 @@ public class Main : MonoBehaviour
         if (bds == null)
         {
             Debug.Log("Allocating bds. Please wait...");
-            bds = new float2[bellhop_size * sourceParams.nphi * sourceParams.ntheta];
+            bds = new float3[bellhop_size * sourceParams.nphi * sourceParams.ntheta];
             //bds = new double2[bellhop_size];
 
             Debug.Log("Allocating bds. Done!");
@@ -325,9 +325,14 @@ public class Main : MonoBehaviour
 
         for (int i = 0; i < bellhop_size; i++)
         {
-
-            positions.Add(new Vector3(bds[offset + i].x, bds[offset + i].y, bds[offset + i].z));
-
+            if (bds[offset + i].x != 0f || bds[offset + i].y != 0f || bds[offset + i].z != 0f)
+            {
+                positions.Add(new Vector3(bds[offset + i].x, bds[offset + i].y, bds[offset + i].z));
+            }
+            else
+            {
+                break;
+            }
         }
 
         line.positionCount = positions.Count;
@@ -519,9 +524,16 @@ public class Main : MonoBehaviour
                     line.SetPosition(1, rds[i].origin);
                     lines.Add(line);
                 }*/
-            }            
+            }
+
+            //empty bds and buffer
+
 
             //sourceCameraScript.receiveData(_target);
+            xrayBuf.Dispose();
+            xrayBuf.Release();
+            xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+
         }
 
         if (!sourceParams.visualizeRays)
@@ -532,6 +544,7 @@ public class Main : MonoBehaviour
             }
             lines.Clear();
         }
+        
     }
 
     void BuildRTAS()

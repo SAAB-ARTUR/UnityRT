@@ -50,10 +50,11 @@ StepOutput bstep(
     float depth,
     uint Layer,
     uint istep,
-    uint offset
+    uint offset,
+    uint index
 )
 {
-    SSPOutput phase0 = ssp(x0.y, soundSpeedProfile, Layer, istep, offset, true);
+    SSPOutput phase0 = ssp(x0.y, soundSpeedProfile, Layer, istep, offset, false);
 
     //xrayBuf[istep + offset] = float2(x0.y, phase0.Layer);
 
@@ -69,12 +70,10 @@ StepOutput bstep(
     h0 = ReduceStep(x0, Tray0, zmin, zmax, phase0.c, deltas, h0, istep, offset, true);
 
     float hh = 0.5 * h0;
-    float2 x1 = x0 +  hh * phase0.c * Tray0;
-    //x1.x += x0.x; //ytterst skumt och oroväckande att jag måste skriva såhär, skriver jag istället: x1 += x0 funkar det inte och resultatet blir x0
-    //x1.y += x0.y;
+    float2 x1 = x0 +  hh * phase0.c * Tray0;    
 
     //xrayBuf[istep + offset] = phase0.c * Tray0;
-    //xrayBuf[istep + offset] = float2(16, 18);
+    //xrayBuf[3*index+istep + offset] = float3(h0, x1);
 
     float2 mulvec0;
     mulvec0.x = 0;
@@ -97,17 +96,20 @@ StepOutput bstep(
     float w1 = h1 / h0;
     float w0 = 1 - w1;
 
-    // kolla dessa
     float2 x = x0 + h1 * (w0 * phase0.c * Tray0 + w1 * phase1.c * Tray1);
+
+    //xrayBuf[3* index + istep + offset + 1] = float3(h1, x);
+
     float2 Tray = Tray0 - h1 * (w0 * mulvec0 / csq0 + w1 * mulvec1 / csq1);
     float p = p0 - h1 * (w0 * cnn0_csq0 * q0 + w1 * cnn1_csq1 * q1);
     float q = q0 + h1 * (w0 * phase0.c * p0 + w1 * phase1.c * p1);
 
-    // kolla dessa
     float tau = tau0 + h1 * (w0 / phase0.c + w1 / phase1.c);
-    float len = len0 + h1;
+    float len = len0 + h1;    
 
-    SSPOutput phase2 = ssp(x.y, soundSpeedProfile, phase1.Layer, istep, offset, false);
+    SSPOutput phase2 = ssp(x.y, soundSpeedProfile, phase1.Layer, istep, offset, true);
+
+    //xrayBuf[istep + offset] = float3(x.y, phase0.Layer, phase2.c);
 
     if (!(phase2.Layer == phase0.Layer))
     {
