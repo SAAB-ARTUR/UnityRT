@@ -306,6 +306,37 @@ public class Main : MonoBehaviour
         return (idy * sourceParams.nphi + idx) * bellhop_size;
     }
 
+    void PlotBellhop(int idx, int idy)
+    {
+        //foreach (LineRenderer line in lines) {
+        //    Destroy(line);
+        //}
+        //lines.Clear();
+
+        int offset = GetStartIndexBellhop(idx, idy);
+
+        line = new GameObject("Line").AddComponent<LineRenderer>();
+        line.startWidth = 0.01f;
+        line.endWidth = 0.01f;
+        line.useWorldSpace = true;
+
+
+        List<Vector3> positions = new List<Vector3>();
+
+        for (int i = 0; i < bellhop_size; i++)
+        {
+
+            positions.Add(new Vector3(bds[offset + i].x, bds[offset + i].y, bds[offset + i].z));
+
+        }
+
+        line.positionCount = positions.Count;
+        line.SetPositions(positions.ToArray());
+
+        lines.Add(line);
+
+    }
+
     // Update is called once per frame
     void Update()
     {        
@@ -423,42 +454,44 @@ public class Main : MonoBehaviour
 
             if (sourceParams.visualizeRays)
             {
-                _rayPointsBuffer.GetData(rds);
+                PlotBellhop(32, 32);
+
+                //_rayPointsBuffer.GetData(rds);
                 
-                Vector3 srcOrigin = srcSphere.transform.position;
+                //Vector3 srcOrigin = srcSphere.transform.position;
 
-                // visualize all lines
-                for (int i = 0; i < rds.Length/sourceParams.MAXINTERACTIONS; i++)
-                {
-                    List<Vector3> positions = new List<Vector3>();
-                    if (rds[i*sourceParams.MAXINTERACTIONS].set != 12345) // check if the ray hit something
-                    {                        
-                        continue;
-                    }
+                //// visualize all lines
+                //for (int i = 0; i < rds.Length/sourceParams.MAXINTERACTIONS; i++)
+                //{
+                //    List<Vector3> positions = new List<Vector3>();
+                //    if (rds[i*sourceParams.MAXINTERACTIONS].set != 12345) // check if the ray hit something
+                //    {                        
+                //        continue;
+                //    }
 
-                    line = new GameObject("Line").AddComponent<LineRenderer>();
-                    line.startWidth = 0.01f;
-                    line.endWidth = 0.01f;
-                    line.positionCount = 2;
-                    line.useWorldSpace = true;
+                //    line = new GameObject("Line").AddComponent<LineRenderer>();
+                //    line.startWidth = 0.01f;
+                //    line.endWidth = 0.01f;
+                //    line.positionCount = 2;
+                //    line.useWorldSpace = true;
 
-                    // add ray source and first hit
-                    positions.Add(srcOrigin);
-                    positions.Add(rds[i * sourceParams.MAXINTERACTIONS].origin);                    
+                //    // add ray source and first hit
+                //    positions.Add(srcOrigin);
+                //    positions.Add(rds[i * sourceParams.MAXINTERACTIONS].origin);                    
 
-                    for (int j = 1; j < sourceParams.MAXINTERACTIONS; j++)
-                    {
-                        if (rds[i*sourceParams.MAXINTERACTIONS + j].set != 12345) // check if the next ray hit or miss
-                        {
-                            break;
-                        }
-                        positions.Add(rds[i * sourceParams.MAXINTERACTIONS + j].origin); // add next hit                        
-                    }
+                //    for (int j = 1; j < sourceParams.MAXINTERACTIONS; j++)
+                //    {
+                //        if (rds[i*sourceParams.MAXINTERACTIONS + j].set != 12345) // check if the next ray hit or miss
+                //        {
+                //            break;
+                //        }
+                //        positions.Add(rds[i * sourceParams.MAXINTERACTIONS + j].origin); // add next hit                        
+                //    }
                     
-                    line.positionCount = positions.Count;
-                    line.SetPositions(positions.ToArray());                    
-                    lines.Add(line);
-                }
+                //    line.positionCount = positions.Count;
+                //    line.SetPositions(positions.ToArray());                    
+                //    lines.Add(line);
+                //}
 
                 // visualize one line
                 /*for (int i = 0; i < sourceParams.MAXINTERACTIONS; i++)
@@ -488,7 +521,7 @@ public class Main : MonoBehaviour
                 }*/
             }            
 
-            sourceCameraScript.receiveData(_target);
+            //sourceCameraScript.receiveData(_target);
         }
 
         if (!sourceParams.visualizeRays)
