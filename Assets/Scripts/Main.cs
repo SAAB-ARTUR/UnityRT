@@ -533,11 +533,11 @@ public class Main : MonoBehaviour
 
 
             //sourceCameraScript.receiveData(_target);
-            xrayBuf.Dispose();
-            xrayBuf.Release();
-            xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+            //xrayBuf.Dispose();
+            //xrayBuf.Release();
+            //xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
 
-            Array.Clear(bds, 0, bds.Length);
+            //Array.Clear(bds, 0, bds.Length);
         }
 
         if (!sourceParams.visualizeRays)
