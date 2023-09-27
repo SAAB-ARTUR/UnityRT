@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
@@ -122,6 +123,7 @@ public class Main : MonoBehaviour
             xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             //xrayBuf = new ComputeBuffer(bellhop_size, 2 * sizeof(double));
             Debug.Log("Allocating xraybuf. Done!");
+            Debug.Log(sourceParams.nphi + " " + sourceParams.nphi);            
         }
 
         if (rds == null)
@@ -446,7 +448,7 @@ public class Main : MonoBehaviour
 
             Debug.Log("Starting Bellhop on GPU....");
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
-            Debug.Log("Bellhop Done!");
+            Debug.Log("Bellhop Done!");            
 
             Debug.Log("Copying Bellhop data to CPU...."); 
             xrayBuf.GetData(bds);
@@ -534,6 +536,7 @@ public class Main : MonoBehaviour
             xrayBuf.Release();
             xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
 
+            Array.Clear(bds, 0, bds.Length);
         }
 
         if (!sourceParams.visualizeRays)

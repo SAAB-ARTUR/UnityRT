@@ -113,10 +113,8 @@ StepOutput bstep(
 
     if (!(phase2.Layer == phase0.Layer))
     {
-
         float RN = -Tray.x * Tray.x / Tray.y * (phase2.cz - phase0.cz) / phase0.c;
         p = p + q * RN;
-
     }
 
     StepOutput result;

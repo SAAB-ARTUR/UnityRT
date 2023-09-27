@@ -109,8 +109,6 @@ double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, 
 #include "BStep.cginc"
 #include "BReflect.cginc"
 
-uint2 elem = { 17,17 };
-
 float3 toCartesian(float phi, float2 rz) {
 
     float radius = rz.x;
@@ -189,6 +187,8 @@ TraceOutput btrace(
     float previous_distance = original_distance;
     float3 x0_cart;
     float3 x_cart;
+
+    float step_traverse = 0;
         
     xrayBuf[0 + offset] = toCartesian(phi, xs);
     //xrayBuf[0 + offset] = float3(offset, 12, original_distance);
@@ -246,9 +246,19 @@ TraceOutput btrace(
         tau = stepOutput.tau;
         len = stepOutput.len;
 
-        //float3 x0_cart = toCartesian(phi, x0);
+        x0_cart = toCartesian(phi, x0);
         //float3 xy_cart = toCartesian(phi, xr);
         x_cart = toCartesian(phi, x);
+
+        //distance between previous position and new position after step
+        step_traverse = sqrt(pow((x_cart.x - x0_cart.x), 2) + pow((x_cart.y - x0_cart.y), 2) + pow((x_cart.z - x0_cart.z), 2));
+        /*if (step_traverse > deltas) {
+            xrayBuf[istep + offset] = float3(99, step_traverse, 28);
+            break;
+        }
+        else {
+            xrayBuf[istep + offset] = x_cart;
+        }*/
         
         // distance between ray and receiver
         current_distance = sqrt(pow((x_cart.x - receiverPosition.x), 2) + pow((x_cart.y - receiverPosition.y), 2) + pow((x_cart.z - receiverPosition.z), 2));
@@ -260,6 +270,8 @@ TraceOutput btrace(
         //xrayBuf[istep + offset] = float3(current_distance, x);
         //xrayBuf[istep + offset + 1] = float2(ntop, nbot);
         //xrayBuf[istep + offset] = float3(Tray, 14);
+
+
         istep++;
     }
 
