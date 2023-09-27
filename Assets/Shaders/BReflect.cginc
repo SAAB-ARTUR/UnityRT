@@ -4,7 +4,7 @@ struct Reflection
     float p;
 };
 
-Reflection breflect(float c, float cz, float2 Tray, float p, float q, uint istep, uint offset)
+Reflection breflect(float c, float cz, float2 Tray, float p, float q)
 {
     
     Reflection result;
@@ -24,8 +24,6 @@ Reflection breflect(float c, float cz, float2 Tray, float p, float q, uint istep
     // Incident unit ray tangent and normal
     float cnjump = 2 * cz * Tray.x;
     float csjump = 2 * cz * Tray.y;
-
-    //xrayBuf[istep + offset] = float3(c, Tg, 14);
     
     // Boundry curvature correction
     float RN = 2 * kappa / (c * c) / Th;

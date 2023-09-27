@@ -105,7 +105,6 @@ double ReduceStep(double2 x0, double2 Tray, double zmin, double zmax, double c, 
 }
 */
 
-//#include "BSSP.cginc"
 #include "BStep.cginc"
 #include "BReflect.cginc"
 
@@ -152,13 +151,8 @@ TraceOutput btrace(
     float phi
 )
 {
-        
-    // https://coderwall.com/p/fzni3g/bidirectional-translation-between-1d-and-3d-arrays
-    // I want x -> iteration index
-    // y -> phi
-    // z -> theta
     uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
-    SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0, 0, 0, false);
+    SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
     
     // Initial conditions
     
@@ -187,13 +181,8 @@ TraceOutput btrace(
     float previous_distance = original_distance;
     float3 x0_cart;
     float3 x_cart;
-
-    float step_traverse = 0;
         
     xrayBuf[0 + offset] = toCartesian(phi, xs);
-    //xrayBuf[0 + offset] = float3(offset, 12, original_distance);
-    //xrayBuf[0 + offset] = double2(c, Layer);
-    //xrayBuf[0 + offset] = double2(x);
     uint index = 0;
 
     //while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
@@ -212,10 +201,8 @@ TraceOutput btrace(
         len0 = len;
         previous_distance = current_distance;
 
-        //xrayBuf[0 + offset] = float3(Tray,354);
-
         // Take a step
-        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer, istep, offset, index);
+        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer);
 
         Tray = stepOutput.Tray;
         p = stepOutput.p;
@@ -225,7 +212,7 @@ TraceOutput btrace(
         if (stepOutput.x.y >= 0)
         {
             ntop++;
-            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q, istep, offset);
+            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
             Tray = reflection.Tray;
             p = reflection.p;
         }
@@ -233,7 +220,7 @@ TraceOutput btrace(
         if (stepOutput.x.y <= depth)
         {
             nbot++;
-            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q, istep, offset);
+            Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
             Tray = reflection.Tray;
             p = reflection.p;
 
@@ -247,18 +234,7 @@ TraceOutput btrace(
         len = stepOutput.len;
 
         x0_cart = toCartesian(phi, x0);
-        //float3 xy_cart = toCartesian(phi, xr);
         x_cart = toCartesian(phi, x);
-
-        //distance between previous position and new position after step
-        step_traverse = sqrt(pow((x_cart.x - x0_cart.x), 2) + pow((x_cart.y - x0_cart.y), 2) + pow((x_cart.z - x0_cart.z), 2));
-        /*if (step_traverse > deltas) {
-            xrayBuf[istep + offset] = float3(99, step_traverse, 28);
-            break;
-        }
-        else {
-            xrayBuf[istep + offset] = x_cart;
-        }*/
         
         // distance between ray and receiver
         current_distance = sqrt(pow((x_cart.x - receiverPosition.x), 2) + pow((x_cart.y - receiverPosition.y), 2) + pow((x_cart.z - receiverPosition.z), 2));
@@ -267,12 +243,13 @@ TraceOutput btrace(
         //xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
 
         xrayBuf[istep + offset] = x_cart;
-        //xrayBuf[istep + offset] = float3(current_distance, x);
-        //xrayBuf[istep + offset + 1] = float2(ntop, nbot);
-        //xrayBuf[istep + offset] = float3(Tray, 14);
-
 
         istep++;
+    }
+
+    // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force the empty positions to be empty
+    for (uint i = istep; i < _BELLHOPSIZE; i++) { 
+        xrayBuf[i + offset] = float3(0, 0, 0);
     }
 
     // Calculate ray tangent

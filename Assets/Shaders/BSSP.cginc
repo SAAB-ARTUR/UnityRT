@@ -27,16 +27,11 @@ Also returns a vector Layer indicating the layer a depth point is in
 Layer is the index of the layer that each ray is in
 SSP.z and SSP.c contains the depth/sound speed values
 */
-SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer, uint istep, uint offset, bool ba)
+SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer)
 {
     uint len;
     uint stride;
     _SSPBuffer.GetDimensions(len, stride);
-
-    /*if (ba) {
-        xrayBuf[istep + offset] = float3(z, Layer, 112346);
-    }*/
-
 
     // search through deeper layers
     while (z <= _SSPBuffer[Layer + 1].depth && Layer < len - 1) //remember that z should be negative, hence the <= operation
@@ -48,13 +43,7 @@ SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer, uint istep, uint offse
     while (z > _SSPBuffer[Layer].depth && Layer > 0)
     {
         Layer = Layer - 1;
-    }
-
-    /*if (ba) {
-        xrayBuf[istep + offset] = float2(z, Layer);
-    }*/
-
-    
+    }    
 
     float w = z - _SSPBuffer[Layer].depth;
 
@@ -73,10 +62,6 @@ SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer, uint istep, uint offse
     c = _SSPBuffer[Layer].velocity + w * _SSPBuffer[Layer].derivative1;
     cz = _SSPBuffer[Layer].derivative1;
     czz = 0.0;
-
-    /*if (ba) {
-        xrayBuf[istep + offset] = float3(c, z, _SSPBuffer[Layer].depth);
-    }*/
 
     // Construct and return the output
     SSPOutput result;

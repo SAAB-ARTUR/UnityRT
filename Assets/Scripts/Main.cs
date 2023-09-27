@@ -222,8 +222,8 @@ public class Main : MonoBehaviour
         computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
         computeShader.SetFloat("_Seed", UnityEngine.Random.value);
 
-        SetComputeBuffer("_RayPoints", _rayPointsBuffer);
-        SetComputeBuffer("_SSPBuffer", _SSPBuffer);
+        //SetComputeBuffer("_RayPoints", _rayPointsBuffer);
+        //SetComputeBuffer("_SSPBuffer", _SSPBuffer);
         SetComputeBuffer("xrayBuf", xrayBuf);
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
@@ -383,6 +383,7 @@ public class Main : MonoBehaviour
             }
             _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
             _SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
+            SetComputeBuffer("_SSPBuffer", _SSPBuffer);
             world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
         }        
