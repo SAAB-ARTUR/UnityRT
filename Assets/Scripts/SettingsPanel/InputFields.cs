@@ -8,11 +8,15 @@ public class InputFields : MonoBehaviour
     [SerializeField] GameObject srcSphere = null;
     [SerializeField] InputField ntheta = null;
     [SerializeField] InputField nphi = null;
-    [SerializeField] InputField maxInteractions = null;
+    //[SerializeField] InputField maxInteractions = null;
     [SerializeField] InputField theta = null;
     [SerializeField] InputField phi = null;    
-    [SerializeField] GameObject world_manager = null;    
-    [SerializeField] InputField range = null;    
+    [SerializeField] GameObject world_manager = null;
+    [SerializeField] InputField range = null;
+    [SerializeField] InputField nrOfIntegrationSteps = null;
+    [SerializeField] InputField integrationStepSize = null;
+    [SerializeField] GameObject bellhop = null;
+    [SerializeField] InputField callbackCommand = null;
 
     // Start is called before the first frame update
     void Start()
@@ -20,12 +24,17 @@ public class InputFields : MonoBehaviour
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         ntheta.text = sourceParams.ntheta.ToString();
         nphi.text = sourceParams.nphi.ToString();
-        maxInteractions.text = sourceParams.MAXINTERACTIONS.ToString();
+        //maxInteractions.text = sourceParams.MAXINTERACTIONS.ToString();
         theta.text = sourceParams.theta.ToString();
         phi.text = sourceParams.phi.ToString();
 
         World world = world_manager.GetComponent<World>();
-        range.text = world.range.ToString();        
+        range.text = world.range.ToString();
+
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        nrOfIntegrationSteps.text = bellhopParams.BELLHOPINTEGRATIONSTEPS.ToString();
+        integrationStepSize.text = bellhopParams.BELLHOPSTEPSIZE.ToString();
+        callbackCommand.text = "This will do nothing for now.";
     }
 
     public void OnNthetaChange()
@@ -72,7 +81,7 @@ public class InputFields : MonoBehaviour
             sourceParams.phi = numericValue;
         }
     }
-    public void OnMaxInteractionsChange()
+    /*public void OnMaxInteractionsChange()
     {
         string str = maxInteractions.text;
         bool isNumber = int.TryParse(str, out int numericValue);
@@ -82,7 +91,7 @@ public class InputFields : MonoBehaviour
             SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
             sourceParams.MAXINTERACTIONS = numericValue;
         }
-    }
+    }*/
 
     public void OnRangeChange()
     {
@@ -94,5 +103,34 @@ public class InputFields : MonoBehaviour
             World world = world_manager.GetComponent<World>();
             world.range = numericValue;
         }
+    }
+
+    public void OnNrOfStepsChange()
+    {
+        string str = nrOfIntegrationSteps.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.BELLHOPINTEGRATIONSTEPS = numericValue;
+        }
+    }
+
+    public void OnStepSizeChange()
+    {
+        string str = integrationStepSize.text;
+        bool isNumber = float.TryParse(str, out float numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.BELLHOPSTEPSIZE = numericValue;
+        }
+    }
+
+    public void OnCallbackCommandEntered()
+    {
+        Debug.Log("shshj");
     }
 }
