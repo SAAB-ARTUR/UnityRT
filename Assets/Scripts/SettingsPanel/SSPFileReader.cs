@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using AnotherFileBrowser.Windows; // https://github.com/SrejonKhan/AnotherFileBrowser Used to open file explorer to be able to select a file.
 
+
 public class SSPFileReader : MonoBehaviour
 {    
     private bool filepathHasChanged = false;
@@ -18,6 +19,14 @@ public class SSPFileReader : MonoBehaviour
         public float velocity;
         public float derivative1;
         public float derivative2;
+
+        public SSP_Data(float depth, float velocity, float derivative1, float derivative2)
+        {
+            this.depth = depth;
+            this.velocity = velocity;
+            this.derivative1 = derivative1;
+            this.derivative2 = derivative2;
+        }
     }
 
     public void OnSSPButtonPress()
@@ -81,25 +90,47 @@ public class SSPFileReader : MonoBehaviour
                                 data.depth = numericValue;
                                 break;
                             case 1:
-                                data.velocity = numericValue;
-                                break;
-                            case 2:
-                                data.derivative1 = numericValue;
-                                break;
-                            case 3:
-                                data.derivative2 = numericValue;
+                                data.velocity = numericValue;                                
                                 break;
                             default:
                                 break;
                         }
+                        i++;
                     }
-                    i++;
                 }
                 SSP.Add(data);
 
                 line = sr.ReadLine();
             }
             sr.Close(); // close file
+
+            // calculate derivate and second derivate
+
+            // Estimate derivatives
+            float[] derivatives1 = new float[SSP.Count];
+            float[] b = new float[SSP.Count];
+            for (int j = 0; j < SSP.Count - 1; j++) {         
+
+                derivatives1[j] = (SSP[j+1].velocity - SSP[j].velocity) / (SSP[j + 1].depth - SSP[j].depth);
+                if (j > 0)
+                {
+                    b[j] = (derivatives1[j] - derivatives1[j - 1]) / (SSP[j + 1].depth - SSP[j - 1].depth) / 2;
+                    b[j - 1] = b[j - 1] + b[j];
+                }
+
+                // Set coefficients for interpolation
+                float depth = SSP[j].depth;
+                float velocity = SSP[j].velocity;
+                float derivative1 = derivatives1[j] - b[j] * (SSP[j + 1].depth - SSP[j].depth);
+                float derivative2 = b[j];
+
+                SSP[j] = new SSP_Data(depth, velocity, derivative1, derivative2);
+
+                
+                //SSP[j, 2] = a[j] - b[j] * (z[j + 1] - z[j]);
+                //SSP[j, 3] = b[j];
+            }
+
         }
         catch(Exception e)
         {

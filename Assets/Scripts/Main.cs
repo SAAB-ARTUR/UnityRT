@@ -47,7 +47,7 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
-    private int bellhop_size = 10; //4096;
+    private int bellhop_size = 1000; //4096;
     private ComputeBuffer xrayBuf;
     private float3[] bds = null;
 
@@ -197,26 +197,6 @@ public class Main : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        //computeShader.SetMatrix("_SourceCameraToWorld", sourceCamera.cameraToWorldMatrix);
-        //computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);
-        //computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
-        //computeShader.SetFloat("_Seed", UnityEngine.Random.value);
-        
-        //SetComputeBuffer("_RayPoints", _rayPointsBuffer);
-        //SetComputeBuffer("_SSPBuffer", _SSPBuffer);
-
-        //SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-
-        //computeShader.SetInt("theta", sourceParams.theta);
-        //computeShader.SetInt("ntheta", sourceParams.ntheta);
-        //computeShader.SetInt("phi", sourceParams.phi);
-        //computeShader.SetInt("nphi", sourceParams.nphi);
-        //computeShader.SetVector("srcDirection", srcSphere.transform.forward);
-
-        //computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
-
-        //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
-
         computeShader.SetMatrix("_SourceCameraToWorld", sourceCamera.cameraToWorldMatrix);
         computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);
         computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
@@ -318,8 +298,8 @@ public class Main : MonoBehaviour
         int offset = GetStartIndexBellhop(idx, idy);
 
         line = new GameObject("Line").AddComponent<LineRenderer>();
-        line.startWidth = 0.01f;
-        line.endWidth = 0.01f;
+        line.startWidth = 0.03f;
+        line.endWidth = 0.03f;
         line.useWorldSpace = true;
 
 
@@ -423,7 +403,6 @@ public class Main : MonoBehaviour
 
             lockRayTracing = true; // disable raytracing being done several times during one keypress
             // do raytracing
-            Debug.Log("RayTrace");
 
             CreateResources();
 
@@ -436,36 +415,26 @@ public class Main : MonoBehaviour
             SetShaderParameters();
 
             InitRenderTexture(sourceParams);
-
-            if(_target == null)
-            {
-                Debug.Log("Null");
-            }
             
             computeShader.SetTexture(0, "Result", _target);
 
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
 
-            Debug.Log("Starting Bellhop on GPU....");
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
-            Debug.Log("Bellhop Done!");            
+     
 
-            Debug.Log("Copying Bellhop data to CPU...."); 
             xrayBuf.GetData(bds);
-            Debug.Log("Data copy to CPU Done!");
-
-            for (int iterid = 0; iterid < bellhop_size; iterid++)
-            {
-                Debug.Log(iterid.ToString() + " " + bds[iterid + GetStartIndexBellhop(32, 32)]);
-            }
+ 
 
             if (sourceParams.visualizeRays)
             {
-                PlotBellhop(32, 32);
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) {
+                    PlotBellhop(32, itheta);
+                }
 
                 //_rayPointsBuffer.GetData(rds);
-                
+
                 //Vector3 srcOrigin = srcSphere.transform.position;
 
                 //// visualize all lines
@@ -495,7 +464,7 @@ public class Main : MonoBehaviour
                 //        }
                 //        positions.Add(rds[i * sourceParams.MAXINTERACTIONS + j].origin); // add next hit                        
                 //    }
-                    
+
                 //    line.positionCount = positions.Count;
                 //    line.SetPositions(positions.ToArray());                    
                 //    lines.Add(line);

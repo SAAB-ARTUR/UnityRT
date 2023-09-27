@@ -301,7 +301,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7758018811897440842, guid: af435d442e376134bbebda1ad5a861dc, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 3
+      value: 150
       objectReference: {fileID: 0}
     - target: {fileID: 7758018811897440842, guid: af435d442e376134bbebda1ad5a861dc, type: 3}
       propertyPath: m_LocalPosition.y
@@ -481,8 +481,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9dcd90d4b09e47a408d8e5bb3df2bca7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sourceDepth: 2
-  _range: 40
+  sourceDepth: 26
+  _range: 300
 --- !u!4 &202712679
 Transform:
   m_ObjectHideFlags: 0
@@ -5345,8 +5345,6 @@ MonoBehaviour:
   phi: {fileID: 1478731680}
   world_manager: {fileID: 202712677}
   range: {fileID: 413816424}
-  depth: {fileID: 0}
-  nrOfWaterplanes: {fileID: 0}
 --- !u!1001 &4163844514946327126
 PrefabInstance:
   m_ObjectHideFlags: 0

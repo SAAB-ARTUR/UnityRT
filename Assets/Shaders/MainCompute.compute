@@ -112,7 +112,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };    
     float2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), receiverPosition.y };
-    float deltas = 1.0;
+    float deltas = 5.0;
 
     TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5, id, width, raydir, _Phi); //-depth för att depth fortfarande är definierad som positiv i C#-koden
 

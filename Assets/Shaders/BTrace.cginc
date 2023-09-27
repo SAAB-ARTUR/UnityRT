@@ -170,7 +170,7 @@ TraceOutput btrace(
 
     float xxs = 1;
     float q0 = 0;
-    uint istep = 1;
+ 
 
     float2 x0;
     float tau0;
@@ -183,7 +183,7 @@ TraceOutput btrace(
     float3 x_cart;
         
     xrayBuf[0 + offset] = toCartesian(phi, xs);
-    uint index = 0;
+    uint istep = 1;
 
     //while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
     while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)

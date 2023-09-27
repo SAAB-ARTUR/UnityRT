@@ -16,7 +16,7 @@ float ReduceStep(float2 x0, float2 Tray, float zmin, float zmax, float c, float 
 
 
     // Ensure that we make at least a little step. 
-    h = max(h, 1e-6 * deltas);
+    h = max(h, 1e-4 * deltas);
 
     return h;
 }
