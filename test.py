@@ -2,6 +2,7 @@
 import fileinput
 import matplotlib.pyplot as plt 
 import numpy as np
+import asyncio
 
 fig, ax = plt.subplots()
 plt.ion()
@@ -37,7 +38,7 @@ for line in fileinput.input():
 		ax.set_xlim([0, linenum])
 		ax.set_ylim([np.min(dp[:, 1]), np.max(dp[:, 1])])
 		fig.canvas.draw()
-		plt.pause(0.001)
+		plt.pause(0.0001)
 
 		linenum += 1
 	except:
