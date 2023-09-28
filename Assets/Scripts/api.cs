@@ -13,7 +13,12 @@ public class api : MonoBehaviour
 
     string endpoint = ".conda\\envs\\unity_interface\\python.exe test.py";
     Process process = null;
-    StreamWriter stdin = null; 
+    StreamWriter stdin = null;
+
+
+
+    Main main = null;
+
 
 
     int i = 0;
@@ -21,6 +26,8 @@ public class api : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+
+        main = this.GetComponent<Main>();   
 
         RunExternal();
 
@@ -62,7 +69,7 @@ public class api : MonoBehaviour
     {
 
         StreamWriter writer = process.StandardInput;
-        writer.WriteLine((i++).ToString());
+        writer.WriteLine(main.srcSphere.transform.position.y);
         writer.Flush();
 
     }
