@@ -343,7 +343,7 @@ public class Main : MonoBehaviour
 
         if (_SSPFileReader.SSPFileHasChanged())
         {
-            _SSPFileReader.AckSSPFileHasChanged();
+            _SSPFileReader.AckSSPFileHasChanged();            
             SSP = _SSPFileReader.GetSSPData();
 
             if (_SSPBuffer != null)
@@ -355,6 +355,7 @@ public class Main : MonoBehaviour
             SetComputeBuffer("_SSPBuffer", _SSPBuffer);
             world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
+            _SSPFileReader.UpdateDepthSlider();
         }        
         
         if (world.StateChanged())

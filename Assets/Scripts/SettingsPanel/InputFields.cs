@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,6 +18,16 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField integrationStepSize = null;
     [SerializeField] GameObject bellhop = null;
     [SerializeField] InputField callbackCommand = null;
+    [SerializeField] GameObject target = null;
+    [SerializeField] Slider targetXSlider = null;
+    [SerializeField] Slider targetYSlider = null;
+    [SerializeField] Slider targetZSlider = null;
+    [SerializeField] GameObject targetXSliderMin = null;
+    [SerializeField] GameObject targetXSliderMax = null;
+    [SerializeField] GameObject targetYSliderMin = null;
+    [SerializeField] GameObject targetYSliderMax = null;
+    [SerializeField] GameObject targetZSliderMin = null;
+    [SerializeField] GameObject targetZSliderMax = null;
 
     // Start is called before the first frame update
     void Start()
@@ -35,6 +46,32 @@ public class InputFields : MonoBehaviour
         nrOfIntegrationSteps.text = bellhopParams.BELLHOPINTEGRATIONSTEPS.ToString();
         integrationStepSize.text = bellhopParams.BELLHOPSTEPSIZE.ToString();
         callbackCommand.text = "This will do nothing for now.";
+
+        int worldRange = world.range;
+        targetXSlider.minValue = -worldRange / 2;
+        targetXSlider.maxValue = worldRange / 2;
+        targetZSlider.minValue = -worldRange / 2;
+        targetZSlider.maxValue = worldRange / 2;
+        targetYSlider.minValue = world.GetWaterDepth();
+        targetYSlider.maxValue = 0;
+        targetXSlider.value = target.transform.position.x;
+        targetYSlider.value = target.transform.position.y;
+        targetZSlider.value = target.transform.position.z;
+
+        TextMeshProUGUI tmProXmin = targetXSliderMin.GetComponent<TextMeshProUGUI>();        
+        tmProXmin.text = targetXSlider.minValue.ToString();
+        TextMeshProUGUI tmProXmax = targetXSliderMax.GetComponent<TextMeshProUGUI>();
+        tmProXmax.text = targetXSlider.maxValue.ToString();
+
+        TextMeshProUGUI tmProYmin = targetYSliderMin.GetComponent<TextMeshProUGUI>();
+        tmProYmin.text = targetYSlider.minValue.ToString();
+        TextMeshProUGUI tmProYmax = targetYSliderMax.GetComponent<TextMeshProUGUI>();
+        tmProYmax.text = targetYSlider.maxValue.ToString();
+
+        TextMeshProUGUI tmProZmin = targetZSliderMin.GetComponent<TextMeshProUGUI>();
+        tmProZmin.text = targetZSlider.minValue.ToString();
+        TextMeshProUGUI tmProZmax = targetZSliderMax.GetComponent<TextMeshProUGUI>();
+        tmProZmax.text = targetZSlider.maxValue.ToString();
     }
 
     public void OnNthetaChange()
@@ -102,6 +139,24 @@ public class InputFields : MonoBehaviour
         {
             World world = world_manager.GetComponent<World>();
             world.range = numericValue;
+
+            targetXSlider.minValue = -world.range / 2; //borde kunna bli floats??
+            targetXSlider.maxValue = world.range / 2;
+            targetZSlider.minValue = -world.range / 2;
+            targetZSlider.maxValue = world.range / 2;
+
+            targetXSlider.value = 0; //TODO: Sätt till något bättre
+            targetZSlider.value = 0;
+
+            TextMeshProUGUI tmProXmin = targetXSliderMin.GetComponent<TextMeshProUGUI>();
+            tmProXmin.text = targetXSlider.minValue.ToString();
+            TextMeshProUGUI tmProXmax = targetXSliderMax.GetComponent<TextMeshProUGUI>();
+            tmProXmax.text = targetXSlider.maxValue.ToString();
+
+            TextMeshProUGUI tmProZmin = targetZSliderMin.GetComponent<TextMeshProUGUI>();
+            tmProZmin.text = targetZSlider.minValue.ToString();
+            TextMeshProUGUI tmProZmax = targetZSliderMax.GetComponent<TextMeshProUGUI>();
+            tmProZmax.text = targetZSlider.maxValue.ToString();
         }
     }
 
@@ -132,5 +187,33 @@ public class InputFields : MonoBehaviour
     public void OnCallbackCommandEntered()
     {
         Debug.Log("shshj");
+    }
+
+    public void OnTargetXSliderChange()
+    {
+        target.transform.position = new Vector3(targetXSlider.value, target.transform.position.y, target.transform.position.z);
+    }
+
+    public void UpdateDepth()
+    {
+        World world = world_manager.GetComponent<World>();
+        targetYSlider.minValue = world.GetWaterDepth();
+        targetYSlider.maxValue = 0;
+        targetYSlider.value = target.transform.position.y;        
+
+        TextMeshProUGUI tmProYmin = targetYSliderMin.GetComponent<TextMeshProUGUI>();
+        tmProYmin.text = targetYSlider.minValue.ToString();
+        TextMeshProUGUI tmProYmax = targetYSliderMax.GetComponent<TextMeshProUGUI>();
+        tmProYmax.text = targetYSlider.maxValue.ToString();        
+    }
+
+    public void OnTargetYSliderChange()
+    {
+        target.transform.position = new Vector3(target.transform.position.x, targetYSlider.value, target.transform.position.z);
+    }
+
+    public void OnTargetZSliderChange()
+    {
+        target.transform.position = new Vector3(target.transform.position.x, target.transform.position.y, targetZSlider.value);
     }
 }
