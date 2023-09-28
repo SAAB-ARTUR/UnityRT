@@ -17,18 +17,19 @@ public class Main : MonoBehaviour
     [SerializeField] Camera sourceCamera = null; 
     [SerializeField] GameObject world_manager = null;
     [SerializeField] GameObject btnFilePicker = null;
+    [SerializeField] GameObject bellhop = null;
 
     private SourceParams.Properties? oldSourceParams = null;
+    private BellhopParams.Properties? oldBellhopParams = null;
 
-    private ComputeBuffer _rayPointsBuffer;
-    
+    //private ComputeBuffer _rayPointsBuffer;
+    //private RayData[] rds = null;
+
     private RayTracingVisualization sourceCameraScript = null;
     private RenderTexture _target;
 
     private bool doRayTracing = false;
-    private bool lockRayTracing = false;
-
-    private RayData[] rds = null;
+    private bool lockRayTracing = false;    
 
     private LineRenderer line = null;
     private List<LineRenderer> lines = new List<LineRenderer>();
@@ -47,7 +48,7 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
-    private int bellhop_size = 1000; //4096;
+    //private int bellhop_size = 1000; //4096;
     private ComputeBuffer xrayBuf;
     private float3[] bds = null;
 
@@ -93,7 +94,7 @@ public class Main : MonoBehaviour
             targetInstanceData = null;
         }
 
-        _rayPointsBuffer?.Release();
+        //_rayPointsBuffer?.Release();
         _SSPBuffer?.Release();
         xrayBuf?.Release();
     }
@@ -110,35 +111,29 @@ public class Main : MonoBehaviour
 
     private void CreateResources()
     {
-        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
-        if (_rayPointsBuffer == null)
+        /*if (_rayPointsBuffer == null)
         {
             _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta*sourceParams.nphi*sourceParams.MAXINTERACTIONS, raydatabytesize);
-        }
+        }*/
 
         if (xrayBuf == null)
-        {
-            Debug.Log("Allocating xraybuf. Please wait...");
-            xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
-            //xrayBuf = new ComputeBuffer(bellhop_size, 2 * sizeof(double));
-            Debug.Log("Allocating xraybuf. Done!");
-            Debug.Log(sourceParams.nphi + " " + sourceParams.nphi);            
+        {            
+            xrayBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+            SetComputeBuffer("xrayBuf", xrayBuf);
         }
 
-        if (rds == null)
+        /*if (rds == null)
         {
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             Debug.Log(rds.Length);
-        }
+        }*/
 
         if (bds == null)
-        {
-            Debug.Log("Allocating bds. Please wait...");
-            bds = new float3[bellhop_size * sourceParams.nphi * sourceParams.ntheta];
-            //bds = new double2[bellhop_size];
-
-            Debug.Log("Allocating bds. Done!");
+        {            
+            bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
         }
 
         if (surfaceInstanceData == null)
@@ -199,31 +194,13 @@ public class Main : MonoBehaviour
     {
         computeShader.SetMatrix("_SourceCameraToWorld", sourceCamera.cameraToWorldMatrix);
         computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);
-        computeShader.SetVector("_PixelOffset", new Vector2(UnityEngine.Random.value, UnityEngine.Random.value));
-        computeShader.SetFloat("_Seed", UnityEngine.Random.value);
 
-        //SetComputeBuffer("_RayPoints", _rayPointsBuffer);
-        //SetComputeBuffer("_SSPBuffer", _SSPBuffer);
-        SetComputeBuffer("xrayBuf", xrayBuf);
+        //SetComputeBuffer("_RayPoints", _rayPointsBuffer);        
+        //SetComputeBuffer("xrayBuf", xrayBuf);        
 
-        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-
-        computeShader.SetInt("theta", sourceParams.theta);
-        computeShader.SetInt("ntheta", sourceParams.ntheta);
-        computeShader.SetInt("phi", sourceParams.phi);
-        computeShader.SetInt("nphi", sourceParams.nphi);
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);
         computeShader.SetVector("srcPosition", srcSphere.transform.position);
         computeShader.SetVector("receiverPosition", targetSphere.transform.position);
-
-        computeShader.SetInt("_MAXINTERACTIONS", sourceParams.MAXINTERACTIONS);
-        computeShader.SetInt("_BELLHOPSIZE", bellhop_size);
-
-        // Bellhop
-        computeShader.SetFloat("depth", world_manager.GetComponent<World>().GetWaterDepth());
-
-        //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
-
     }
 
     private void InitRenderTexture(SourceParams sourceParams)
@@ -252,12 +229,12 @@ public class Main : MonoBehaviour
         if (world.GetNrOfWaterplanes() > 0)
         {
             world.AddWaterplane(waterplane);
-        }        
+        }
+        computeShader.SetFloat("depth", world.GetWaterDepth());
     }
 
     private void OnEnable()
     {
-        Debug.Log("OnEnable");
         if (sourceCamera != null)
         {
             sourceCameraScript = sourceCamera.GetComponent<RayTracingVisualization>();
@@ -271,7 +248,6 @@ public class Main : MonoBehaviour
     {        
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
-        Debug.Log("Start");
 
         BuildWorld();        
         rebuildRTAS = true;
@@ -284,16 +260,14 @@ public class Main : MonoBehaviour
     int GetStartIndexBellhop(int idx, int idy)
     {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
-        return (idy * sourceParams.nphi + idx) * bellhop_size;
+        return (idy * sourceParams.nphi + idx) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
     }
 
     void PlotBellhop(int idx, int idy)
     {
-        //foreach (LineRenderer line in lines) {
-        //    Destroy(line);
-        //}
-        //lines.Clear();
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
         int offset = GetStartIndexBellhop(idx, idy);
 
@@ -302,10 +276,9 @@ public class Main : MonoBehaviour
         line.endWidth = 0.03f;
         line.useWorldSpace = true;
 
-
         List<Vector3> positions = new List<Vector3>();
 
-        for (int i = 0; i < bellhop_size; i++)
+        for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
         {
             if (bds[offset + i].x != 0f || bds[offset + i].y != 0f || bds[offset + i].z != 0f)
             {
@@ -331,32 +304,48 @@ public class Main : MonoBehaviour
         // CHECK FOR UPDATES
         //
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        
-        if (sourceParams.HasChanged(oldSourceParams))
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+
+        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams))
             {
             //Debug.Log("Reeinit raybuffer");
             // reinit rds array
-            rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
-            
+            //rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
+
             // reinit raydatabuffer
-            if (_rayPointsBuffer != null)
+            /*if (_rayPointsBuffer != null)
             {
                 _rayPointsBuffer.Release();
             }
-            _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS, raydatabytesize);            
-            
+            _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS, raydatabytesize);*/
+
+            bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
             oldSourceParams = sourceParams.ToStruct();
+            oldBellhopParams = bellhopParams.ToStruct();
+
+            if (xrayBuf != null)
+            {
+                xrayBuf.Release();
+                xrayBuf = null;
+            }
+
+            // update values in shader
+            computeShader.SetInt("theta", sourceParams.theta);
+            computeShader.SetInt("ntheta", sourceParams.ntheta);
+            computeShader.SetInt("phi", sourceParams.phi);
+            computeShader.SetInt("nphi", sourceParams.nphi);
+
+            computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
+            computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
         }
 
         World world = world_manager.GetComponent<World>();
 
         if (_SSPFileReader.SSPFileHasChanged())
         {
-            Debug.Log("The SSP file has been changed.");
-            _SSPFileReader.AckSSPFileHasChanged();
+            _SSPFileReader.AckSSPFileHasChanged();            
             SSP = _SSPFileReader.GetSSPData();
 
-            Debug.Log(SSP[0].velocity);
             if (_SSPBuffer != null)
             {
                 _SSPBuffer.Release();
@@ -366,6 +355,7 @@ public class Main : MonoBehaviour
             SetComputeBuffer("_SSPBuffer", _SSPBuffer);
             world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
+            _SSPFileReader.UpdateDepthSlider();
         }        
         
         if (world.StateChanged())
@@ -430,7 +420,7 @@ public class Main : MonoBehaviour
             if (sourceParams.visualizeRays)
             {
                 for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) {
-                    PlotBellhop(32, itheta);
+                    PlotBellhop((int)sourceParams.nphi/2, itheta);
                 }
 
                 //_rayPointsBuffer.GetData(rds);
@@ -570,5 +560,7 @@ public class Main : MonoBehaviour
 
         //rtas.Build();
         //Debug.Log("RTAS built");
-    }    
+
+        //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
+    }
 }
