@@ -21,6 +21,8 @@ public class Main : MonoBehaviour
 
     private SourceParams.Properties? oldSourceParams = null;
     private BellhopParams.Properties? oldBellhopParams = null;
+    private int oldMaxSurfaceHits = 0;
+    private int oldMaxBottomHits = 0;
 
     //private ComputeBuffer _rayPointsBuffer;
     //private RayData[] rds = null;
@@ -51,6 +53,8 @@ public class Main : MonoBehaviour
     //private int bellhop_size = 1000; //4096;
     private ComputeBuffer xrayBuf;
     private float3[] bds = null;
+
+    private int ITERATIONS = 2;
 
     struct RayData
     {
@@ -338,6 +342,13 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
             computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
         }
+        if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits || bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
+        {            
+            oldMaxSurfaceHits = bellhopParams.MAXNRSURFACEHITS;
+            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);
+            oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
+            computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);
+        }
 
         World world = world_manager.GetComponent<World>();
 
@@ -408,14 +419,14 @@ public class Main : MonoBehaviour
             
             computeShader.SetTexture(0, "Result", _target);
 
+            // loopa här ????
+
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
-            int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
+            int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
-            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
-     
+            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);     
 
-            xrayBuf.GetData(bds);
- 
+            xrayBuf.GetData(bds); 
 
             if (sourceParams.visualizeRays)
             {
