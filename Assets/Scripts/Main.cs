@@ -10,7 +10,7 @@ public class Main : MonoBehaviour
 {
     public ComputeShader computeShader = null;
 
-    [SerializeField] GameObject srcSphere = null;    
+    public GameObject srcSphere = null;    
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject waterplane = null;
