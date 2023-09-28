@@ -20,6 +20,8 @@ public class api : MonoBehaviour
     Main main = null;
 
 
+    Thread processThread = null;
+
 
     int i = 0;
 
@@ -33,9 +35,14 @@ public class api : MonoBehaviour
 
         process.OutputDataReceived += OutputHandler;
 
-        process.Start();
 
-        process.BeginOutputReadLine();
+        ThreadStart ths = new ThreadStart(() => {
+            process.Start();
+            process.BeginOutputReadLine();
+            
+        });
+        processThread = new Thread(ths);
+        processThread.Start();
      
 
     }
