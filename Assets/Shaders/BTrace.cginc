@@ -117,7 +117,7 @@ float3 toCartesian(float phi, float2 rz) {
 
 }
 
-struct BRay
+/*struct BRay
 {
     uint ntop;
     uint nbot;
@@ -127,12 +127,19 @@ struct BRay
     float xn;
     float qi;
 
-};
+};*/
 
 struct TraceOutput
 {   
-    BRay ray;
+    //BRay ray;
     float beta;
+    uint ntop;
+    uint nbot;
+    uint ncaust;
+    float delay;
+    float curve;
+    float xn;
+    float qi;
 };
 
 TraceOutput btrace(
@@ -148,7 +155,8 @@ TraceOutput btrace(
     uint3 id,
     uint width,
     float3 raydir,
-    float phi
+    float phi,
+    inout PerRayData prd
 )
 {
     uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
@@ -294,20 +302,36 @@ TraceOutput btrace(
      
     // Create the output
     TraceOutput result;
-    BRay r;
+    /*BRay r;
     r.curve = curve;
     r.delay = delay;
     r.nbot = nbot;
     r.ntop = ntop; 
     r.qi = qi;
     r.xn = xn; 
-    r.ncaust = ncaust;
-    
+    r.ncaust = ncaust;*/  
     
     //result.xray = xrayBuf;
     result.beta = beta;
-    result.ray = r;
+    //result.ray = r;
+    result.ntop = ntop;
+    result.nbot = nbot;
+    result.ncaust = ncaust;
+    result.delay = delay;
+    result.curve = curve;
+    result.xn = xn;
+    result.qi = qi;
     
+    prd.iseig = 0;
+    prd.beta = beta;
+    //prd.ray = r;
+    prd.ntop = ntop;
+    prd.nbot = nbot;
+    prd.ncaust = ncaust;
+    prd.delay = delay;
+    prd.curve = curve;
+    prd.xn = xn;
+    prd.qi = qi;
     return result;
     
 }

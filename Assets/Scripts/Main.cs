@@ -53,9 +53,7 @@ public class Main : MonoBehaviour
 
     //private int bellhop_size = 1000; //4096;
     private ComputeBuffer xrayBuf;
-    private float3[] bds = null;
-
-    private int ITERATIONS = 2;
+    private float3[] bds = null;    
 
     /*struct RayData
     {
@@ -66,12 +64,22 @@ public class Main : MonoBehaviour
 
     struct PerRayData
     {
-        public int iseig; //should be 0 or 1
+        public uint iseig;
         public float beta;
+        public uint ntop;
+        public uint nbot;
+        public uint ncaust;
+        public float delay;
+        public float curve;
+        public float xn;
+        public float qi;
+        public float alpha;
     }
-    private int perraydataByteSize = sizeof(int) + sizeof(float);
+    private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 6;
 
     private ComputeBuffer PerRayDataBuffer;
+    private PerRayData[] rayData = null;
+    private float dtheta = 0;
 
     private void ReleaseResources()
     {
@@ -140,10 +148,20 @@ public class Main : MonoBehaviour
             SetComputeBuffer("xrayBuf", xrayBuf);
         }
 
+        if (bds == null)
+        {
+            bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
+        }
+
         if (PerRayDataBuffer == null)
         {
             PerRayDataBuffer = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, perraydataByteSize);
             SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer);
+        }
+
+        if (rayData == null)
+        {
+            rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
         }
 
         /*if (rds == null)
@@ -151,11 +169,6 @@ public class Main : MonoBehaviour
             rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
             Debug.Log(rds.Length);
         }*/
-
-        if (bds == null)
-        {            
-            bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
-        }
 
         if (surfaceInstanceData == null)
         {
@@ -289,6 +302,11 @@ public class Main : MonoBehaviour
 
         int offset = GetStartIndexBellhop(idx, idy);
 
+        /*if (rayData[offset / bellhopParams.BELLHOPINTEGRATIONSTEPS].iseig == 0)
+        {
+            return;
+        }*/
+
         line = new GameObject("Line").AddComponent<LineRenderer>();
         line.startWidth = 0.03f;
         line.endWidth = 0.03f;
@@ -338,6 +356,7 @@ public class Main : MonoBehaviour
             _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS, raydatabytesize);*/
 
             bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
+            rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
             oldSourceParams = sourceParams.ToStruct();
             oldBellhopParams = bellhopParams.ToStruct();
 
@@ -345,6 +364,12 @@ public class Main : MonoBehaviour
             {
                 xrayBuf.Release();
                 xrayBuf = null;
+            }
+
+            if (PerRayDataBuffer != null)
+            {
+                PerRayDataBuffer.Release();
+                PerRayDataBuffer = null;
             }
 
             // update values in shader
@@ -355,6 +380,8 @@ public class Main : MonoBehaviour
 
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
             computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
+
+            dtheta = sourceParams.theta / sourceParams.ntheta;
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {            
@@ -369,8 +396,7 @@ public class Main : MonoBehaviour
         if(bellhopParams.BELLHOPITERATIONS != oldBellhopIterations)
         {
             oldBellhopIterations = bellhopParams.BELLHOPITERATIONS;
-            computeShader.SetInt("_BELLHOPITERATIONS", bellhopParams.BELLHOPITERATIONS);
-            Debug.Log("iteration");
+            computeShader.SetInt("_BELLHOPITERATIONS", bellhopParams.BELLHOPITERATIONS);            
         }
 
         World world = world_manager.GetComponent<World>();
@@ -442,14 +468,37 @@ public class Main : MonoBehaviour
             
             computeShader.SetTexture(0, "Result", _target);
 
-            // loopa här ????
-
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);     
 
-            xrayBuf.GetData(bds); 
+            // read results from buffers into arrays
+            xrayBuf.GetData(bds);
+            PerRayDataBuffer.GetData(rayData);
+
+            // compute eigenrays
+            int i = 0;
+            while (i < rayData.Length - 1)
+            {
+                // find pairs of rays
+                if (rayData[i + 1].xn < rayData[i].xn + 1.5 * dtheta)
+                {
+                    float n1 = rayData[i].xn;
+                    float n2 = rayData[i+1].xn;
+                    float tot = rayData[i].beta + rayData[i + 1].beta;
+
+                    if (n1 * n2 <= 0 && tot > 0.9 && tot < 1.1)
+                    {
+                        float w = n2 / (n2 - n1);
+                        rayData[i].iseig = 1; //true
+                        rayData[i].alpha = w * rayData[i].alpha + (1 - w) * rayData[i + 1].alpha;
+                        rayData[i + 1].iseig = 0; //false
+                        i++;
+                    }
+                }
+                i++;
+            }
 
             if (sourceParams.visualizeRays)
             {
