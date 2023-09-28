@@ -8,6 +8,12 @@ public class BellhopParams : MonoBehaviour
     private int nrOfBellhopIntegrationSteps = 0;
     [SerializeField]
     private float bellhopIntegrationStepSize = 0;
+    [SerializeField]
+    private int maxNrSurfaceHits = 0;
+    [SerializeField]
+    private int maxNrBottomHits = 0;
+    [SerializeField]
+    private int bellhopIterations = 1;
 
     public int BELLHOPINTEGRATIONSTEPS
     {
@@ -26,6 +32,36 @@ public class BellhopParams : MonoBehaviour
         {
             if (value > 0) { bellhopIntegrationStepSize = value; }
             else { bellhopIntegrationStepSize = 1; }
+        }
+    }
+
+    public int MAXNRSURFACEHITS
+    {
+        get { return maxNrSurfaceHits; }
+        set
+        {
+            if (value >= 0) { maxNrSurfaceHits = value; }
+            else { maxNrSurfaceHits = 0; }
+        }
+    }
+
+    public int MAXNRBOTTOMHITS
+    {
+        get { return maxNrBottomHits; }
+        set
+        {
+            if (value >= 0) { maxNrBottomHits = value; }
+            else { maxNrBottomHits = 0; }
+        }
+    }
+
+    public int BELLHOPITERATIONS
+    {
+        get { return bellhopIterations; }
+        set
+        {
+            if (value > 0) { bellhopIterations = value; }
+            else { bellhopIterations = 1; }
         }
     }
 

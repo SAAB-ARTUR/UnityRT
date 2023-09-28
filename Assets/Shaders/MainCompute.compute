@@ -10,6 +10,12 @@ RWTexture2D<float4> Result;
 RWStructuredBuffer<float3> SSPData;
 RWStructuredBuffer<float3> xrayBuf;
 
+struct PerRayData {
+    int iseig;      //should be 0 or 1
+    float beta;     // how "close" the beam is to the receiver
+};
+
+RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 
 float depth;
 
@@ -21,6 +27,9 @@ float2 _Pixel;
 int _MAXINTERACTIONS;
 int _BELLHOPSIZE;
 float deltas;
+int _MAXBOTTOMHITS;
+int _MAXSURFACEHITS;
+int _BELLHOPITERATIONS;
 
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
@@ -111,10 +120,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     float alpha = asin(raydir.y);
     float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };    
-    float2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), receiverPosition.y };
-    //float deltas = 5.0;
+    float2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), receiverPosition.y };    
 
-    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, 5, 5, id, width, raydir, _Phi); //-depth för att depth fortfarande är definierad som positiv i C#-koden
+    TraceOutput t = btrace(soundSpeedProfile, alpha, 0.1, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, width, raydir, _Phi);
 
 
 }

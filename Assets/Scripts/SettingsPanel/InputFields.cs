@@ -28,6 +28,10 @@ public class InputFields : MonoBehaviour
     [SerializeField] GameObject targetYSliderMax = null;
     [SerializeField] GameObject targetZSliderMin = null;
     [SerializeField] GameObject targetZSliderMax = null;
+    [SerializeField] InputField maxNrOfSurfaceHits = null;
+    [SerializeField] InputField maxNrOfBottomHits = null;
+    [SerializeField] InputField bellhopIterations = null;
+
 
     // Start is called before the first frame update
     void Start()
@@ -45,6 +49,9 @@ public class InputFields : MonoBehaviour
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
         nrOfIntegrationSteps.text = bellhopParams.BELLHOPINTEGRATIONSTEPS.ToString();
         integrationStepSize.text = bellhopParams.BELLHOPSTEPSIZE.ToString();
+        maxNrOfSurfaceHits.text = "0";
+        maxNrOfBottomHits.text = "0";
+        bellhopIterations.text = "1";
         callbackCommand.text = "This will do nothing for now.";
 
         int worldRange = world.range;
@@ -160,35 +167,6 @@ public class InputFields : MonoBehaviour
         }
     }
 
-    public void OnNrOfStepsChange()
-    {
-        string str = nrOfIntegrationSteps.text;
-        bool isNumber = int.TryParse(str, out int numericValue);
-
-        if (isNumber && numericValue > 0)
-        {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-            bellhopParams.BELLHOPINTEGRATIONSTEPS = numericValue;
-        }
-    }
-
-    public void OnStepSizeChange()
-    {
-        string str = integrationStepSize.text;
-        bool isNumber = float.TryParse(str, out float numericValue);
-
-        if (isNumber && numericValue > 0)
-        {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-            bellhopParams.BELLHOPSTEPSIZE = numericValue;
-        }
-    }
-
-    public void OnCallbackCommandEntered()
-    {
-        Debug.Log("shshj");
-    }
-
     public void OnTargetXSliderChange()
     {
         target.transform.position = new Vector3(targetXSlider.value, target.transform.position.y, target.transform.position.z);
@@ -216,4 +194,71 @@ public class InputFields : MonoBehaviour
     {
         target.transform.position = new Vector3(target.transform.position.x, target.transform.position.y, targetZSlider.value);
     }
+
+    public void OnNrOfStepsChange()
+    {
+        string str = nrOfIntegrationSteps.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.BELLHOPINTEGRATIONSTEPS = numericValue;
+        }
+    }
+
+    public void OnStepSizeChange()
+    {
+        string str = integrationStepSize.text;
+        bool isNumber = float.TryParse(str, out float numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.BELLHOPSTEPSIZE = numericValue;
+        }
+    }
+
+    public void OnSurfaceHitsChange()
+    {        
+        string str = maxNrOfSurfaceHits.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.MAXNRSURFACEHITS = numericValue;
+        }
+    }
+
+    public void OnBottomHitsChange()
+    {        
+        string str = maxNrOfBottomHits.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.MAXNRBOTTOMHITS = numericValue;
+        }
+    }
+
+    public void OnBellhopIterationsChange()
+    {
+        string str = bellhopIterations.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.BELLHOPITERATIONS = numericValue;
+        }
+    }
+
+    public void OnCallbackCommandEntered()
+    {
+        Debug.Log("shshj");
+    }
+
+
 }
