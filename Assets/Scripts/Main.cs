@@ -23,6 +23,7 @@ public class Main : MonoBehaviour
     private BellhopParams.Properties? oldBellhopParams = null;
     private int oldMaxSurfaceHits = 0;
     private int oldMaxBottomHits = 0;
+    private int oldBellhopIterations = 0;
 
     //private ComputeBuffer _rayPointsBuffer;
     //private RayData[] rds = null;
@@ -56,12 +57,21 @@ public class Main : MonoBehaviour
 
     private int ITERATIONS = 2;
 
-    struct RayData
+    /*struct RayData
     {
         public Vector3 origin;
         public int set;
-    };
-    private int raydatabytesize = 16; // update this if the struct RayData is modified
+    };*/
+    //private int raydatabytesize = 16; // update this if the struct RayData is modified
+
+    struct PerRayData
+    {
+        public int iseig; //should be 0 or 1
+        public float beta;
+    }
+    private int perraydataByteSize = sizeof(int) + sizeof(float);
+
+    private ComputeBuffer PerRayDataBuffer;
 
     private void ReleaseResources()
     {
@@ -101,6 +111,7 @@ public class Main : MonoBehaviour
         //_rayPointsBuffer?.Release();
         _SSPBuffer?.Release();
         xrayBuf?.Release();
+        PerRayDataBuffer?.Release();
     }
 
     void OnDestroy()
@@ -127,6 +138,12 @@ public class Main : MonoBehaviour
         {            
             xrayBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             SetComputeBuffer("xrayBuf", xrayBuf);
+        }
+
+        if (PerRayDataBuffer == null)
+        {
+            PerRayDataBuffer = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, perraydataByteSize);
+            SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer);
         }
 
         /*if (rds == null)
@@ -197,10 +214,7 @@ public class Main : MonoBehaviour
     private void SetShaderParameters()
     {
         computeShader.SetMatrix("_SourceCameraToWorld", sourceCamera.cameraToWorldMatrix);
-        computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);
-
-        //SetComputeBuffer("_RayPoints", _rayPointsBuffer);        
-        //SetComputeBuffer("xrayBuf", xrayBuf);        
+        computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);     
 
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);
         computeShader.SetVector("srcPosition", srcSphere.transform.position);
@@ -342,12 +356,21 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
             computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
         }
-        if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits || bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
+        if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {            
             oldMaxSurfaceHits = bellhopParams.MAXNRSURFACEHITS;
-            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);
+            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);            
+        }
+        if (bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
+        {
             oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
             computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);
+        }        
+        if(bellhopParams.BELLHOPITERATIONS != oldBellhopIterations)
+        {
+            oldBellhopIterations = bellhopParams.BELLHOPITERATIONS;
+            computeShader.SetInt("_BELLHOPITERATIONS", bellhopParams.BELLHOPITERATIONS);
+            Debug.Log("iteration");
         }
 
         World world = world_manager.GetComponent<World>();

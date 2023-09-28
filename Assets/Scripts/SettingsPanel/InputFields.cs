@@ -30,6 +30,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] GameObject targetZSliderMax = null;
     [SerializeField] InputField maxNrOfSurfaceHits = null;
     [SerializeField] InputField maxNrOfBottomHits = null;
+    [SerializeField] InputField bellhopIterations = null;
 
 
     // Start is called before the first frame update
@@ -50,6 +51,7 @@ public class InputFields : MonoBehaviour
         integrationStepSize.text = bellhopParams.BELLHOPSTEPSIZE.ToString();
         maxNrOfSurfaceHits.text = "0";
         maxNrOfBottomHits.text = "0";
+        bellhopIterations.text = "1";
         callbackCommand.text = "This will do nothing for now.";
 
         int worldRange = world.range;
@@ -238,6 +240,18 @@ public class InputFields : MonoBehaviour
         {
             BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
             bellhopParams.MAXNRBOTTOMHITS = numericValue;
+        }
+    }
+
+    public void OnBellhopIterationsChange()
+    {
+        string str = bellhopIterations.text;
+        bool isNumber = int.TryParse(str, out int numericValue);
+
+        if (isNumber && numericValue > 0)
+        {
+            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            bellhopParams.BELLHOPITERATIONS = numericValue;
         }
     }
 
