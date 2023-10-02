@@ -21,6 +21,30 @@ line, = ax.plot([], [], linewidth  =0, marker = ".")
 count = 0
 datap = None
 
+import sys
+import threading
+
+last_line = ''
+new_line_event = threading.Event()
+
+
+def keep_last_line():
+    global last_line, new_line_event, datap, count
+    for line in sys.stdin:
+        last_line = line
+        datap = float(line)
+        count += 1
+        new_line_event.set()
+
+
+
+
+keep_last_line_thread = threading.Thread(target=keep_last_line)
+keep_last_line_thread.daemon = True
+keep_last_line_thread.start()
+
+
+
 async def get_reader():
 
 
@@ -65,7 +89,7 @@ async def main():
         res = await reader.readline()
         p = res.decode("utf-8").strip()
        
-        print("Python " + p + "P>>" + str(datetime.now()))
+        # print("Python " + p + "P>>" + str(datetime.now()))
 
         
         #res = (await reader.readline()).decode() 
@@ -80,6 +104,7 @@ async def main():
 
 
 
+
 async def handle_queue(): 
 
     global datap, count
@@ -89,10 +114,12 @@ async def handle_queue():
     maxv = -np.inf
     minv = np.inf
 
+    
+
     x = np.arange(size)
 
     while True:
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.001)
         if datap is not None:
             #print("Processing : " + str(queue.pop()))
             #qd = queue.get()
@@ -114,15 +141,17 @@ async def handle_queue():
 
             
             fig.canvas.draw()            
-            plt.pause(0.01)
+            plt.pause(0.001)
 
 async def runner():
 
     #await asyncio.gather(handle_queue(), main())
-    await asyncio.gather(main())
+    await asyncio.gather(handle_queue())
 
 
-if sys.platform:
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
+#if sys.platform:
+#    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 asyncio.run(runner())
 
