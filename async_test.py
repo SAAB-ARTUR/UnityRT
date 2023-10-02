@@ -13,38 +13,59 @@ queue = Q.LifoQueue(maxsize=10)
 fig, ax = plt.subplots()
 # plt.ion()
 plt.show(block = False)
-line, = ax.plot([], [])
+line, = ax.plot([], [], linewidth  =0, marker = ".")
 
+count = 0
+datap = None
 
-
-
+def flush_input():
+    try:
+        import msvcrt
+        while msvcrt.kbhit():
+            msvcrt.getch()
+    except ImportError:
+        import sys, termios    #for linux/unix
+        termios.tcflush(sys.stdin, termios.TCIOFLUSH)
 async def main():
-    count = 0
-    while True:
-        reader, writer = await get_standard_streams()
+    
+    global datap, count
 
+    while True:
+
+        
+
+        reader, writer = await get_standard_streams()
         res = await reader.readline()
 
 
-        queue.put([count,float(res)])
+        #flush_input()
+
+        #queue.put([count,float(res)])
         count +=1
-        writer.write("\t" + "queue" + str(queue) + "\n")
-        await writer.drain()
+        datap = float(res)
+        # writer.write("\t" + "queue" + str(queue) + "\n")
+        # await writer.drain()
 
 
 
 async def handle_queue(): 
 
-    data = np.empty((0, 2))
+    global datap, count
+    size = 100
+    data = np.empty((100, 2)) + 0
 
     while True:
-        await asyncio.sleep(3)
-        if not queue.empty():
+        await asyncio.sleep(0.01)
+        if datap is not None:
             #print("Processing : " + str(queue.pop()))
-            qd = queue.get()
-            print("qd : " + str(np.array(qd)))
-            data = np.concatenate([data, [qd]], axis = 0)
-            print(data)
+            #qd = queue.get()
+            qd = datap
+            datap = None
+            # print("qd : " + str(np.array(qd)))
+            data[:-1, :] = data[1:, :]
+            
+            data[-1, :] = [count, qd]
+
             line.set_data(data[:, 0], data[:, 1])
             ax.set_xlim(np.min(data[:,0]), np.max(data[:, 0]))
             ax.set_ylim(np.min(data[:,1]), np.max(data[:, 1]))
