@@ -11,7 +11,7 @@ using System.Threading;
 public class api : MonoBehaviour
 {
 
-    string endpoint = ".conda\\envs\\unity_interface\\python.exe test.py";
+    string endpoint = ".conda\\envs\\unity_interface\\python.exe async_test.py";
     Process process = null;
     StreamWriter stdin = null;
 
@@ -61,7 +61,7 @@ public class api : MonoBehaviour
         startInfo.FileName = home + "\\" + ".conda\\envs\\unity_interface\\python.exe";
         
 
-        startInfo.Arguments = "test.py";
+        startInfo.Arguments = "async_test.py";
         startInfo.UseShellExecute = false;
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
@@ -72,7 +72,7 @@ public class api : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
 
         StreamWriter writer = process.StandardInput;
@@ -83,7 +83,7 @@ public class api : MonoBehaviour
 
     private void OnDestroy()
     {
-        stdin.Close();
-        process.Close();
+        //stdin.Close();
+        process.Kill();
     }
 }
