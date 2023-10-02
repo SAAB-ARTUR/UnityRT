@@ -61,7 +61,7 @@ public class api : MonoBehaviour
         startInfo.FileName = home + "\\" + ".conda\\envs\\unity_interface\\python.exe";
         
 
-        startInfo.Arguments = "async_test.py";
+        startInfo.Arguments = "threaded_test.py";
         startInfo.UseShellExecute = false;
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
@@ -76,6 +76,13 @@ public class api : MonoBehaviour
     {
 
         StreamWriter writer = process.StandardInput;
+
+
+
+        DateTime currentDateTime = DateTime.Now;
+        string d = currentDateTime.ToString("HH:mm:ss:ff");
+        //writer.WriteLine("Current date and time: " + d);
+
         writer.WriteLine(main.srcSphere.transform.position.y);
         writer.Flush();
 
