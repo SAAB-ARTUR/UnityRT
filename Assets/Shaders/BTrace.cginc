@@ -166,7 +166,7 @@ TraceOutput btrace(
     
     float c = initialSsp.c;
     float2 x = xs;
-    float2 Tray = { cos(alpha) / c, sin(alpha) / c }; //i matlab behövde jag lägga till ett minustecken för att det skulle bli rätt, här var jag tvungen att ta bort det, oklart varför.
+    float2 Tray = { cos(alpha) / c, -sin(alpha) / c }; //i matlab behövde jag lägga till ett minustecken för att det skulle bli rätt, här var jag tvungen att ta bort det, oklart varför.
     float p = 1;
     float q = 0;
     float tau = 0;
@@ -190,8 +190,13 @@ TraceOutput btrace(
     float3 x0_cart;
     float3 x_cart;
         
+    //debugBuf[id.y * width + id.x] = float3(previous_distance, current_distance, 24);
+    //debugBuf[id.y * width + id.x] = float3(initialSsp.c, initialSsp.Layer, 24);
     xrayBuf[0 + offset] = toCartesian(phi, xs);
+    debugBuf[0 + offset] = float3(xs, 123);
     uint istep = 1;
+
+    bool add = true;
 
     //while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
     while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
@@ -210,7 +215,12 @@ TraceOutput btrace(
         previous_distance = current_distance;
 
         // Take a step
-        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer);
+        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer, id, width);
+
+        /*if (add) {
+            add = false;
+            debugBuf[id.y * width + id.x] = float3(stepOutput.c, stepOutput.cz, 12);
+        }*/
 
         Tray = stepOutput.Tray;
         p = stepOutput.p;
@@ -251,6 +261,7 @@ TraceOutput btrace(
         //xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
 
         xrayBuf[istep + offset] = x_cart;
+        debugBuf[istep + offset] = float3(x, 12349);
 
         istep++;
     }
@@ -258,6 +269,7 @@ TraceOutput btrace(
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force the empty positions to be empty
     for (uint i = istep; i < _BELLHOPSIZE; i++) { 
         xrayBuf[i + offset] = float3(0, 0, 0);
+        debugBuf[i + offset] = float3(0, 0, 0);
     }
 
     // Calculate ray tangent
@@ -270,13 +282,17 @@ TraceOutput btrace(
 
     // Interpolate
 
-    float2 xn;
+    float xn;
+    float xs2;
 
-    xs = tr * (xr.x - x0.x) + tz * (xr.y - x0.y); // proportional distance along ray
+    float diffx = xr.x - x0.x;
+    float diffy = xr.y - x0.y;
+
+    xs2 = tr * (xr.x - x0.x) + tz * (xr.y - x0.y); // proportional distance along ray
     xn = -tz * (xr.x - x0.x) + tr * (xr.y - x0.y); // normal distance to ray
 
     float s;
-    s = xs / rlen;
+    s = xs2 / rlen;
 
     float qi;
     qi = q0 + s * (q - q0);
@@ -287,6 +303,8 @@ TraceOutput btrace(
 
     float curve;
     curve = len0 + s * (len - len0);
+
+    debugBuf[offset + _BELLHOPSIZE - 1] = float3(xs.x, xr.x, 128);
 
     // Beam radius
     float RadMax = abs(qi) / initialSsp.c * dalpha;
@@ -332,6 +350,15 @@ TraceOutput btrace(
     prd.curve = curve;
     prd.xn = xn;
     prd.qi = qi;
+    prd.alpha = alpha;
+
+    if (beta < 1) {
+        prd.contributing = 1;
+    }
+    else {
+        prd.contributing = 0;
+    }
+
     return result;
     
 }

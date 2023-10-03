@@ -18,7 +18,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         public bool visualizeRays;
     }
 
-    const int MIN_SIZE_ANG = 8;
+    const int MIN_SIZE_ANG = 1;
     //const int MIN_INTERACTIONS = 1;
 
     public int theta = 0;
@@ -100,10 +100,17 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
     public bool HasChanged(Properties? p) 
     {
         if (p is null) {
+            //Debug.Log("Pp inte satt");
             return true;
         }
 
         Properties pp = this.ToStruct();
+        //Debug.Log("pp satt");
+        //Debug.Log(pp.theta);
+        //Debug.Log(pp.ntheta);
+        //Debug.Log(pp.phi);
+        //Debug.Log(pp.nphi);
+        //Debug.Log("-------------------------------------");
 
         return !pp.Equals(p);
     }

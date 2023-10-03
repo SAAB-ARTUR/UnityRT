@@ -44,12 +44,16 @@ StepOutput bstep(
     float len0,
     float deltas,
     float depth,
-    uint Layer)
+    uint Layer,
+    uint3 id,
+    uint width)
 {
     SSPOutput phase0 = ssp(x0.y, soundSpeedProfile, Layer);
 
     float csq0 = phase0.c * phase0.c;
     float cnn0_csq0 = phase0.czz * Tray0.x * Tray0.x;
+
+    //debugBuf[id.y * width + id.x] = float3(x0.y, Layer, 33);
 
     float zmax = max(_SSPBuffer[phase0.Layer].depth, depth);
     float zmin = max(_SSPBuffer[phase0.Layer + 1].depth, depth);
