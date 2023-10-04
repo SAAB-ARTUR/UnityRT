@@ -34,9 +34,7 @@ def keep_last_line():
         last_line = line
         datap = float(line)
         count += 1
-        new_line_event.set()
-
-
+        # new_line_event.set()
 
 
 keep_last_line_thread = threading.Thread(target=keep_last_line)
@@ -75,6 +73,8 @@ async def main():
     #breakpoint()
 
     #f = os.fdopen(sys.stdin.fileno(), 'rb', buffering=1024)
+
+    
 
     while True:
 
