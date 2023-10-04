@@ -43,7 +43,6 @@ int _MAXSURFACEHITS;
 int _BELLHOPITERATIONS;
 
 static const float PI = 3.14159265f;
-//static const float EPSILON = 1e-8;
 
 int theta;
 int ntheta;
@@ -113,7 +112,7 @@ RayHit CreateRayHit()
 #include "HitHandler.cginc"
 
 [numthreads(1,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+void CSMain(uint3 id : SV_DispatchThreadID)
 {
     // Get the dimensions of the RenderTexture
     uint width, height;
@@ -141,44 +140,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     PerRayData prd;
     //debugBuf[id.y * width + id.x] = float3(alpha, dalpha, 24);
-    
-    TraceOutput t = btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, width, raydir, _Phi, prd);    
+
+    TraceOutput t = btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, width, raydir, _Phi, prd);
 
     uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
     PerRayDataBuffer[id.y * width + id.x] = prd;
-
-    //TODO: fortsätt undersöka och printa vad som kommer från raytracingen gällande prd
-    // undersök varför ray 0 blir riktad neråt, i createthetaphiray känns det som att ray 0 borde riktas uppåt
-
-        // keep contributing rays only
-        //if (beta >= 1) 
-        //{
-        //    break; // stoppa ray som inte bidrar?? är detta motsvarigheten till vad som sker i matlab???
-        //}
-
-        // högst oklart hur det som sker på rad 99-103 ska ske här när rays inte har kännedom om varandra
-        // eventuellt  kommer loopen behöva sättas i C3-koden och flera anrop på dispatch kommer behöva göras
-        // vilket inte är optimalt med tanke på att data kommer behöva läsas efter varje anrop
-
-        // alternativt anropar man flera trace här med att en ray skapar sina egna 'barn' här, dvs en ray skickas
-        // ned vinkel alpha, den rayen visar sig vara intressant (ointressanr ray ska ha beta>1 och ska breakas av
-        // if-satsen ovanför). En intressant ray kan sedan anropa trace två gånger med vinklar alpha + dalpha/2 och 
-        // alpha - dalpha/2 här nedanför. på så sätt behöver man inte hoppa mellan CPU och GPU för att starta en 
-        // ny iteration. Däremot kommer det alternativet ha andra svårigheter, till exempel är det inte helt klart
-        // för mig hur man ser till att spara all intressant data för 'barn'-rays. Kanske kan man definiera en buffer
-        // som är riktigt stor och ray1 hamnar på index 0 i buffern, om det är 4 iterationer som ska köras innebär det
-        // att ray1 hamnar på index 0, barn 1 på index 1, barn 2 på index 2, osv. Med 4 iterationer borde det bli totalt
-        // 15 rays som kan skapas från en originell ray. För N iterationer blir det 2^N - 1 bufferplatser som måste skapas
-        // för en ray och dess eventuella 'barn'. 
-        // Exempel: 6 iterationer blir 2^6 - 1 = 63 platser per ray och säg att vi vill skicka 640*8 rays, det blir 
-        // 63*640*8 = 322560 bufferplatser. Säg nu att vi behöver spara 8 fält per ray och varje fält tar 4 bytes,
-        // det blir 322560 * 8 * 4 = 10 321 920 B = 9.84 MB utrymme. (Räknar jag rätt här????). Baserat på minnesanvändningen
-        // i det här exemplet borde det inte vara några minnesproblem att göra på det här sättet. Däremot har jag inte tänkt
-        // helt färdigt på om den här metoden faktiskt funkar och gör motsvarande sak som matlab-koden.        
-
-
 }
-
-
-//# pragma kernel ClearBuffer
-//[numthreads(8, 8, 1)]

@@ -51,7 +51,6 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
-    //private int bellhop_size = 1000; //4096;
     private ComputeBuffer xrayBuf;
     private float3[] bds = null;
 
@@ -84,24 +83,6 @@ public class Main : MonoBehaviour
     private List<PerRayData> contributingRays = new List<PerRayData>();
     private bool[] isEigen = null;
     private ComputeBuffer alphaData;
-    /*private float[] alphas = new float[128] { (float)-0.523598775598299, (float)-0.515353125588877, (float)-0.507107475579455, (float)-0.498861825570033, (float)-0.490616175560611, (float)-0.482370525551189, (float)-0.474124875541767,
-                                            (float)-0.465879225532345, (float)-0.457633575522923, (float)-0.449387925513501, (float)-0.441142275504079, (float)-0.432896625494657, (float)-0.424650975485235, (float)-0.416405325475813,
-                                            (float)-0.408159675466391, (float)-0.399914025456968, (float)-0.391668375447546, (float)-0.383422725438124, (float)-0.375177075428702, (float)-0.366931425419280, (float)-0.358685775409858,
-                                            (float)-0.350440125400436, (float)-0.342194475391014, (float)-0.333948825381592, (float)-0.325703175372170, (float)-0.317457525362748, (float)-0.309211875353326, (float)-0.300966225343904,
-                                            (float)-0.292720575334482, (float)-0.284474925325060, (float)-0.276229275315638, (float)-0.267983625306216, (float)-0.259737975296794, (float)-0.251492325287372, (float)-0.243246675277950,
-                                            (float)-0.235001025268528, (float)-0.226755375259106, (float)-0.218509725249684, (float)-0.210264075240262, (float)-0.202018425230840, (float)-0.193772775221418, (float)-0.185527125211996,
-                                            (float)-0.177281475202574, (float)-0.169035825193152, (float)-0.160790175183730, (float)-0.152544525174308, (float)-0.144298875164886, (float)-0.136053225155463, (float)-0.127807575146041,
-                                            (float)-0.119561925136619, (float)-0.111316275127197, (float)-0.103070625117775, (float)-0.0948249751083534, (float)-0.0865793250989313, (float)-0.0783336750895093, (float)-0.0700880250800873,
-                                            (float)-0.0618423750706652, (float)-0.0535967250612432, (float)-0.0453510750518212, (float)-0.0371054250423991, (float)-0.0288597750329771, (float)-0.0206141250235551, (float)-0.0123684750141330,
-                                            (float)-0.00412282500471102, (float)0.00412282500471102, (float)0.0123684750141330, (float)0.0206141250235551, (float)0.0288597750329771, (float)0.0371054250423991, (float)0.0453510750518212,
-                                            (float)0.0535967250612432, (float)0.0618423750706652, (float)0.0700880250800873, (float)0.0783336750895093, (float)0.0865793250989313, (float)0.0948249751083534, (float)0.103070625117775,
-                                            (float)0.111316275127197, (float)0.119561925136619, (float)0.127807575146041, (float)0.136053225155463, (float)0.144298875164886, (float)0.152544525174308, (float)0.160790175183730, (float)0.169035825193152,
-                                            (float)0.177281475202574, (float)0.185527125211996, (float)0.193772775221418, (float)0.202018425230840, (float)0.210264075240262, (float)0.218509725249684, (float)0.226755375259106, (float)0.235001025268528,
-                                            (float)0.243246675277950, (float)0.251492325287372, (float)0.259737975296794, (float)0.267983625306216, (float)0.276229275315638, (float)0.284474925325060, (float)0.292720575334482, (float)0.300966225343904,
-                                            (float)0.309211875353326, (float)0.317457525362748, (float)0.325703175372170, (float)0.333948825381592, (float)0.342194475391014, (float)0.350440125400436, (float)0.358685775409858, (float)0.366931425419280,
-                                            (float)0.375177075428702, (float)0.383422725438124, (float)0.391668375447546, (float)0.399914025456968, (float)0.408159675466391, (float)0.416405325475813, (float)0.424650975485235, (float)0.432896625494657,
-                                            (float)0.441142275504079, (float)0.449387925513501, (float)0.457633575522923, (float)0.465879225532345, (float)0.474124875541767, (float)0.482370525551189, (float)0.490616175560611, (float)0.498861825570033,
-                                            (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };*/
 
     private float[] alphas = new float[128] { -0.52359879f, -0.51535314f, -0.50710750f, -0.49886185f, -0.49061620f, -0.48237056f, -0.47412491f, -0.46587926f, -0.45763358f, -0.44938794f, -0.44114229f,
                                             -0.43289664f, -0.42465100f, -0.41640535f, -0.40815970f, -0.39991406f, -0.39166838f, -0.38342273f, -0.37517709f, -0.36693144f, -0.35868579f, -0.35044014f,
@@ -113,9 +94,7 @@ public class Main : MonoBehaviour
         0.19377278f, 0.20201842f, 0.21026407f, 0.21850973f, 0.22675538f, 0.23500103f, 0.24324667f, 0.25149235f, 0.25973800f, 0.26798365f, 0.27622926f, 0.28447494f, 0.29272059f, 0.30096623f, 0.30921188f,
         0.31745753f, 0.32570317f, 0.33394885f, 0.34219450f, 0.35044014f, 0.35868579f, 0.36693144f, 0.37517709f, 0.38342273f, 0.39166838f, 0.39991406f, 0.40815970f, 0.41640535f, 0.42465100f, 0.43289664f,
         0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };
-
     
-
     private ComputeBuffer debugBuf;
     private float3[] debugger;
 
@@ -161,6 +140,8 @@ public class Main : MonoBehaviour
         PerRayDataBuffer?.Release();
         alphaData?.Release();
         debugBuf?.Release();
+        /*rStepsBuf?.Release();
+        zStepsBuf?.Release();*/
     }
 
     void OnDestroy()
@@ -466,6 +447,13 @@ public class Main : MonoBehaviour
             debugBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             debugger = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
             computeShader.SetBuffer(0, "debugBuf", debugBuf);
+
+            /*rStepsBuf = new ComputeBuffer(147, sizeof(float));
+            zStepsBuf = new ComputeBuffer(147, sizeof(float));
+            rStepsBuf.SetData(rsteps);
+            zStepsBuf.SetData(zsteps);
+            computeShader.SetBuffer(0, "rsteps", rStepsBuf);
+            computeShader.SetBuffer(0, "zsteps", zStepsBuf);*/
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -587,12 +575,7 @@ public class Main : MonoBehaviour
             Debug.Log(rayData.Length);
 
             isEigen = new bool[contributingRays.Count];
-
-            /*for (int i = 0; i < contributingRays.Count; i++)
-            {
-                Debug.Log(contributingRays[i].alpha.ToString());
-            }*/
-
+            
             Debug.Log("------------------------------------------------------------------------------------------------");
 
             for (int i = 0; i < contributingRays.Count; i++)
@@ -610,46 +593,6 @@ public class Main : MonoBehaviour
                 Debug.Log("qi: " + contributingRays[i].qi.ToString());
                 Debug.Log("------------------------------------------------------------------------------------------------");
             }
-
-
-
-
-            //Debug.Log(rayData[0].iseig.ToString());
-            //Debug.Log(rayData[0].beta.ToString());
-            //Debug.Log(rayData[0].ntop.ToString());
-            //Debug.Log(rayData[0].nbot.ToString());
-            //Debug.Log(rayData[0].ncaust.ToString());
-            //Debug.Log(rayData[0].delay.ToString());
-            //Debug.Log(rayData[0].curve.ToString());
-            //Debug.Log(rayData[0].xn.ToString());
-            //Debug.Log(rayData[0].qi.ToString());
-            //Debug.Log(rayData[0].alpha.ToString());
-
-
-
-            // compute eigenrays, detta blir för nuvarande jättefel, ray0 (rakt fram, mest neråt) är på plats '4' (för 128 ntheta, 8 nphi) och nästa ray kommer vara på plats 12, därav mpste det ändras här
-            /*int i = 0;
-            while (i < rayData.Length - steplength)
-            {
-                // find pairs of rays
-                if (rayData[i + steplength].xn < rayData[i].xn + 1.5 * dtheta)
-                {
-                    float n1 = rayData[i].xn;
-                    float n2 = rayData[i+steplength].xn;
-                    float tot = rayData[i].beta + rayData[i + steplength].beta;
-
-                    if (n1 * n2 <= 0 && tot > 0.9 && tot < 1.1)
-                    {
-                        float w = n2 / (n2 - n1);
-                        rayData[i].iseig = 1; //true
-                        rayData[i].alpha = w * rayData[i].alpha + (1 - w) * rayData[i + steplength].alpha;
-                        rayData[i + steplength].iseig = 0; //false
-                        i++;
-                        Debug.Log("kjdkdjkldjlkdd");
-                    }
-                }
-                i++;
-            }*/
 
             // här borde man gå igenom listan istället
             for (int i = 0; i < contributingRays.Count - 1; i++)
