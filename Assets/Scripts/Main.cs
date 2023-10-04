@@ -84,7 +84,7 @@ public class Main : MonoBehaviour
     private List<PerRayData> contributingRays = new List<PerRayData>();
     private bool[] isEigen = null;
     private ComputeBuffer alphaData;
-    private float[] alphas = new float[128] { (float)-0.523598775598299, (float)-0.515353125588877, (float)-0.507107475579455, (float)-0.498861825570033, (float)-0.490616175560611, (float)-0.482370525551189, (float)-0.474124875541767,
+    /*private float[] alphas = new float[128] { (float)-0.523598775598299, (float)-0.515353125588877, (float)-0.507107475579455, (float)-0.498861825570033, (float)-0.490616175560611, (float)-0.482370525551189, (float)-0.474124875541767,
                                             (float)-0.465879225532345, (float)-0.457633575522923, (float)-0.449387925513501, (float)-0.441142275504079, (float)-0.432896625494657, (float)-0.424650975485235, (float)-0.416405325475813,
                                             (float)-0.408159675466391, (float)-0.399914025456968, (float)-0.391668375447546, (float)-0.383422725438124, (float)-0.375177075428702, (float)-0.366931425419280, (float)-0.358685775409858,
                                             (float)-0.350440125400436, (float)-0.342194475391014, (float)-0.333948825381592, (float)-0.325703175372170, (float)-0.317457525362748, (float)-0.309211875353326, (float)-0.300966225343904,
@@ -101,7 +101,21 @@ public class Main : MonoBehaviour
                                             (float)0.309211875353326, (float)0.317457525362748, (float)0.325703175372170, (float)0.333948825381592, (float)0.342194475391014, (float)0.350440125400436, (float)0.358685775409858, (float)0.366931425419280,
                                             (float)0.375177075428702, (float)0.383422725438124, (float)0.391668375447546, (float)0.399914025456968, (float)0.408159675466391, (float)0.416405325475813, (float)0.424650975485235, (float)0.432896625494657,
                                             (float)0.441142275504079, (float)0.449387925513501, (float)0.457633575522923, (float)0.465879225532345, (float)0.474124875541767, (float)0.482370525551189, (float)0.490616175560611, (float)0.498861825570033,
-                                            (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };
+                                            (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };*/
+
+    private float[] alphas = new float[128] { -0.52359879f, -0.51535314f, -0.50710750f, -0.49886185f, -0.49061620f, -0.48237056f, -0.47412491f, -0.46587926f, -0.45763358f, -0.44938794f, -0.44114229f,
+                                            -0.43289664f, -0.42465100f, -0.41640535f, -0.40815970f, -0.39991406f, -0.39166838f, -0.38342273f, -0.37517709f, -0.36693144f, -0.35868579f, -0.35044014f,
+                                            -0.34219450f, -0.33394885f, -0.32570317f, -0.31745753f, -0.30921188f, -0.30096623f, -0.29272059f, -0.28447494f, -0.27622926f, -0.26798365f, -0.25973800f,
+                                            -0.25149235f, -0.24324667f, -0.23500103f, -0.22675538f, -0.21850973f, -0.21026407f, -0.20201842f, -0.19377278f, -0.18552713f, -0.17728147f, -0.16903582f,
+        -0.16079018f, -0.15254453f, -0.14429887f, -0.13605322f, -0.12780759f, -0.11956193f, -0.11131628f, -0.10307062f, -0.094824977f, -0.086579323f, -0.078333676f, -0.070088021f, -0.061842378f, -0.053596724f,
+        -0.045351077f, -0.037105422f, -0.028859776f, -0.020614125f, -0.012368475f, -0.0041228253f, 0.0041228253f, 0.012368475f, 0.020614125f, 0.028859776f, 0.037105422f, 0.045351077f, 0.053596724f, 0.061842378f,
+        0.070088021f, 0.078333676f, 0.086579323f, 0.094824977f, 0.10307062f, 0.11131628f, 0.11956193f, 0.12780759f, 0.13605322f, 0.14429887f, 0.15254453f, 0.16079018f, 0.16903582f, 0.17728147f, 0.18552713f,
+        0.19377278f, 0.20201842f, 0.21026407f, 0.21850973f, 0.22675538f, 0.23500103f, 0.24324667f, 0.25149235f, 0.25973800f, 0.26798365f, 0.27622926f, 0.28447494f, 0.29272059f, 0.30096623f, 0.30921188f,
+        0.31745753f, 0.32570317f, 0.33394885f, 0.34219450f, 0.35044014f, 0.35868579f, 0.36693144f, 0.37517709f, 0.38342273f, 0.39166838f, 0.39991406f, 0.40815970f, 0.41640535f, 0.42465100f, 0.43289664f,
+        0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };
+
+    
+
     private ComputeBuffer debugBuf;
     private float3[] debugger;
 
@@ -444,7 +458,7 @@ public class Main : MonoBehaviour
 
             computeShader.SetBuffer(0, "alphaData", alphaData);
 
-            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta - 1);
+            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta -1);
             Debug.Log(dtheta);
             dtheta = dtheta * MathF.PI / 180; // to radians
             Debug.Log(dtheta);
@@ -550,9 +564,9 @@ public class Main : MonoBehaviour
             debugBuf.GetData(debugger);
 
             Debug.Log("--------------------------------------------------------------------------");
-            for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
+            for (int i = 38* bellhopParams.BELLHOPINTEGRATIONSTEPS; i < 39*bellhopParams.BELLHOPINTEGRATIONSTEPS; i++) //index 38 borde vara första strålen som bidrar
             {
-                Debug.Log(debugger[i].x + " " + debugger[i].y + " " + debugger[i].z);
+                Debug.Log(i - 38 * bellhopParams.BELLHOPINTEGRATIONSTEPS + ": " + debugger[i].x + " " + debugger[i].y + " " + debugger[i].z);
             }
             Debug.Log("--------------------------------------------------------------------------");
             Debug.Log(rayData[0].alpha);
@@ -574,29 +588,28 @@ public class Main : MonoBehaviour
 
             isEigen = new bool[contributingRays.Count];
 
-            for (int i = 0; i < contributingRays.Count; i++)
+            /*for (int i = 0; i < contributingRays.Count; i++)
             {
                 Debug.Log(contributingRays[i].alpha.ToString());
+            }*/
+
+            Debug.Log("------------------------------------------------------------------------------------------------");
+
+            for (int i = 0; i < contributingRays.Count; i++)
+            {
+                //Debug.Log(rayData[i].iseig.ToString());
+                Debug.Log("Ray: " + i);
+                Debug.Log("alpha: " + contributingRays[i].alpha.ToString());
+                Debug.Log("Beta: " + contributingRays[i].beta.ToString());
+                Debug.Log("ntop: " + contributingRays[i].ntop.ToString());
+                Debug.Log("nbot: " + contributingRays[i].nbot.ToString());
+                Debug.Log("ncaust: " + contributingRays[i].ncaust.ToString());
+                Debug.Log("delay: " + contributingRays[i].delay.ToString());
+                Debug.Log("curve: " + contributingRays[i].curve.ToString());
+                Debug.Log("xn: " + contributingRays[i].xn.ToString());
+                Debug.Log("qi: " + contributingRays[i].qi.ToString());
+                Debug.Log("------------------------------------------------------------------------------------------------");
             }
-
-
-            //Debug.Log("------------------------------------------------------------------------------------------------");
-
-
-            //for(int i = 0; i < rayData.Length; i++)
-            //{
-            //    //Debug.Log(rayData[i].iseig.ToString());
-            //    Debug.Log("alpha: " + rayData[i].alpha.ToString());
-            //    Debug.Log("Beta: " + rayData[i].beta.ToString());
-            //    Debug.Log("ntop: " + rayData[i].ntop.ToString());
-            //    Debug.Log("nbot: " + rayData[i].nbot.ToString());
-            //    Debug.Log("ncaust: " + rayData[i].ncaust.ToString());
-            //    Debug.Log("delay: " + rayData[i].delay.ToString());
-            //    Debug.Log("curve: " + rayData[i].curve.ToString());
-            //    Debug.Log("xn: " + rayData[i].xn.ToString());
-            //    Debug.Log("qi: " + rayData[i].qi.ToString());
-            //    Debug.Log("------------------------------------------------------------------------------------------------");
-            //}
 
 
 

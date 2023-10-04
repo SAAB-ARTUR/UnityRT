@@ -193,7 +193,7 @@ TraceOutput btrace(
     //debugBuf[id.y * width + id.x] = float3(previous_distance, current_distance, 24);
     //debugBuf[id.y * width + id.x] = float3(initialSsp.c, initialSsp.Layer, 24);
     xrayBuf[0 + offset] = toCartesian(phi, xs);
-    debugBuf[0 + offset] = float3(xs, 123);
+    debugBuf[0 + offset] = float3(Tray, Layer);
     uint istep = 1;
 
     bool add = true;
@@ -287,6 +287,8 @@ TraceOutput btrace(
 
     float diffx = xr.x - x0.x;
     float diffy = xr.y - x0.y;
+    float diffx2 = x.x - x0.x;
+    float diffy2 = x.y - x0.y;
 
     xs2 = tr * (xr.x - x0.x) + tz * (xr.y - x0.y); // proportional distance along ray
     xn = -tz * (xr.x - x0.x) + tr * (xr.y - x0.y); // normal distance to ray
@@ -304,12 +306,18 @@ TraceOutput btrace(
     float curve;
     curve = len0 + s * (len - len0);
 
-    debugBuf[offset + _BELLHOPSIZE - 1] = float3(xs.x, xr.x, 128);
-
+    debugBuf[offset + _BELLHOPSIZE - 1] = float3(diffx, diffy, 128);
+    debugBuf[offset + _BELLHOPSIZE - 2] = float3(diffx2, diffy2, 128); //det verkar som för den första bidragande strålen så blir det sista steget väldigt kort, jag vet ej om det är så att det sista steget måste vara stort för att koden ska funka bra
+    debugBuf[offset + _BELLHOPSIZE - 3] = float3(tr, tz, rlen);
+    debugBuf[offset + _BELLHOPSIZE - 4] = float3(xs2, xn, 128);
+    debugBuf[offset + _BELLHOPSIZE - 5] = float3(s, q, q0);
     // Beam radius
     float RadMax = abs(qi) / initialSsp.c * dalpha;
 
     float beta = abs(xn) / RadMax;
+
+    debugBuf[offset + _BELLHOPSIZE - 6] = float3(qi, initialSsp.c, alpha);
+    debugBuf[offset + _BELLHOPSIZE - 7] = float3(beta, xn, RadMax); //INDEX 38 borde vara första strålen som bidrar
     
     // shift phase for rays that have passed through a caustic
 
