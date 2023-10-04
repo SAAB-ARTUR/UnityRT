@@ -25,9 +25,6 @@ public class Main : MonoBehaviour
     private int oldMaxBottomHits = 0;
     private int oldBellhopIterations = 0;
 
-    //private ComputeBuffer _rayPointsBuffer;
-    //private RayData[] rds = null;
-
     private RayTracingVisualization sourceCameraScript = null;
     private RenderTexture _target;
 
@@ -53,13 +50,6 @@ public class Main : MonoBehaviour
 
     private ComputeBuffer xrayBuf;
     private float3[] bds = null;
-
-    /*struct RayData
-    {
-        public Vector3 origin;
-        public int set;
-    };*/
-    //private int raydatabytesize = 16; // update this if the struct RayData is modified
 
     struct PerRayData
     {
@@ -98,6 +88,9 @@ public class Main : MonoBehaviour
     private ComputeBuffer debugBuf;
     private float3[] debugger;
 
+    //TODO: fortsätt städa kod
+    //TODO: troligtvis kommer koden för hur eigenrays räknas ut behöva skrivas om lite när man skickar rays i fler phi-vinklar, fundera över det, (kom ihåg att se över shader-kod som just nu bara skickar
+    //rays i en phi-riktning.
 
     private void ReleaseResources()
     {
@@ -133,15 +126,12 @@ public class Main : MonoBehaviour
             targetInstanceData.Dispose();
             targetInstanceData = null;
         }
-
-        //_rayPointsBuffer?.Release();
+        
         _SSPBuffer?.Release();
         xrayBuf?.Release();
         PerRayDataBuffer?.Release();
         alphaData?.Release();
         debugBuf?.Release();
-        /*rStepsBuf?.Release();
-        zStepsBuf?.Release();*/
     }
 
     void OnDestroy()
@@ -157,12 +147,7 @@ public class Main : MonoBehaviour
     private void CreateResources()
     {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-
-        /*if (_rayPointsBuffer == null)
-        {
-            _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta*sourceParams.nphi*sourceParams.MAXINTERACTIONS, raydatabytesize);
-        }*/
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();        
 
         if (xrayBuf == null)
         {            
@@ -185,12 +170,6 @@ public class Main : MonoBehaviour
         {
             rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
         }
-
-        /*if (rds == null)
-        {
-            rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
-            Debug.Log(rds.Length);
-        }*/
 
         if (surfaceInstanceData == null)
         {
@@ -312,11 +291,6 @@ public class Main : MonoBehaviour
 
         alphaData = new ComputeBuffer(128, sizeof(float));
         alphaData.SetData(alphas);
-
-        //foreach(float item in alphas)
-        //{
-        //    Debug.Log(item);
-        //}
     }
 
     int GetStartIndexBellhop(int idx, int idy)
@@ -335,31 +309,10 @@ public class Main : MonoBehaviour
         int offset = GetStartIndexBellhop(idx, idy);
         int offset2 = idy * sourceParams.nphi + idx;
 
-        //Debug.Log(offset2);
-        //Debug.Log(rayData[offset2].iseig.ToString());
-        //Debug.Log(rayData[offset2].beta.ToString());
-        //Debug.Log(rayData[offset2].ntop.ToString());
-        //Debug.Log(rayData[offset2].nbot.ToString());
-        //Debug.Log(rayData[offset2].ncaust.ToString());
-        //Debug.Log(rayData[offset2].delay.ToString());
-        //Debug.Log(rayData[offset2].curve.ToString());
-        //Debug.Log(rayData[offset2].xn.ToString());
-        //Debug.Log(rayData[offset2].qi.ToString());
-        //Debug.Log(rayData[offset2].alpha.ToString());
-        //Debug.Log("-----------------------------------------------");
-
-
-        //if (rayData[offset2].iseig == 0)
-        //{
-        //    return;
-        //}
-
-        if (rayData[offset2].contributing == 0)
+        if (sourceParams.showContributingRaysOnly && rayData[offset2].contributing != 1)
         {
             return;
         }
-
-        //Debug.Log("x: " + idx);
 
         line = new GameObject("Line").AddComponent<LineRenderer>();
         line.startWidth = 0.03f;
@@ -387,6 +340,7 @@ public class Main : MonoBehaviour
 
     }
 
+    // TODO: Gör så att rays ritas när toggleknapparna ändras och efter en raytrace. Målet är att man inte ska behöva kör om tracing för att kunna toggla mellan att visa alla rays ch bara bidragande rays
     // Update is called once per frame
     void Update()
     {        
@@ -398,18 +352,9 @@ public class Main : MonoBehaviour
         //Debug.Log(sourceParams.nphi);
         //Debug.Log(sourceParams.ntheta);
 
-        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams))
+        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams)) //TODO: fixa här så toggleknapparna inte ¨får det här att köra
         {
-            Debug.Log("Reeinit raybuffer");
-            // reinit rds array
-            //rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
-
-            // reinit raydatabuffer
-            /*if (_rayPointsBuffer != null)
-            {
-                _rayPointsBuffer.Release();
-            }
-            _rayPointsBuffer = new ComputeBuffer(sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS, raydatabytesize);*/
+            Debug.Log("Reeinit raybuffer");            
 
             bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
             rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
@@ -447,13 +392,6 @@ public class Main : MonoBehaviour
             debugBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             debugger = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
             computeShader.SetBuffer(0, "debugBuf", debugBuf);
-
-            /*rStepsBuf = new ComputeBuffer(147, sizeof(float));
-            zStepsBuf = new ComputeBuffer(147, sizeof(float));
-            rStepsBuf.SetData(rsteps);
-            zStepsBuf.SetData(zsteps);
-            computeShader.SetBuffer(0, "rsteps", rStepsBuf);
-            computeShader.SetBuffer(0, "zsteps", zStepsBuf);*/
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -568,8 +506,8 @@ public class Main : MonoBehaviour
                 if (rayData[i].beta < 1)
                 {
                     contributingRays.Add(rayData[i]);
-                }
-            }
+                }                
+            }            
 
             Debug.Log("Contributing rays: " + contributingRays.Count);
             Debug.Log(rayData.Length);

@@ -88,7 +88,7 @@ TraceOutput btrace(
     uint istep = 1;
 
     //while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
-    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE))
+    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
     {
         // Apply caustic phase change
         if (q <= 0 && q0 > 0 || q >= 0 && q0 < 0)

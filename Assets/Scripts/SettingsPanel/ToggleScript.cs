@@ -6,6 +6,7 @@ public class ToggleScript : MonoBehaviour
 {
     public GameObject srcSphere = null;
     private bool visualizeRays = false;
+    private bool showConributingRaysOnly = false;
     private bool sendRaysContinously = false;
 
     // Start is called before the first frame update
@@ -25,5 +26,11 @@ public class ToggleScript : MonoBehaviour
     {
         sendRaysContinously = !sendRaysContinously;
         srcSphere.GetComponent<SourceParams>().sendRaysContinously = sendRaysContinously;
+    }
+
+    public void OnToggleShowContributingRays()
+    {
+        showConributingRaysOnly = !showConributingRaysOnly;
+        srcSphere.GetComponent<SourceParams>().showContributingRaysOnly = showConributingRaysOnly;
     }
 }
