@@ -28,18 +28,18 @@ while True:
     #blength = int.from_bytes(sys.stdin.buffer.read())
     blength = int.from_bytes(os.read(sys.stdin.fileno(), 4), sys.byteorder, signed = True)
     #sys.stdin.flush()
-    print(blength)
+    # print(blength)
 
     # buf2 = open("SAVE_FILENAME.whatever", "rb").read()
 
     buf = os.read(sys.stdin.fileno(), blength)
 
-    print("1" + str(buf))
+    #print("1" + str(buf))
     # print(buf2)
     world = schema.World.GetRootAs(buf)
     p = world.Sender().Position()
     
-    print("Sender Pos Y: " + str(world.Sender().Position().Y()))
+    # print("Sender Pos Y: " + str(world.Sender().Position().Y()))
 
     pos = np.array([p.X(), p.Y(), p.Z()])
 
