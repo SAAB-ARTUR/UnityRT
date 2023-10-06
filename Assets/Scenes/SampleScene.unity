@@ -7284,7 +7284,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1457020251
 RectTransform:
   m_ObjectHideFlags: 0
@@ -10198,7 +10198,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2075207713
 RectTransform:
   m_ObjectHideFlags: 0
@@ -10622,7 +10622,6 @@ MonoBehaviour:
   targetZSliderMax: {fileID: 700020345}
   maxNrOfSurfaceHits: {fileID: 430234515}
   maxNrOfBottomHits: {fileID: 1651382321}
-  bellhopIterations: {fileID: 1457020252}
 --- !u!1 &2099791814
 GameObject:
   m_ObjectHideFlags: 0

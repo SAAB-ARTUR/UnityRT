@@ -22,8 +22,7 @@ public class Main : MonoBehaviour
     private SourceParams.Properties? oldSourceParams = null;
     private BellhopParams.Properties? oldBellhopParams = null;
     private int oldMaxSurfaceHits = 0;
-    private int oldMaxBottomHits = 0;
-    private int oldBellhopIterations = 0;
+    private int oldMaxBottomHits = 0;    
 
     private RayTracingVisualization sourceCameraScript = null;
     private RenderTexture _target;
@@ -70,11 +69,18 @@ public class Main : MonoBehaviour
     }
     private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 6;
 
+    struct PerRayData2
+    {
+        public PerRayData prd;
+        public bool isEig;
+    }
+
     private ComputeBuffer PerRayDataBuffer;
     private PerRayData[] rayData = null;
     private float dtheta = 0;
     private List<PerRayData> contributingRays = new List<PerRayData>();
-    private bool[] isEigen = null;
+    private List<PerRayData2> contributingRays2 = new List<PerRayData2>();
+    //private bool[] isEigen = null;
     private ComputeBuffer alphaData;
 
     private float[] alphas = new float[128] { -0.52359879f, -0.51535314f, -0.50710750f, -0.49886185f, -0.49061620f, -0.48237056f, -0.47412491f, -0.46587926f, -0.45763358f, -0.44938794f, -0.44114229f,
@@ -268,7 +274,7 @@ public class Main : MonoBehaviour
             sourceCameraScript = sourceCamera.GetComponent<RayTracingVisualization>();
         }
 
-        rtas = new RayTracingAccelerationStructure();
+        //rtas = new RayTracingAccelerationStructure();
     }
 
     // Start is called before the first frame update
@@ -320,7 +326,8 @@ public class Main : MonoBehaviour
 
         for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
         {
-            if (rayPositions[offset + i].x != 0f || rayPositions[offset + i].y != 0f || rayPositions[offset + i].z != 0f)
+            //if (rayPositions[offset + i].x != 0f || rayPositions[offset + i].y != 0f || rayPositions[offset + i].z != 0f)
+            if (rayPositions[offset + i].y <= 0f )
             {
                 positions.Add(new Vector3(rayPositions[offset + i].x, rayPositions[offset + i].y, rayPositions[offset + i].z));
             }
@@ -392,11 +399,6 @@ public class Main : MonoBehaviour
             oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
             computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);            
         }
-        /*if(bellhopParams.BELLHOPITERATIONS != oldBellhopIterations)
-        {
-            oldBellhopIterations = bellhopParams.BELLHOPITERATIONS;
-            computeShader.SetInt("_BELLHOPITERATIONS", bellhopParams.BELLHOPITERATIONS);            
-        }*/
         if (oldVisualiseRays != sourceParams.visualizeRays || oldVisualiseContributingRays != sourceParams.showContributingRaysOnly)
         {
             oldVisualiseRays = sourceParams.visualizeRays;
@@ -522,7 +524,7 @@ public class Main : MonoBehaviour
             Debug.Log("Contributing rays: " + contributingRays.Count);
             Debug.Log(rayData.Length);
 
-            isEigen = new bool[contributingRays.Count];
+            //isEigen = new bool[contributingRays.Count];
             
             Debug.Log("------------------------------------------------------------------------------------------------");
 
@@ -550,25 +552,130 @@ public class Main : MonoBehaviour
                     float n1 = contributingRays[i].xn;
                     float n2 = contributingRays[i + 1].xn;
                     float tot = contributingRays[i].beta + contributingRays[i + 1].beta;
-                    Debug.Log("hejhej " + i);
-                    Debug.Log("jhkjfhkjfh");
+                    Debug.Log("hejhej " + i);                    
                     Debug.Log(n1 + " " + n2);
                     Debug.Log(tot);
 
                     if (n1 * n2 <= 0 && tot > 0.9 && tot < 1.1)
                     {
-                        isEigen[i] = true;
+                        float w = n2 / (n2 - n1);
+                        // create eigenray from the two rays
+                        PerRayData eigenray;
+                        eigenray.contributing = 1;
+                        eigenray.ntop = contributingRays[i].ntop;
+                        eigenray.nbot = contributingRays[i].nbot;
+                        eigenray.ncaust = contributingRays[i].ncaust;
+                        eigenray.curve = contributingRays[i].curve;
+                        eigenray.delay = contributingRays[i].delay;
+                        eigenray.qi = contributingRays[i].qi;
+                        eigenray.xn = contributingRays[i].xn;
+                        eigenray.beta = contributingRays[i].beta;
+                        eigenray.alpha = w * contributingRays[i].alpha + (1 - w) * contributingRays[i + 1].alpha;
+
+                        PerRayData2 eigRay;
+                        eigRay.prd = eigenray;
+                        eigRay.isEig = true;
+
+                        
+                        contributingRays2.Add(eigRay);
+
+                        //isEigen[i] = true;
                         //isEigen[i + 1] = false;
 
 
-                        float w = n2 / (n2 - n1);
+                        
                         //contributingRays[i].iseig = 1; //true
                         //contributingRays[i].alpha = w * contributingRays[i].alpha + (1 - w) * contributingRays[i + 1].alpha;
                         //contributingRays[i + 1].iseig = 0; //false
                         i++;
                         Debug.Log("kjdkdjkldjlkdd");
                     }
+                    else
+                    {
+                        PerRayData2 notEigRay;
+                        notEigRay.prd = contributingRays[i];
+                        notEigRay.isEig = false;
+                        contributingRays2.Add(notEigRay);
+                    }
                 }
+            }
+            Debug.Log("Contributing rays2: " + contributingRays2.Count);
+
+            Debug.Log("    angle     T   B   C         TL          dist         delay     beta     eig");
+            
+            //float freq = 150000;
+            float[] freqs = new float[1] { 150000 };
+            float[] damp = new float[1] { 0.015f };
+            // bottom properties
+            float cp = 1600; // m/s
+            float rho = 1.8f; // rho/rho0
+            float bottom_alpha = 0.025f; // dB/m
+
+            // sound speed: source, receiver            
+            float cs = LayerSpeed(SSP, sourceCamera.transform.position.y, 0);
+            float cr = LayerSpeed(SSP, targetSphere.transform.position.y, 0);
+            float cwater = LayerSpeed(SSP, world.GetWaterDepth(), 0);
+
+            float[,] Amp = new float[contributingRays2.Count, freqs.Length];
+            float[,] Phase = new float[contributingRays2.Count, freqs.Length];
+
+            float xdiff = targetSphere.transform.position.x - sourceCamera.transform.position.x;
+            float zdiff = targetSphere.transform.position.z - sourceCamera.transform.position.z;
+
+            float targetSphereR = MathF.Sqrt(MathF.Pow(xdiff, 2) + MathF.Pow(zdiff, 2));
+
+            Debug.Log(contributingRays2.Count);
+            Debug.Log(freqs.Length);
+            for (int i = 0; i < contributingRays2.Count; i++) // TODO: deyya behöver bytas till indexering samt att det inte ska vara övr eigenrays utan de rays som kommer igenom förra steget
+            {                
+                // amplitudes
+                float Arms = 0;
+                float Amp0 = Mathf.Sqrt(Mathf.Cos(contributingRays2[i].prd.alpha) * cr / MathF.Abs(contributingRays2[i].prd.qi) / targetSphereR);
+
+                // ray tangebt in r-direction
+                float Tg = Mathf.Cos(contributingRays2[i].prd.alpha) / cs;
+
+
+                for (int j = 0; j < freqs.Length; j++)
+                {                    
+                    float Rfa, gamma;
+                    // bottom reflection coefficient
+                    if (contributingRays2[i].prd.nbot > 0)
+                    {
+                        float omega = 2 * MathF.PI * freqs[j];
+                        float2 RfaGamma = bottom_reflection(cwater, cp, rho, bottom_alpha, Tg, omega, damp[j]);
+                        Rfa = RfaGamma.x;
+                        gamma = RfaGamma.y;
+                    }
+                    else
+                    {
+                        Rfa = 1;
+                        gamma = 0;
+                    }
+
+                    // amplitude and phase
+                    Amp[i, j] = Amp0 * MathF.Pow(Rfa, contributingRays2[i].prd.nbot) * MathF.Exp(-damp[j] * contributingRays2[i].prd.curve);
+                    gamma = MathF.PI * contributingRays2[i].prd.ntop + gamma * contributingRays2[i].prd.nbot + MathF.PI / 2 * contributingRays2[i].prd.ncaust;
+                    Phase[i, j] = (gamma + MathF.PI) % 2*MathF.PI - MathF.PI;
+
+                    // RMS amplitude
+                    Arms += MathF.Pow(Amp[i, j], 2);
+
+                    // weighted amplitude
+                    if (!contributingRays2[i].isEig)
+                    {
+                        Amp[i, j] *= (1 - contributingRays2[i].prd.beta);
+                    }
+                }
+
+                // transmission loss
+                rho = 1;
+                float I1 = 1 / cs / rho;
+                float I2 = (Arms / freqs.Length) / cr / rho;
+                float TL = 10 * MathF.Log10(I1 / I2);
+
+                Debug.Log("TL: " + TL);
+
             }
 
             if (sourceParams.visualizeRays)
@@ -599,6 +706,85 @@ public class Main : MonoBehaviour
             lines.Clear();
         }
         contributingRays.Clear();
+        contributingRays2.Clear();
+    }
+
+    float2 bottom_reflection(float cwater, float cp, float rho, float bottom_alpha, float Tg, float omega, float alphaT)
+    {
+        // imaginary part of cp
+        float alpha = bottom_alpha / 8.6858896f + alphaT;
+        float ci = alpha * MathF.Pow(cp, 2) / omega;
+
+        float g1 = MathF.Pow(Tg, 2) - 1 / MathF.Pow(cwater, 2);
+        float h1 = 0;
+
+        float cp2 = cp * cp + ci * ci;
+        float x = cp / cp2;
+        float y = -ci / cp2;
+        float g2 = MathF.Pow(Tg, 2) - x * x + y * y;
+        float h2 = -2 * x * y;
+
+        float2 g1h1 = complexsqrt(g1, h1);
+        float2 g2h2 = complexsqrt(g2, h2);
+
+        float A = rho * g1h1.x - g2h2.x;
+        float B = rho * g1h1.y - g2h2.y;
+        float C = rho * g1h1.x + g2h2.x;
+        float D = rho * g1h1.y + g2h2.y;
+        float R = (A * C + B * D) / (C * C + D * D);
+        float Q = (B * C - A * D) / (C * C + D * D);
+
+        float Rfa = MathF.Sqrt(R * R + Q * Q);
+        float gamma = MathF.Atan2(Q, R);
+
+        return new float2(Rfa, gamma);
+    }
+
+    float2 complexsqrt(float a, float b)
+    {
+        float x, y;
+        if (a >= 0)
+        {
+            x = MathF.Sqrt((MathF.Sqrt(a * a + b * b) + a) / 2);
+            if (x > 0)
+            {
+                y = b / x / 2;
+            }
+            else
+            {
+                y = 0;
+            }
+        }
+        else
+        {
+            y = MathF.Sqrt((MathF.Sqrt(a * a + b * b) - a) / 2);
+            if (b < 0)
+            {
+                y = -y;
+            }
+            x = b / y / 2;
+        }
+
+        return new float2(x, y);
+    }
+
+    float LayerSpeed(List<SSPFileReader.SSP_Data> SSP, float depth, int Layer=0)
+    {        
+        while(Layer < SSP.Count - 1 && depth <= SSP[Layer + 1].depth)
+        {
+            Layer += 1;
+        }
+        while (depth > SSP[Layer].depth && Layer > 0)
+        {
+            Layer -= 1;
+        }
+
+        float w = depth - SSP[Layer].depth;
+
+        // linear interpolation for now
+        float c = SSP[Layer].velocity + w * SSP[Layer].derivative1;
+
+        return c;
     }
 
     void BuildRTAS()
