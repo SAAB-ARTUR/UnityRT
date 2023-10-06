@@ -1,65 +1,23 @@
 #include "BStep.cginc"
 #include "BReflect.cginc"
 
-float3 toCartesian(float phi, float2 rz) {
-
+float3 toCartesian(float phi, float2 rz) 
+{
     float radius = rz.x;
     float depth = rz.y;
 
     return float3(radius * cos(phi) + srcPosition.x, depth, radius * sin(phi) + srcPosition.z);
-
 }
 
-/*struct BRay
-{
-    uint ntop;
-    uint nbot;
-    uint ncaust;
-    float delay;
-    float curve;
-    float xn;
-    float qi;
-
-};*/
-
-struct TraceOutput
-{   
-    //BRay ray;
-    float beta;
-    uint ntop;
-    uint nbot;
-    uint ncaust;
-    float delay;
-    float curve;
-    float xn;
-    float qi;
-};
-
-TraceOutput btrace(
-    SSP soundSpeedProfile,
-    float alpha,
-    float dalpha,
-    float2 xs,
-    float2 xr,
-    float depth,
-    float deltas,
-    uint maxtop,
-    uint maxbot,
-    uint3 id,
-    uint width,
-    float3 raydir,
-    float phi,
-    inout PerRayData prd
-)
-{
-    uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
+void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
+            uint maxbot, uint3 id, uint offset, float phi, inout PerRayData prd)
+{    
     SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
     
-    // Initial conditions
-    
+    // Initial conditions    
     float c = initialSsp.c;
     float2 x = xs;
-    float2 Tray = { cos(alpha) / c, -sin(alpha) / c }; //i matlab behövde jag lägga till ett minustecken för att det skulle bli rätt, här var jag tvungen att ta bort det, oklart varför.
+    float2 Tray = { cos(alpha) / c, -sin(alpha) / c };
     float p = 1;
     float q = 0;
     float tau = 0;
@@ -70,8 +28,7 @@ TraceOutput btrace(
     uint Layer = initialSsp.Layer;
 
     float xxs = 1;
-    float q0 = 0;
- 
+    float q0 = 0; 
 
     float2 x0;
     float tau0;
@@ -83,8 +40,7 @@ TraceOutput btrace(
     float3 x0_cart;
     float3 x_cart;
 
-    xrayBuf[0 + offset] = toCartesian(phi, xs);
-    debugBuf[0 + offset] = float3(xs, c);
+    rayPositionsBuffer[0 + offset] = toCartesian(phi, xs);    
     uint istep = 1;
 
     //while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
@@ -104,7 +60,7 @@ TraceOutput btrace(
         previous_distance = current_distance;
 
         // Take a step
-        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer, id, width);
+        StepOutput stepOutput = bstep(soundSpeedProfile, x0, Tray, p, q, tau, len, deltas, depth, Layer);
 
         Tray = stepOutput.Tray;
         p = stepOutput.p;
@@ -145,16 +101,14 @@ TraceOutput btrace(
         // Distance left to the receiver
         //xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
 
-        xrayBuf[istep + offset] = x_cart;
-        debugBuf[istep + offset] = float3(x, 12349);
+        rayPositionsBuffer[istep + offset] = x_cart;        
 
         istep++;
     }
 
-    // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force the empty positions to be empty
+    // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _BELLHOPSIZE; i++) { 
-        xrayBuf[i + offset] = float3(0, 0, 0);
-        debugBuf[i + offset] = float3(0, 0, 0);
+        rayPositionsBuffer[i + offset] = float3(0, 10, 0);        
     }
 
     // Calculate ray tangent
@@ -163,7 +117,6 @@ TraceOutput btrace(
     float rlen = sqrt(tr * tr + tz * tz);
     tr = tr / rlen;
     tz = tz / rlen;
-
 
     // Interpolate
     float xn;
@@ -186,55 +139,22 @@ TraceOutput btrace(
     float delay;
     delay = tau0 + s * (tau - tau0);
 
-
     float curve;
     curve = len0 + s * (len - len0);
-
-    debugBuf[offset + _BELLHOPSIZE - 1] = float3(diffx, diffy, 128);
-    debugBuf[offset + _BELLHOPSIZE - 2] = float3(diffx2, diffy2, 128); //det verkar som för den första bidragande strålen så blir det sista steget väldigt kort, jag vet ej om det är så att det sista steget måste vara stort för att koden ska funka bra
-    debugBuf[offset + _BELLHOPSIZE - 3] = float3(tr, tz, rlen);
-    debugBuf[offset + _BELLHOPSIZE - 4] = float3(xs2, xn, 128);
-    debugBuf[offset + _BELLHOPSIZE - 5] = float3(s, q, q0);
+    
     // Beam radius
     float RadMax = abs(qi) / initialSsp.c * dalpha;
 
-    float beta = abs(xn) / RadMax;
-
-    debugBuf[offset + _BELLHOPSIZE - 6] = float3(qi, initialSsp.c, alpha);
-    debugBuf[offset + _BELLHOPSIZE - 7] = float3(beta, xn, RadMax); //INDEX 38 borde vara första strålen som bidrar
+    float beta = abs(xn) / RadMax;    
     
     // shift phase for rays that have passed through a caustic
-
     if (qi <= 0 && q0 > 0 || qi >= 0 && q0 < 0)
     {
         ncaust++;
     }
-     
-    // Create the output
-    TraceOutput result;
-    /*BRay r;
-    r.curve = curve;
-    r.delay = delay;
-    r.nbot = nbot;
-    r.ntop = ntop; 
-    r.qi = qi;
-    r.xn = xn; 
-    r.ncaust = ncaust;*/  
     
-    //result.xray = xrayBuf;
-    result.beta = beta;
-    //result.ray = r;
-    result.ntop = ntop;
-    result.nbot = nbot;
-    result.ncaust = ncaust;
-    result.delay = delay;
-    result.curve = curve;
-    result.xn = xn;
-    result.qi = qi;
-    
-    prd.iseig = 0;
-    prd.beta = beta;
-    //prd.ray = r;
+    // set data for the traced ray
+    prd.beta = beta;    
     prd.ntop = ntop;
     prd.nbot = nbot;
     prd.ncaust = ncaust;
@@ -250,7 +170,4 @@ TraceOutput btrace(
     else {
         prd.contributing = 0;
     }
-
-    return result;
-    
 }

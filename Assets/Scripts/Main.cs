@@ -48,8 +48,8 @@ public class Main : MonoBehaviour
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer _SSPBuffer;
 
-    private ComputeBuffer xrayBuf;
-    private float3[] bds = null;
+    private ComputeBuffer rayPositionsBuffer;
+    private float3[] rayPositions = null;
     private bool rayPositionDataAvail = false;
 
     private bool oldVisualiseRays = false;
@@ -57,7 +57,6 @@ public class Main : MonoBehaviour
 
     struct PerRayData
     {
-        public uint iseig;
         public float beta;
         public uint ntop;
         public uint nbot;
@@ -69,7 +68,7 @@ public class Main : MonoBehaviour
         public float alpha;
         public uint contributing;
     }
-    private int perraydataByteSize = sizeof(uint) * 5 + sizeof(float) * 6;
+    private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 6;
 
     private ComputeBuffer PerRayDataBuffer;
     private PerRayData[] rayData = null;
@@ -89,8 +88,8 @@ public class Main : MonoBehaviour
         0.31745753f, 0.32570317f, 0.33394885f, 0.34219450f, 0.35044014f, 0.35868579f, 0.36693144f, 0.37517709f, 0.38342273f, 0.39166838f, 0.39991406f, 0.40815970f, 0.41640535f, 0.42465100f, 0.43289664f,
         0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };
     
-    private ComputeBuffer debugBuf;
-    private float3[] debugger;
+    /*private ComputeBuffer debugBuf;
+    private float3[] debugger;*/
 
     //TODO: fortsätt städa kod
     //TODO: troligtvis kommer koden för hur eigenrays räknas ut behöva skrivas om lite när man skickar rays i fler phi-vinklar, fundera över det, (kom ihåg att se över shader-kod som just nu bara skickar
@@ -110,7 +109,7 @@ public class Main : MonoBehaviour
             _target = null;
         }
 
-        if (surfaceInstanceData != null)
+        /*if (surfaceInstanceData != null)
         {
             surfaceInstanceData.Dispose();
             surfaceInstanceData = null;
@@ -129,13 +128,13 @@ public class Main : MonoBehaviour
         {
             targetInstanceData.Dispose();
             targetInstanceData = null;
-        }
+        }*/
         
         _SSPBuffer?.Release();
-        xrayBuf?.Release();
+        rayPositionsBuffer?.Release();
         PerRayDataBuffer?.Release();
         alphaData?.Release();
-        debugBuf?.Release();
+        //debugBuf?.Release();
     }
 
     void OnDestroy()
@@ -153,15 +152,15 @@ public class Main : MonoBehaviour
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();        
 
-        if (xrayBuf == null)
-        {            
-            xrayBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
-            SetComputeBuffer("xrayBuf", xrayBuf);
+        if (rayPositionsBuffer == null)
+        {
+            rayPositionsBuffer = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+            SetComputeBuffer("rayPositionsBuffer", rayPositionsBuffer);
         }
 
-        if (bds == null)
+        if (rayPositions == null)
         {
-            bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
+            rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
             rayPositionDataAvail = false;
         }
 
@@ -177,19 +176,11 @@ public class Main : MonoBehaviour
         }
 
         if (surfaceInstanceData == null)
-        {
-            if (surfaceInstanceData != null)
-            {
-                surfaceInstanceData.Dispose();
-            }
+        {            
             surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
         }        
         if (seafloorInstanceData == null)
-        {
-            if (seafloorInstanceData != null)
-            {
-                seafloorInstanceData.Dispose();
-            }
+        {            
             seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
         }
 
@@ -235,8 +226,7 @@ public class Main : MonoBehaviour
         computeShader.SetMatrix("_SourceCameraToWorld", sourceCamera.cameraToWorldMatrix);
         computeShader.SetMatrix("_CameraInverseProjection", sourceCamera.projectionMatrix.inverse);     
 
-        computeShader.SetVector("srcDirection", srcSphere.transform.forward);
-        Debug.Log(srcSphere.transform.forward);
+        computeShader.SetVector("srcDirection", srcSphere.transform.forward);        
         computeShader.SetVector("srcPosition", srcSphere.transform.position);
         computeShader.SetVector("receiverPosition", targetSphere.transform.position);
     }
@@ -309,15 +299,17 @@ public class Main : MonoBehaviour
     void PlotBellhop(int idx, int idy)
     {        
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        
+        int rayIdx = idy * sourceParams.nphi + idx;
 
-        int offset = GetStartIndexBellhop(idx, idy);
-        int offset2 = idy * sourceParams.nphi + idx;
-
-        if (sourceParams.showContributingRaysOnly && rayData[offset2].contributing != 1)
+        if (sourceParams.showContributingRaysOnly && rayData[rayIdx].contributing != 1)
         {
             return;
         }
+
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+
+        int offset = GetStartIndexBellhop(idx, idy);
 
         line = new GameObject("Line").AddComponent<LineRenderer>();
         line.startWidth = 0.03f;
@@ -328,9 +320,9 @@ public class Main : MonoBehaviour
 
         for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
         {
-            if (bds[offset + i].x != 0f || bds[offset + i].y != 0f || bds[offset + i].z != 0f)
+            if (rayPositions[offset + i].x != 0f || rayPositions[offset + i].y != 0f || rayPositions[offset + i].z != 0f)
             {
-                positions.Add(new Vector3(bds[offset + i].x, bds[offset + i].y, bds[offset + i].z));
+                positions.Add(new Vector3(rayPositions[offset + i].x, rayPositions[offset + i].y, rayPositions[offset + i].z));
             }
             else
             {
@@ -342,7 +334,6 @@ public class Main : MonoBehaviour
         line.SetPositions(positions.ToArray());
 
         lines.Add(line);
-
     }
 
     void Update()
@@ -351,23 +342,20 @@ public class Main : MonoBehaviour
         // CHECK FOR UPDATES
         //
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-        //Debug.Log(sourceParams.nphi);
-        //Debug.Log(sourceParams.ntheta);
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();        
 
         if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams))
         {
-            Debug.Log("Reeinit raybuffer");            
-
-            bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
+            rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
+            rayPositionDataAvail = false;
             rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
             oldSourceParams = sourceParams.ToStruct();
             oldBellhopParams = bellhopParams.ToStruct();
 
-            if (xrayBuf != null)
+            if (rayPositionsBuffer != null)
             {
-                xrayBuf.Release();
-                xrayBuf = null;
+                rayPositionsBuffer.Release();
+                rayPositionsBuffer = null;
             }
 
             if (PerRayDataBuffer != null)
@@ -387,14 +375,12 @@ public class Main : MonoBehaviour
 
             computeShader.SetBuffer(0, "alphaData", alphaData);
 
-            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta -1);
-            Debug.Log(dtheta);
-            dtheta = dtheta * MathF.PI / 180; // to radians
-            Debug.Log(dtheta);
+            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta -1);            
+            dtheta = dtheta * MathF.PI / 180; // to radians            
             computeShader.SetFloat("dalpha", dtheta);
-            debugBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+            /*debugBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             debugger = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
-            computeShader.SetBuffer(0, "debugBuf", debugBuf);
+            computeShader.SetBuffer(0, "debugBuf", debugBuf);*/
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -406,11 +392,11 @@ public class Main : MonoBehaviour
             oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
             computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);            
         }
-        if(bellhopParams.BELLHOPITERATIONS != oldBellhopIterations)
+        /*if(bellhopParams.BELLHOPITERATIONS != oldBellhopIterations)
         {
             oldBellhopIterations = bellhopParams.BELLHOPITERATIONS;
             computeShader.SetInt("_BELLHOPITERATIONS", bellhopParams.BELLHOPITERATIONS);            
-        }
+        }*/
         if (oldVisualiseRays != sourceParams.visualizeRays || oldVisualiseContributingRays != sourceParams.showContributingRaysOnly)
         {
             oldVisualiseRays = sourceParams.visualizeRays;
@@ -507,22 +493,20 @@ public class Main : MonoBehaviour
             int threadGroupsX = Mathf.FloorToInt(1);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
-            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);     
+            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
             // read results from buffers into arrays
-            xrayBuf.GetData(bds);
+            rayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
-            debugBuf.GetData(debugger);
+            //debugBuf.GetData(debugger);
 
-            Debug.Log("--------------------------------------------------------------------------");
+            /*Debug.Log("--------------------------------------------------------------------------");
             for (int i = 38* bellhopParams.BELLHOPINTEGRATIONSTEPS; i < 39*bellhopParams.BELLHOPINTEGRATIONSTEPS; i++) //index 38 borde vara första strålen som bidrar
             {
                 Debug.Log(i - 38 * bellhopParams.BELLHOPINTEGRATIONSTEPS + ": " + debugger[i].x + " " + debugger[i].y + " " + debugger[i].z);
             }
-            Debug.Log("--------------------------------------------------------------------------");
-            Debug.Log(rayData[0].alpha);
-            Debug.Log(rayData[0].beta);
+            Debug.Log("--------------------------------------------------------------------------");*/            
 
             int steplength = sourceParams.nphi;
 
@@ -544,7 +528,6 @@ public class Main : MonoBehaviour
 
             for (int i = 0; i < contributingRays.Count; i++)
             {
-                //Debug.Log(rayData[i].iseig.ToString());
                 Debug.Log("Ray: " + i);
                 Debug.Log("alpha: " + contributingRays[i].alpha.ToString());
                 Debug.Log("Beta: " + contributingRays[i].beta.ToString());

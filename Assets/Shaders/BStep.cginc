@@ -44,9 +44,7 @@ StepOutput bstep(
     float len0,
     float deltas,
     float depth,
-    uint Layer,
-    uint3 id,
-    uint width
+    uint Layer  
     )
 {
     SSPOutput phase0 = ssp(x0.y, soundSpeedProfile, Layer);

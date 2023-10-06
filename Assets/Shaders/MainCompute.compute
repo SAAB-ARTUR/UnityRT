@@ -7,14 +7,8 @@
 
 RWTexture2D<float4> Result;
 
-RWStructuredBuffer<float3> SSPData;
-RWStructuredBuffer<float3> xrayBuf;
-RWStructuredBuffer<float> alphaData;
-RWStructuredBuffer<float3> debugBuf;
-
 struct PerRayData {
-    uint iseig;      //should be 0 or 1
-    float beta;     // how "close" the beam is to the receiver
+    float beta;
     uint ntop;
     uint nbot;
     uint ncaust;
@@ -27,27 +21,29 @@ struct PerRayData {
 };
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
-
-float depth;
+RWStructuredBuffer<float3> rayPositionsBuffer;
+StructuredBuffer<float> alphaData;
+//RWStructuredBuffer<float3> debugBuf;
 
 float4x4 _SourceCameraToWorld;
 float4x4 _CameraInverseProjection;
 
-float2 _Pixel;
+//float2 _Pixel;
 
-int _MAXINTERACTIONS;
-int _BELLHOPSIZE;
+uint _MAXINTERACTIONS;
+uint _BELLHOPSIZE;
 float deltas;
-int _MAXBOTTOMHITS;
-int _MAXSURFACEHITS;
-int _BELLHOPITERATIONS;
+uint _MAXBOTTOMHITS;
+uint _MAXSURFACEHITS;
+//uint _BELLHOPITERATIONS;
 
 static const float PI = 3.14159265f;
 
-int theta;
-int ntheta;
-int phi;
-int nphi;
+float depth;
+uint theta;
+uint ntheta;
+uint phi;
+uint nphi;
 float3 srcDirection;
 float3 srcPosition;
 float3 receiverPosition;
@@ -64,14 +60,6 @@ struct SSP_Data
 StructuredBuffer<SSP_Data> _SSPBuffer;
 #include "BSSP.cginc"
 
-struct RayData // Data that will be sent back to the CPU
-{
-    float3 origin;
-    int set;    
-};
-
-RWStructuredBuffer<RayData> _RayPoints;
-
 //-------------------------------------
 //- RAY
 
@@ -80,7 +68,7 @@ struct Ray
     float3 origin;
     float3 direction;
     float3 energy;
-    int nrOfInteractions;
+    uint nrOfInteractions;
 };
 
 #include "BTrace.cginc"
@@ -138,11 +126,11 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     //float2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), receiverPosition.y };   
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), receiverPosition.y };
 
-    PerRayData prd;
-    //debugBuf[id.y * width + id.x] = float3(alpha, dalpha, 24);
+    PerRayData prd;    
 
-    TraceOutput t = btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, width, raydir, _Phi, prd);
-
+    //TraceOutput t = btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, width, raydir, _Phi, prd);
     uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
+    btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, offset, _Phi, prd);
+    
     PerRayDataBuffer[id.y * width + id.x] = prd;
 }
