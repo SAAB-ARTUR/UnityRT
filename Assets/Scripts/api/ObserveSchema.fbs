@@ -1,0 +1,85 @@
+namespace SAAB.Artur;
+
+struct Vec3 {
+
+    x:double;
+    y:double; 
+    z:double;
+
+}
+
+struct CylindricalCoord {
+
+    r:double;
+    phi:double;
+    z:double;
+
+}
+
+struct AngleSpan {
+
+    n_phi:int;
+    phi_span:double;
+    
+    n_theta:int;
+    theta_span:double; 
+
+}
+
+struct SphericalDir {
+
+    phi:double;
+    theta:double;
+
+}
+
+table Sender {
+
+    position: Vec3;
+    angle_span: AngleSpan; 
+    look_at: SphericalDir;
+
+}
+
+table Reciever {
+
+    position: Vec3;
+
+}
+
+table Ray {
+
+    nbot:int;
+    ntop:int;
+    ncaust:int;
+    delay:double;
+    curve:double;
+    normalized_distance:double;
+    start_angle:double;
+
+    x_cylindrical:[CylindricalCoord];
+    x_cartesian:[Vec3];
+    beta:double;
+
+
+}
+
+table RayCollection {
+
+    sender: Sender; 
+    reciever: Reciever;
+    rays:[Ray];
+
+}
+
+table World {
+
+    sender: Sender;
+    reciever: Reciever;
+    ray_collections:[RayCollection];
+
+
+}
+
+
+root_type World;

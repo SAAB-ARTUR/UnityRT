@@ -6,20 +6,23 @@ import queue as Q
 import sys
 import os
 from datetime import datetime
-
+import flatbuffers
+import Assets.Scripts.api.ObserveSchema_generated as observe_schema
 
 processing = None
 queue = Q.LifoQueue(maxsize=10)
 
 
 
-fig, ax = plt.subplots()
+fig = plt.figure()
+ax = fig.add_subplot(projection = "3d")
 # plt.ion()
 plt.show(block = False)
-line, = ax.plot([], [], linewidth  =0, marker = ".")
+line, = ax.plot3D([], [], [], linewidth  =0, marker = ".")
 
 count = 0
 datap = None
+world = None
 
 import sys
 import threading
@@ -27,15 +30,34 @@ import threading
 last_line = ''
 new_line_event = threading.Event()
 
+close = False
+
+
 
 def keep_last_line():
-    global last_line, new_line_event, datap, count
+    global last_line, new_line_event, datap, count, world, close
+    
+    #sys.stdin.buffer.mode = "rb"
+
+    while not close:
+
+        sys.stdin.mode = "rb"
+        data = sys.stdin.buffer.read()
+        #data2 = open("SAVE_FILENAME.whatever", "rb").read()
+        print(data)
+        #print(data2)
+        world = observe_schema.World.GetRootAs(data)
+        print(world)
+        sys.stdin.buffer.flush()
+
+    """
     for line in sys.stdin:
         last_line = line
         datap = float(line)
         count += 1
+        line.
         # new_line_event.set()
-
+    """
 
 keep_last_line_thread = threading.Thread(target=keep_last_line)
 keep_last_line_thread.daemon = True
@@ -103,6 +125,20 @@ async def main():
         # await writer.drain()
 
 
+def extract_sender_pos(world: observe_schema.World) -> tuple[float, float, float] | None:
+
+    if world is not None:
+        p = world.Sender().Position()
+        return (p.X(), p.Y(), p.Z())
+
+def update_bound(minb, maxb, b):
+
+    if b < minb:
+        minb = b
+    if b > maxb:
+        maxb = b
+
+    return (minb, maxb)
 
 
 async def handle_queue(): 
@@ -114,13 +150,34 @@ async def handle_queue():
     maxv = -np.inf
     minv = np.inf
 
+    minx, maxx = np.inf, -np.inf
+    miny, maxy = np.inf, -np.inf
+    minz, maxz = np.inf, -np.inf
+
     
 
     x = np.arange(size)
 
     while True:
-        await asyncio.sleep(0.001)
-        if datap is not None:
+        await asyncio.sleep(0.01)
+        if world is not None:
+
+            (x,y,z) = extract_sender_pos(world)
+            minx, maxx = update_bound(minx, maxx, x)
+            
+            miny, maxy = update_bound(miny, maxy, y)
+            
+            minz, maxz = update_bound(minz, maxz, z)
+            ax.set_xlim(minx, maxx)
+            ax.set_ylim(miny, maxy)
+            ax.set_zlim(minz, maxz)
+
+            #aprint(x,y,z)
+
+            line.set_data_3d([x], [y], [z])
+
+
+            """
             #print("Processing : " + str(queue.pop()))
             #qd = queue.get()
             qd = datap
@@ -136,12 +193,12 @@ async def handle_queue():
                 minv = qd
 
             line.set_data(data[:, 0], data[:, 1])
-            ax.set_xlim(count - size, count)
-            ax.set_ylim(minv, maxv)
 
+            """
             
             fig.canvas.draw()            
-            plt.pause(0.001)
+            plt.pause(0.01)
+            
 
 async def runner():
 
@@ -154,4 +211,4 @@ async def runner():
 #if sys.platform:
 #    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 asyncio.run(runner())
-
+close = True
