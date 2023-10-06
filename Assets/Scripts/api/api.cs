@@ -8,7 +8,12 @@ using System.IO;
 using System;
 using System.Threading;
 using Google.FlatBuffers;
-using CompanyNamespaceWhatever;
+using SAAB.Artur;
+using UnityEngine.UIElements;
+using UnityEditor;
+using static UnityEngine.Awaitable;
+using System.Net.Configuration;
+using System.Web;
 
 public class api : MonoBehaviour
 {
@@ -21,8 +26,12 @@ public class api : MonoBehaviour
 
     Main main = null;
 
+    string msg = "";
+    bool new_status = false;
+    bool handled = true;
 
     Thread processThread = null;
+    bool processStarted = false;
 
 
     int i = 0;
@@ -33,31 +42,89 @@ public class api : MonoBehaviour
 
         main = this.GetComponent<Main>();   
 
-        RunExternal();
+        ProcessStartInfo pi = RunExternal();
+           
 
-        process.OutputDataReceived += OutputHandler;
+
+        //process.OutputDataReceived += OutputHandler;
+        // process.ErrorDataReceived += ErrorHandler;
+
+        // process.Start();
+        // process.BeginErrorReadLine();
 
 
         ThreadStart ths = new ThreadStart(() => {
-            process.Start();
-            process.BeginOutputReadLine();
             
+            //process.BeginOutputReadLine();
+            
+
+            while (true)
+            {
+
+                if (new_status && processStarted) {
+                    process.StandardInput.WriteLine("5.9");
+                    process.StandardInput.Flush();
+
+                    //SendStatus(process.StandardInput);
+
+                    new_status = false;
+                    handled = false;
+                    
+                }
+
+                //Thread.Sleep(100);
+
+            }
+
         });
         processThread = new Thread(ths);
         processThread.Start();
 
+        ThreadStart ths2 = new ThreadStart(() => {
+            
+            
+            while (true)
+            {
+
+
+                if (processStarted) {
+                    UnityEngine.Debug.Log(process.StandardOutput.ReadLine());
+
+                }
+                //Thread.Sleep(100);
+
+            }
+
+        });
+        Thread processThread2 = new Thread(ths2);
+        
+
+        process = Process.Start(pi);
+        processThread2.Start();
+        processStarted = true;
+
+
+
         // Test saving of a flatbuffer
-        Save();
-        Load();
+        //Save();
+        //Load();
     }
 
     void OutputHandler(object sendingProcess, DataReceivedEventArgs outLine) {
 
-        UnityEngine.Debug.Log(outLine.Data);
+        UnityEngine.Debug.Log("Python:"  + outLine.Data);
+        handled = true;
 
     }
 
-    Process RunExternal()
+    void ErrorHandler(object sendingProcess, DataReceivedEventArgs outLine)
+    {
+
+        UnityEngine.Debug.Log("Python err:" + outLine.Data);
+
+    }
+
+    ProcessStartInfo RunExternal()
     {
         ProcessStartInfo startInfo = new ProcessStartInfo();
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -65,40 +132,120 @@ public class api : MonoBehaviour
         startInfo.FileName = home + "\\" + ".conda\\envs\\unity_interface\\python.exe";
         
 
-        startInfo.Arguments = "threaded_test.py";
+
+        startInfo.Arguments = "simple_test.py";
         startInfo.UseShellExecute = false;
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
         startInfo.RedirectStandardInput = true;
-        Process p = Process.Start(startInfo);
-        process = p;
-        return p;
+        // Process p = Process.Start(startInfo);
+        //process = p;
+        return startInfo;
     }
 
     // Update is called once per frame
     void FixedUpdate()
     {
 
-        StreamWriter writer = process.StandardInput;
-
+        StreamWriter writer = process.StandardInput;    
 
 
         DateTime currentDateTime = DateTime.Now;
         string d = currentDateTime.ToString("HH:mm:ss:ff");
         //writer.WriteLine("Current date and time: " + d);
 
-        writer.WriteLine(main.srcSphere.transform.position.y);
-        writer.Flush();
+        
 
+        msg = main.srcSphere.transform.position.y.ToString();
+        new_status = true;
+        //UnityEngine.Debug.Log("Handled?" + handled.ToString());
+
+
+
+        //CreateOutputMessage(main.srcSphere.transform);
+
+
+    }
+
+    private void SendStatus(StreamWriter channel)
+    {
+        channel.WriteLine(msg);
+        channel.Flush();
     }
 
     private void OnDestroy()
     {
-        //stdin.Close();
-        process.Kill();
+        //process.StandardInput.Close();
+        //process.Kill();
+        process.Close();
     }
     // Update is called once per frame
     // Update is called once per frame
+
+    
+
+    void CreateOutputMessage(Transform senderPos) {
+
+        // Create flatbuffer class
+        FlatBufferBuilder fbb = new FlatBufferBuilder(1);
+
+        Vector3 p = senderPos.position;
+
+        Offset<Vec3> v = Vec3.CreateVec3(fbb, (double) p.x, (double) p.y, (double) p.z);
+
+        //
+        Sender.StartSender(fbb);
+        Sender.AddPosition(fbb, v);
+        Offset<Sender> s = Sender.EndSender(fbb);
+
+
+
+        SAAB.Artur.World.StartWorld(fbb);
+        SAAB.Artur.World.AddSender(fbb, s);
+
+        Offset<SAAB.Artur.World> w = SAAB.Artur.World.EndWorld(fbb);
+
+        SAAB.Artur.World.FinishWorldBuffer(fbb, w);
+
+        //var m = new MemoryStream(fbb.DataBuffer.ToFullArray(), fbb.DataBuffer.Position, fbb.Offset);
+        
+        //var b = new BinaryWriter(process.StandardInput.BaseStream);
+
+        //UnityEngine.Debug.Log(fbb.Offset);
+
+        //var lenb = BitConverter.GetBytes(fbb.Offset);
+        //UnityEngine.Debug.Log(lenb.Length);
+        process.StandardInput.WriteLine("");
+        process.StandardInput.Flush();
+        //b.Write(lenb, 0, lenb.Length);
+        
+        //b.Write(fbb.DataBuffer.ToFullArray(), fbb.DataBuffer.Position, fbb.Offset);
+        //b.Flush();
+        //process.StandardInput.Flush();
+        //b.Close(); 
+        //b.Flush();
+        //process.StandardInput.Flush();
+        //b.Close();
+
+        //process.StandardInput.BaseStream.Write(fbb.DataBuffer.ToFullArray(), fbb.DataBuffer.Position, fbb.Offset);
+
+        //process.StandardInput.BaseStream.Flush();
+
+
+        //m.WriteTo(process.StandardInput.BaseStream);
+        //m.Flush();
+
+        // Save the data into "SAVE_FILENAME.whatever" file, name doesn't matter obviously
+        using (var ms = new MemoryStream(fbb.DataBuffer.ToFullArray(), fbb.DataBuffer.Position, fbb.Offset))
+        {
+            File.WriteAllBytes("SAVE_FILENAME.whatever", ms.ToArray());
+            UnityEngine.Debug.Log("SAVED !");
+        }
+
+    }
+
+
+    /*
     void Save()
     {
         // Create flatbuffer class
@@ -120,7 +267,7 @@ public class api : MonoBehaviour
         Gun.AddDamage(fbb, 123);
         Gun.AddReloadspeed(fbb, 999);
         Offset<Gun> offsetWeapon = Gun.EndGun(fbb);
-        */
+        
         //------------------------------------------------------
 
         // Create strings for GameDataWhatever
@@ -171,6 +318,7 @@ public class api : MonoBehaviour
         UnityEngine.Debug.Log("NAME : " + data.Name);
         UnityEngine.Debug.Log("POS : " + data.Pos?.X + ", " + data.Pos?.Y + ", " + data.Pos?.Z);
         UnityEngine.Debug.Log("COLOR : " + data.Color);
+        UnityEngine.Debug.Log("INVENTORY : " + data.GetInventoryArray()?.ToString());
 
         UnityEngine.Debug.Log("WEAPON TYPE : " + data.WeaponType);
 
@@ -190,5 +338,6 @@ public class api : MonoBehaviour
                 break;
         }
     }
+    */
 
 }
