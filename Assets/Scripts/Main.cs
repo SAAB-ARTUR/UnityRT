@@ -50,6 +50,10 @@ public class Main : MonoBehaviour
 
     private ComputeBuffer xrayBuf;
     private float3[] bds = null;
+    private bool rayPositionDataAvail = false;
+
+    private bool oldVisualiseRays = false;
+    private bool oldVisualiseContributingRays = false;
 
     struct PerRayData
     {
@@ -158,6 +162,7 @@ public class Main : MonoBehaviour
         if (bds == null)
         {
             bds = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
+            rayPositionDataAvail = false;
         }
 
         if (PerRayDataBuffer == null)
@@ -340,8 +345,6 @@ public class Main : MonoBehaviour
 
     }
 
-    // TODO: Gör så att rays ritas när toggleknapparna ändras och efter en raytrace. Målet är att man inte ska behöva kör om tracing för att kunna toggla mellan att visa alla rays ch bara bidragande rays
-    // Update is called once per frame
     void Update()
     {        
         //
@@ -352,7 +355,7 @@ public class Main : MonoBehaviour
         //Debug.Log(sourceParams.nphi);
         //Debug.Log(sourceParams.ntheta);
 
-        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams)) //TODO: fixa här så toggleknapparna inte ¨får det här att köra
+        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams))
         {
             Debug.Log("Reeinit raybuffer");            
 
@@ -408,6 +411,27 @@ public class Main : MonoBehaviour
             oldBellhopIterations = bellhopParams.BELLHOPITERATIONS;
             computeShader.SetInt("_BELLHOPITERATIONS", bellhopParams.BELLHOPITERATIONS);            
         }
+        if (oldVisualiseRays != sourceParams.visualizeRays || oldVisualiseContributingRays != sourceParams.showContributingRaysOnly)
+        {
+            oldVisualiseRays = sourceParams.visualizeRays;
+            oldVisualiseContributingRays = sourceParams.showContributingRaysOnly;
+
+            if (rayPositionDataAvail && sourceParams.visualizeRays)
+            {
+                Debug.Log("ray data available, plot rays");
+                foreach (LineRenderer line in lines)
+                {
+                    Destroy(line.gameObject);
+                }
+                lines.Clear();
+
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                {
+                    //Debug.Log("nphi: " + sourceParams.nphi/2);
+                    PlotBellhop((int)sourceParams.nphi / 2, itheta);
+                }
+            }
+        }
 
         World world = world_manager.GetComponent<World>();
 
@@ -455,6 +479,7 @@ public class Main : MonoBehaviour
 
         if ((!lockRayTracing && doRayTracing) || sourceParams.sendRaysContinously) // do raytracing if the user has pressed key C. only do it once though. or do it continously
         {
+            rayPositionDataAvail = false;
             foreach (LineRenderer line in lines)
             {
                 Destroy(line.gameObject);
@@ -486,6 +511,7 @@ public class Main : MonoBehaviour
 
             // read results from buffers into arrays
             xrayBuf.GetData(bds);
+            rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
             debugBuf.GetData(debugger);
 
@@ -567,71 +593,7 @@ public class Main : MonoBehaviour
                 for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) {
                     //Debug.Log("nphi: " + sourceParams.nphi/2);
                     PlotBellhop((int)sourceParams.nphi/2, itheta);
-                }
-
-                //_rayPointsBuffer.GetData(rds);
-
-                //Vector3 srcOrigin = srcSphere.transform.position;
-
-                //// visualize all lines
-                //for (int i = 0; i < rds.Length/sourceParams.MAXINTERACTIONS; i++)
-                //{
-                //    List<Vector3> positions = new List<Vector3>();
-                //    if (rds[i*sourceParams.MAXINTERACTIONS].set != 12345) // check if the ray hit something
-                //    {                        
-                //        continue;
-                //    }
-
-                //    line = new GameObject("Line").AddComponent<LineRenderer>();
-                //    line.startWidth = 0.01f;
-                //    line.endWidth = 0.01f;
-                //    line.positionCount = 2;
-                //    line.useWorldSpace = true;
-
-                //    // add ray source and first hit
-                //    positions.Add(srcOrigin);
-                //    positions.Add(rds[i * sourceParams.MAXINTERACTIONS].origin);                    
-
-                //    for (int j = 1; j < sourceParams.MAXINTERACTIONS; j++)
-                //    {
-                //        if (rds[i*sourceParams.MAXINTERACTIONS + j].set != 12345) // check if the next ray hit or miss
-                //        {
-                //            break;
-                //        }
-                //        positions.Add(rds[i * sourceParams.MAXINTERACTIONS + j].origin); // add next hit                        
-                //    }
-
-                //    line.positionCount = positions.Count;
-                //    line.SetPositions(positions.ToArray());                    
-                //    lines.Add(line);
-                //}
-
-                // visualize one line
-                /*for (int i = 0; i < sourceParams.MAXINTERACTIONS; i++)
-                {
-                    if (rds[i].set != 12345)
-                    {
-                        break;
-                    }
-                    line = new GameObject("Line").AddComponent<LineRenderer>();
-
-                    line.startWidth = 0.01f;
-                    line.endWidth = 0.01f;
-                    line.positionCount = 2;
-                    line.useWorldSpace = true;
-
-                    if (i == 0)
-                    {
-                        line.SetPosition(0, srcOrigin);
-                    }
-                    else
-                    {
-                        line.SetPosition(0, rds[i - 1].origin);
-                    }
-
-                    line.SetPosition(1, rds[i].origin);
-                    lines.Add(line);
-                }*/
+                }                
             }
 
             //empty bds and buffer

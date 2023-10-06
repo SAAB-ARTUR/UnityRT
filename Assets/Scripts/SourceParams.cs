@@ -13,9 +13,9 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
         public float phi;
         public int nphi;
-        public bool sendRaysContinously;
+        /*public bool sendRaysContinously;
         public bool visualizeRays;
-        public bool showContributingRaysOnly;
+        public bool showContributingRaysOnly;*/
     }
 
     const int MIN_SIZE_ANG = 1;
@@ -92,9 +92,9 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         p.phi = phi;    
         p.nphi = nphi;
         
-        p.sendRaysContinously = sendRaysContinously;
+        /*p.sendRaysContinously = sendRaysContinously;
         p.visualizeRays = visualizeRays;
-        p.showContributingRaysOnly = showContributingRaysOnly;
+        p.showContributingRaysOnly = showContributingRaysOnly;*/
         return p;
 
     }
