@@ -118,6 +118,8 @@ public class apiv2 : MonoBehaviour
         return startInfo;
     }
 
+
+
     // Update is called once per frame
     private void FixedUpdate()
     {
@@ -144,6 +146,8 @@ public class apiv2 : MonoBehaviour
         //
         Sender.StartSender(fbb);
         Sender.AddPosition(fbb, v);
+        
+        
         Offset<Sender> s = Sender.EndSender(fbb);
 
 
@@ -155,12 +159,7 @@ public class apiv2 : MonoBehaviour
 
         SAAB.Artur.World.FinishWorldBuffer(fbb, w);
 
-        UnityEngine.Debug.Log("fbb offset" + fbb.Offset + fbb.DataBuffer.Position);
-        using (var ms = new MemoryStream(fbb.DataBuffer.ToFullArray(), fbb.DataBuffer.Position, fbb.Offset))
-        {
-            File.WriteAllBytes("SAVE_FILENAME2.whatever", ms.ToArray());
-            UnityEngine.Debug.Log("SAVED !");
-        }
+
         return fbb.DataBuffer.ToArray(fbb.DataBuffer.Position, fbb.Offset);
     }
 }
