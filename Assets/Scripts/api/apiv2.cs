@@ -14,6 +14,8 @@ public class apiv2 : MonoBehaviour
 
     bool processreadyForData = false;
 
+    string command = "";
+
     Vector3? msg = null;
 
     Main main = null;
@@ -21,8 +23,10 @@ public class apiv2 : MonoBehaviour
     Process process = null;
     Thread thread1 = null;
 
+    bool run = false;
+
     // Start is called before the first frame update
-    void Start()
+    void OnEnable()
     {
 
         main = this.GetComponent<Main>();
@@ -64,8 +68,8 @@ public class apiv2 : MonoBehaviour
                    
 
                     byte[] blength = BitConverter.GetBytes(bmsg.Length);
-                    UnityEngine.Debug.Log("blength: " + blength.Length.ToString());
-                    UnityEngine.Debug.Log("bmsglength: " + bmsg.Length.ToString());
+                    //UnityEngine.Debug.Log("blength: " + blength.Length.ToString());
+                    //UnityEngine.Debug.Log("bmsglength: " + bmsg.Length.ToString());
                     process.StandardInput.BaseStream.Write(blength.Concat(bmsg).ToArray(), 0, blength.Length + bmsg.Length); 
                     process.StandardInput.BaseStream.Flush();
 
@@ -84,6 +88,7 @@ public class apiv2 : MonoBehaviour
 
         thread1 = new Thread(threadStart);
         thread1.Start();
+        
 
 
     }
@@ -127,10 +132,15 @@ public class apiv2 : MonoBehaviour
         msg = main.srcSphere.transform.position;
     }
 
-    private void OnDestroy()
+
+    private void OnDisable()
     {
-        process.Close();
+
+        UnityEngine.Debug.Log("Disable api...");
+        thread1.Interrupt();
+        process.Kill();
         thread1.Abort();
+       
     }
 
     byte[] CreateOutputMessage(Vector3 position)
