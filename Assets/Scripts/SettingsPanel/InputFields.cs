@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,6 +19,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField integrationStepSize = null;
     [SerializeField] GameObject bellhop = null;
     [SerializeField] InputField callbackCommand = null;
+    [SerializeField] UnityEngine.UI.Toggle enableCommand = null;
     [SerializeField] GameObject target = null;
     [SerializeField] Slider targetXSlider = null;
     [SerializeField] Slider targetYSlider = null;
@@ -31,6 +33,8 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField maxNrOfSurfaceHits = null;
     [SerializeField] InputField maxNrOfBottomHits = null;
     [SerializeField] InputField bellhopIterations = null;
+
+    apiv2 api = null;
 
 
     // Start is called before the first frame update
@@ -79,6 +83,17 @@ public class InputFields : MonoBehaviour
         tmProZmin.text = targetZSlider.minValue.ToString();
         TextMeshProUGUI tmProZmax = targetZSliderMax.GetComponent<TextMeshProUGUI>();
         tmProZmax.text = targetZSlider.maxValue.ToString();
+
+
+        // Setup interface to API 
+        try {
+            api = GetComponent<apiv2>();
+        } catch
+        {
+            
+        }
+
+
     }
 
     public void OnNthetaChange()
@@ -257,7 +272,8 @@ public class InputFields : MonoBehaviour
 
     public void OnCallbackCommandEntered()
     {
-        Debug.Log("shshj");
+        string command = callbackCommand.text;
+        
     }
 
 

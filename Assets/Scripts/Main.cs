@@ -10,14 +10,16 @@ public class Main : MonoBehaviour
     public ComputeShader computeShader = null;
 
     public GameObject srcSphere = null;
-    [SerializeField] GameObject targetSphere = null;
+    public GameObject targetSphere = null;
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject waterplane = null;
-    [SerializeField] Camera sourceCamera = null; 
+    public Camera sourceCamera = null; 
     [SerializeField] GameObject world_manager = null;
     [SerializeField] GameObject btnFilePicker = null;
     [SerializeField] GameObject bellhop = null;
+
+    apiv2 api = null;
 
     private SourceParams.Properties? oldSourceParams = null;
     private BellhopParams.Properties? oldBellhopParams = null;
@@ -273,6 +275,8 @@ public class Main : MonoBehaviour
         oldTargetPostion = targetSphere.transform.position;
 
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
+
+        api = GetComponent<apiv2>();
     }
 
     int GetStartIndexBellhop(int idx, int idy)
@@ -283,16 +287,11 @@ public class Main : MonoBehaviour
         return (idy * sourceParams.nphi + idx) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
     }
 
-    void PlotBellhop(int idx, int idy)
-    {
+    List<Vector3> BellhopLine(int idx, int idy) {
+
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
         int offset = GetStartIndexBellhop(idx, idy);
-
-        line = new GameObject("Line").AddComponent<LineRenderer>();
-        line.startWidth = 0.03f;
-        line.endWidth = 0.03f;
-        line.useWorldSpace = true;
 
         List<Vector3> positions = new List<Vector3>();
 
@@ -307,6 +306,20 @@ public class Main : MonoBehaviour
                 break;
             }
         }
+
+        return positions;
+
+
+    }
+
+    void PlotBellhop(int idx, int idy)
+    {
+        List<Vector3> positions = BellhopLine(idx, idy);   
+
+        line = new GameObject("Line").AddComponent<LineRenderer>();
+        line.startWidth = 0.03f;
+        line.endWidth = 0.03f;
+        line.useWorldSpace = true;
 
         line.positionCount = positions.Count;
         line.SetPositions(positions.ToArray());
@@ -449,13 +462,34 @@ public class Main : MonoBehaviour
 
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);     
 
-            xrayBuf.GetData(bds); 
+            xrayBuf.GetData(bds);
+
+
+            // Communicate the rays with the api
+            if (api.enabled) { 
+                
+                // Create a ray collection
+                List<List<Vector3>> rays = new List<List<Vector3>>();
+
+
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) { 
+                    
+                    rays.Add(BellhopLine((int)sourceParams.nphi / 2, itheta));
+
+                }
+
+                api.Rays(rays);
+                Debug.Log(rays[0][0].ToString());
+            }
+
 
             if (sourceParams.visualizeRays)
             {
                 for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) {
                     PlotBellhop((int)sourceParams.nphi/2, itheta);
                 }
+
+                
 
                 //_rayPointsBuffer.GetData(rds);
 
