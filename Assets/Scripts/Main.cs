@@ -99,8 +99,8 @@ public class Main : MonoBehaviour
     private ComputeBuffer PerEigenRayDataBuffer;
     private PerRayData[] PerEigenRayData = null;
     
-    /*private ComputeBuffer debugBuf;
-    private float3[] debugger;*/
+    private ComputeBuffer debugBuf;
+    private float3[] debugger;
 
     //TODO: fortsätt städa kod
     //TODO: troligtvis kommer koden för hur eigenrays räknas ut behöva skrivas om lite när man skickar rays i fler phi-vinklar, fundera över det, (kom ihåg att se över shader-kod som just nu bara skickar
@@ -498,6 +498,7 @@ public class Main : MonoBehaviour
 
             //int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
             int threadGroupsX = Mathf.FloorToInt(1);
+            //int threadGroupsY = Mathf.FloorToInt(1);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
@@ -507,18 +508,19 @@ public class Main : MonoBehaviour
             rayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
-            //debugBuf.GetData(debugger);            
+            /*debugBuf.GetData(debugger);
+            Debug.Log("origin_theta" + debugger[0].x + ", dtheta" + debugger[0].y + ", ntheta" + debugger[0].z);*/
 
             int steplength = sourceParams.nphi;
 
             // keep contributing rays only
-            for (int i = sourceParams.nphi/2; i < rayData.Length; i+=steplength)
+            for (int i = sourceParams.nphi / 2; i < rayData.Length; i += steplength)
             {
                 if (rayData[i].contributing == 1)
                 {
                     contributingRays.Add(rayData[i]);
-                }                
-            }            
+                }
+            }
 
             // compute eigenrays
             for (int i = 0; i < contributingRays.Count - 1; i++)
@@ -528,7 +530,7 @@ public class Main : MonoBehaviour
                 {
                     float n1 = contributingRays[i].xn;
                     float n2 = contributingRays[i + 1].xn;
-                    float tot = contributingRays[i].beta + contributingRays[i + 1].beta;                    
+                    float tot = contributingRays[i].beta + contributingRays[i + 1].beta;
 
                     if (n1 * n2 <= 0 && tot > 0.9 && tot < 1.1)
                     {
@@ -550,10 +552,10 @@ public class Main : MonoBehaviour
                         eigRay.prd = eigenray;
                         eigRay.isEig = true;
 
-                        
+
                         contributingRays2.Add(eigRay);
-                        
-                        i++;                        
+
+                        i++;
                     }
                     else
                     {
@@ -571,8 +573,7 @@ public class Main : MonoBehaviour
             eigenalphas = new float[contributingRays2.Count]; // ändra det här sen till nåt bättre
             for (int i = 0; i < contributingRays2.Count; i++)
             {
-                eigenalphas[i] = contributingRays2[i].prd.alpha;
-                Debug.Log("alpha eig: " + eigenalphas[i]);
+                eigenalphas[i] = contributingRays2[i].prd.alpha;                
             }
 
             eigenAlphaBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float));
@@ -584,7 +585,7 @@ public class Main : MonoBehaviour
             PerEigenRayDataBuffer = new ComputeBuffer(contributingRays2.Count, perraydataByteSize);
             computeShader.SetBuffer(1, "EigenRayData", PerEigenRayDataBuffer);
 
-            computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);            
+            computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);
 
             threadGroupsX = Mathf.FloorToInt(1);
             threadGroupsY = Mathf.FloorToInt(contributingRays2.Count);
@@ -596,10 +597,10 @@ public class Main : MonoBehaviour
 
             // compute transmission loss
 
-            Debug.Log("    angle     T   B   C         TL          dist         delay     beta     eig");            
-            
+            Debug.Log("    angle     T   B   C         TL          dist         delay     beta     eig");
+
             float[] freqs = new float[1] { 150000 };
-            float[] damp = new float[1] { 0.015f/ 8.6858896f };
+            float[] damp = new float[1] { 0.015f / 8.6858896f };
             // bottom properties
             float cp = 1600; // m/s
             float rho = 1.8f; // rho/rho0
@@ -619,17 +620,17 @@ public class Main : MonoBehaviour
             float targetSphereR = MathF.Sqrt(MathF.Pow(xdiff, 2) + MathF.Pow(zdiff, 2));
 
             for (int i = 0; i < PerEigenRayData.Length; i++) // TODO: deyya behöver bytas till indexering samt att det inte ska vara övr eigenrays utan de rays som kommer igenom förra steget
-            {                
+            {
                 // amplitudes
                 float Arms = 0;
-                float Amp0 = Mathf.Sqrt(Mathf.Cos(PerEigenRayData[i].alpha) * cr / MathF.Abs(PerEigenRayData[i].qi) / targetSphereR);                
+                float Amp0 = Mathf.Sqrt(Mathf.Cos(PerEigenRayData[i].alpha) * cr / MathF.Abs(PerEigenRayData[i].qi) / targetSphereR);
 
                 // ray tangebt in r-direction
                 float Tg = Mathf.Cos(PerEigenRayData[i].alpha) / cs;
 
 
                 for (int j = 0; j < freqs.Length; j++)
-                {                    
+                {
                     float Rfa, gamma;
                     // bottom reflection coefficient
                     if (PerEigenRayData[i].nbot > 0)
@@ -648,7 +649,7 @@ public class Main : MonoBehaviour
                     // amplitude and phase
                     Amp[i, j] = Amp0 * MathF.Pow(Rfa, PerEigenRayData[i].nbot) * MathF.Exp(-damp[j] * PerEigenRayData[i].curve);
                     gamma = MathF.PI * PerEigenRayData[i].ntop + gamma * PerEigenRayData[i].nbot + MathF.PI / 2 * PerEigenRayData[i].ncaust;
-                    Phase[i, j] = (gamma + MathF.PI) % (2*MathF.PI) - MathF.PI;
+                    Phase[i, j] = (gamma + MathF.PI) % (2 * MathF.PI) - MathF.PI;
 
                     // RMS amplitude
                     Arms += MathF.Pow(Amp[i, j], 2);
@@ -678,7 +679,7 @@ public class Main : MonoBehaviour
 
             DateTime time2 = DateTime.Now;
 
-            TimeSpan ts = time2 - time1;
+            TimeSpan ts = time2 - time1;            
 
             Debug.Log("Time elapsed: " + ts.TotalMilliseconds + "ms");
 
@@ -689,8 +690,8 @@ public class Main : MonoBehaviour
                 }                
             }            
 
-            PerEigenRayDataBuffer.Dispose();
-            eigenAlphaBuffer.Dispose();
+            /*PerEigenRayDataBuffer.Dispose();
+            eigenAlphaBuffer.Dispose();*/
         }
 
         if (!sourceParams.visualizeRays)

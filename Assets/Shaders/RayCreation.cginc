@@ -30,17 +30,19 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
     float theta_rad = theta * PI / 180; //convert to radians
     float phi_rad = phi * PI / 180;
 
-    float dtheta = theta_rad / (ntheta-1); // resolution in theta
-    float dphi = phi_rad / (nphi-1); // resolution in phi
+    float dtheta = theta_rad / (ntheta + 1); // resolution in theta
+    float dphi = phi_rad / (nphi + 1); // resolution in phi
 
     // angles for srcSphere's forward vector (which is of length 1 meaning that r can be removed from all equations below)
     float origin_theta = acos(srcDirection.y);
-    float origin_phi = atan2(srcDirection.z, srcDirection.x);
+    float origin_phi = atan2(srcDirection.z, srcDirection.x);    
 
     // calculate the angular offset for the ray compared to the forward vector of the source
-    float offset_theta = origin_theta - theta_rad / 2 + id.y * dtheta;
+    //float offset_theta = origin_theta - theta_rad / 2 + id.y * dtheta;
+    float offset_theta = origin_theta - theta_rad / 2 + (id.y + 1) * dtheta;
     //float offset_phi = origin_phi + phi_rad / 2 - id.x * dphi;
-    float offset_phi = 0;
+    //float offset_phi = 0;
+    float offset_phi = origin_phi - phi_rad / 2 + (id.x + 1) * dphi;
 
     float s0 = sin(origin_phi);
     float c0 = cos(origin_phi);
