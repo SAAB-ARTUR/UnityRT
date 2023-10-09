@@ -81,9 +81,9 @@ public class Main : MonoBehaviour
     private List<PerRayData> contributingRays = new List<PerRayData>();
     private List<PerRayData2> contributingRays2 = new List<PerRayData2>();
     //private bool[] isEigen = null;
-    private ComputeBuffer alphaData;
+    //private ComputeBuffer alphaData;
 
-    private float[] alphas = new float[128] { -0.52359879f, -0.51535314f, -0.50710750f, -0.49886185f, -0.49061620f, -0.48237056f, -0.47412491f, -0.46587926f, -0.45763358f, -0.44938794f, -0.44114229f,
+    /*private float[] alphas = new float[128] { -0.52359879f, -0.51535314f, -0.50710750f, -0.49886185f, -0.49061620f, -0.48237056f, -0.47412491f, -0.46587926f, -0.45763358f, -0.44938794f, -0.44114229f,
                                             -0.43289664f, -0.42465100f, -0.41640535f, -0.40815970f, -0.39991406f, -0.39166838f, -0.38342273f, -0.37517709f, -0.36693144f, -0.35868579f, -0.35044014f,
                                             -0.34219450f, -0.33394885f, -0.32570317f, -0.31745753f, -0.30921188f, -0.30096623f, -0.29272059f, -0.28447494f, -0.27622926f, -0.26798365f, -0.25973800f,
                                             -0.25149235f, -0.24324667f, -0.23500103f, -0.22675538f, -0.21850973f, -0.21026407f, -0.20201842f, -0.19377278f, -0.18552713f, -0.17728147f, -0.16903582f,
@@ -92,7 +92,7 @@ public class Main : MonoBehaviour
         0.070088021f, 0.078333676f, 0.086579323f, 0.094824977f, 0.10307062f, 0.11131628f, 0.11956193f, 0.12780759f, 0.13605322f, 0.14429887f, 0.15254453f, 0.16079018f, 0.16903582f, 0.17728147f, 0.18552713f,
         0.19377278f, 0.20201842f, 0.21026407f, 0.21850973f, 0.22675538f, 0.23500103f, 0.24324667f, 0.25149235f, 0.25973800f, 0.26798365f, 0.27622926f, 0.28447494f, 0.29272059f, 0.30096623f, 0.30921188f,
         0.31745753f, 0.32570317f, 0.33394885f, 0.34219450f, 0.35044014f, 0.35868579f, 0.36693144f, 0.37517709f, 0.38342273f, 0.39166838f, 0.39991406f, 0.40815970f, 0.41640535f, 0.42465100f, 0.43289664f,
-        0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };
+        0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };*/
 
     private ComputeBuffer eigenAlphaBuffer;
     private float[] eigenalphas = null;
@@ -144,7 +144,7 @@ public class Main : MonoBehaviour
         _SSPBuffer?.Release();
         rayPositionsBuffer?.Release();
         PerRayDataBuffer?.Release();
-        alphaData?.Release();
+        //alphaData?.Release();
         //debugBuf?.Release();
     }
 
@@ -295,8 +295,8 @@ public class Main : MonoBehaviour
 
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
 
-        alphaData = new ComputeBuffer(128, sizeof(float));
-        alphaData.SetData(alphas);
+        /*alphaData = new ComputeBuffer(128, sizeof(float));
+        alphaData.SetData(alphas);*/
     }
 
     int GetStartIndexBellhop(int idx, int idy)
@@ -385,7 +385,7 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
             computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
 
-            computeShader.SetBuffer(0, "alphaData", alphaData);
+            //computeShader.SetBuffer(0, "alphaData", alphaData);
 
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta -1);            
             dtheta = dtheta * MathF.PI / 180; // to radians
@@ -678,7 +678,7 @@ public class Main : MonoBehaviour
 
                 string data = alpha_deg.ToString("F6") + " " + PerEigenRayData[i].ntop + " " + PerEigenRayData[i].nbot + " " + PerEigenRayData[i].ncaust + " " + TL.ToString("F6") +
                                 " " + PerEigenRayData[i].curve.ToString("F6") + " " + PerEigenRayData[i].delay.ToString("F6") + " " + PerEigenRayData[i].beta.ToString("F6") +
-                                " 1";
+                                " " + contributingRays2[i].isEig;
 
 
                 Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall

@@ -22,7 +22,7 @@ struct PerRayData {
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> rayPositionsBuffer;
-StructuredBuffer<float> alphaData;
+//StructuredBuffer<float> alphaData;
 //RWStructuredBuffer<float3> debugBuf;
 RWStructuredBuffer<PerRayData> EigenRayData;
 StructuredBuffer<float> eigenAlphaData;
@@ -119,8 +119,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
     float3 raydir = normalize(ray.direction);
 
-    //float alpha = asin(raydir.y);
-    float alpha = alphaData[id.y * width + id.x];
+    float alpha = asin(raydir.y);
+    //float alpha = alphaData[id.y * width + id.x];
     float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
     float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
