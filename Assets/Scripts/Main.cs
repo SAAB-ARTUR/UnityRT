@@ -93,6 +93,11 @@ public class Main : MonoBehaviour
         0.19377278f, 0.20201842f, 0.21026407f, 0.21850973f, 0.22675538f, 0.23500103f, 0.24324667f, 0.25149235f, 0.25973800f, 0.26798365f, 0.27622926f, 0.28447494f, 0.29272059f, 0.30096623f, 0.30921188f,
         0.31745753f, 0.32570317f, 0.33394885f, 0.34219450f, 0.35044014f, 0.35868579f, 0.36693144f, 0.37517709f, 0.38342273f, 0.39166838f, 0.39991406f, 0.40815970f, 0.41640535f, 0.42465100f, 0.43289664f,
         0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };
+
+    private ComputeBuffer eigenAlphaBuffer;
+    private float[] eigenalphas = null;
+    private ComputeBuffer PerEigenRayDataBuffer;
+    private PerRayData[] PerEigenRayData = null;
     
     /*private ComputeBuffer debugBuf;
     private float3[] debugger;*/
@@ -495,6 +500,7 @@ public class Main : MonoBehaviour
             int threadGroupsX = Mathf.FloorToInt(1);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
+            //send rays
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
             // read results from buffers into arrays
@@ -543,7 +549,8 @@ public class Main : MonoBehaviour
                 Debug.Log("------------------------------------------------------------------------------------------------");
             }
 
-            // här borde man gå igenom listan istället
+
+            // compute eigenrays
             for (int i = 0; i < contributingRays.Count - 1; i++)
             {
                 // find pairs of rays
@@ -599,6 +606,41 @@ public class Main : MonoBehaviour
                     }
                 }
             }
+
+            // trace the eigenrays
+            PerEigenRayData = new PerRayData[contributingRays2.Count];
+
+            eigenalphas = new float[contributingRays2.Count]; // ändra det här sen till nåt bättre
+            for (int i = 0; i < contributingRays2.Count; i++)
+            {
+                eigenalphas[i] = contributingRays2[i].prd.alpha;
+                Debug.Log("alpha eig: " + eigenalphas[i]);
+            }
+
+
+            eigenAlphaBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float));
+
+            eigenAlphaBuffer.SetData(eigenalphas); // fill buffer of alpha values
+            computeShader.SetBuffer(1, "eigenAlphaData", eigenAlphaBuffer);
+
+            // init return data buffer
+            PerEigenRayDataBuffer = new ComputeBuffer(contributingRays2.Count, perraydataByteSize);
+            computeShader.SetBuffer(1, "EigenRayData", PerEigenRayDataBuffer);
+
+            computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);
+
+            threadGroupsX = Mathf.FloorToInt(1);
+            threadGroupsY = Mathf.FloorToInt(contributingRays2.Count);
+
+            //send eigenrays
+            Debug.Log("send it");
+            computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
+
+            Debug.Log("get data");
+            PerEigenRayDataBuffer.GetData(PerEigenRayData);
+
+
+
             Debug.Log("Contributing rays2: " + contributingRays2.Count);
 
             Debug.Log("------------------------------------------------------------------------------------------------");
@@ -606,19 +648,19 @@ public class Main : MonoBehaviour
             for (int i = 0; i < contributingRays2.Count; i++)
             {
                 Debug.Log("Ray: " + i);
-                Debug.Log("alpha: " + contributingRays2[i].prd.alpha.ToString());
-                Debug.Log("Beta: " + contributingRays2[i].prd.beta.ToString());
-                Debug.Log("ntop: " + contributingRays2[i].prd.ntop.ToString());
-                Debug.Log("nbot: " + contributingRays2[i].prd.nbot.ToString());
-                Debug.Log("ncaust: " + contributingRays2[i].prd.ncaust.ToString());
-                Debug.Log("delay: " + contributingRays2[i].prd.delay.ToString());
-                Debug.Log("curve: " + contributingRays2[i].prd.curve.ToString());
-                Debug.Log("xn: " + contributingRays2[i].prd.xn.ToString());
-                Debug.Log("qi: " + contributingRays2[i].prd.qi.ToString());
+                Debug.Log("alpha: " + PerEigenRayData[i].alpha.ToString());
+                Debug.Log("Beta: " + PerEigenRayData[i].beta.ToString());
+                Debug.Log("ntop: " + PerEigenRayData[i].ntop.ToString());
+                Debug.Log("nbot: " + PerEigenRayData[i].nbot.ToString());
+                Debug.Log("ncaust: " + PerEigenRayData[i].ncaust.ToString());
+                Debug.Log("delay: " + PerEigenRayData[i].delay.ToString());
+                Debug.Log("curve: " + PerEigenRayData[i].curve.ToString());
+                Debug.Log("xn: " + PerEigenRayData[i].xn.ToString());
+                Debug.Log("qi: " + PerEigenRayData[i].qi.ToString());
                 Debug.Log("------------------------------------------------------------------------------------------------");
             }
 
-            Debug.Log("    angle     T   B   C         TL          dist         delay     beta     eig");
+            /*Debug.Log("    angle     T   B   C         TL          dist         delay     beta     eig");
             
             //float freq = 150000;
             float[] freqs = new float[1] { 150000 };
@@ -713,7 +755,7 @@ public class Main : MonoBehaviour
 
                 Debug.Log("TL: " + TL);
 
-            }
+            }*/
 
             if (sourceParams.visualizeRays)
             {
@@ -732,6 +774,9 @@ public class Main : MonoBehaviour
             //xrayBuf = new ComputeBuffer(bellhop_size * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
 
             //Array.Clear(bds, 0, bds.Length);
+
+            PerEigenRayDataBuffer.Dispose();
+            eigenAlphaBuffer.Dispose();
         }
 
         if (!sourceParams.visualizeRays)
