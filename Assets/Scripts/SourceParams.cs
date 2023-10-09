@@ -13,12 +13,12 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
         public float phi;
         public int nphi;
-        //public int MAXINTERACTIONS;
-        public bool sendRaysContinously;
+        /*public bool sendRaysContinously;
         public bool visualizeRays;
+        public bool showContributingRaysOnly;*/
     }
 
-    const int MIN_SIZE_ANG = 8;
+    const int MIN_SIZE_ANG = 1;
     //const int MIN_INTERACTIONS = 1;
 
     public int theta = 0;
@@ -59,6 +59,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
     public bool sendRaysContinously = false;
     public bool visualizeRays = false;
+    public bool showContributingRaysOnly = false;
 
     private void OnValidate()
     {   
@@ -77,6 +78,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         //s.MAXINTERACTIONS = MAXINTERACTIONS;
         s.sendRaysContinously = sendRaysContinously;
         s.visualizeRays = visualizeRays;
+        s.showContributingRaysOnly = showContributingRaysOnly;
         return s;
 
     }
@@ -89,10 +91,10 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
         p.phi = phi;    
         p.nphi = nphi;
-
-        //p.MAXINTERACTIONS = MAXINTERACTIONS;
-        p.sendRaysContinously = sendRaysContinously;
+        
+        /*p.sendRaysContinously = sendRaysContinously;
         p.visualizeRays = visualizeRays;
+        p.showContributingRaysOnly = showContributingRaysOnly;*/
         return p;
 
     }
@@ -103,7 +105,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
             return true;
         }
 
-        Properties pp = this.ToStruct();
+        Properties pp = this.ToStruct();       
 
         return !pp.Equals(p);
     }
@@ -116,8 +118,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
             this.theta == other.theta &&
             this.ntheta == other.ntheta &&
             this.phi == other.phi &&
-            this.nphi == other.nphi //&&
-            //this.MAXINTERACTIONS == other.MAXINTERACTIONS
+            this.nphi == other.nphi 
             ) { 
             return true;
         }

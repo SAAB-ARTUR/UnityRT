@@ -30,7 +30,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] GameObject targetZSliderMax = null;
     [SerializeField] InputField maxNrOfSurfaceHits = null;
     [SerializeField] InputField maxNrOfBottomHits = null;
-    [SerializeField] InputField bellhopIterations = null;
+    //[SerializeField] InputField bellhopIterations = null;
 
 
     // Start is called before the first frame update
@@ -51,7 +51,7 @@ public class InputFields : MonoBehaviour
         integrationStepSize.text = bellhopParams.BELLHOPSTEPSIZE.ToString();
         maxNrOfSurfaceHits.text = "0";
         maxNrOfBottomHits.text = "0";
-        bellhopIterations.text = "1";
+        //bellhopIterations.text = "1";
         callbackCommand.text = "This will do nothing for now.";
 
         int worldRange = world.range;
@@ -97,7 +97,7 @@ public class InputFields : MonoBehaviour
         string str = nphi.text;
         bool isNumber = int.TryParse(str, out int numericValue);
 
-        if (isNumber && numericValue > 0 && numericValue % 8 == 0)
+        if (isNumber && numericValue > 0)
         {
             SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
             sourceParams.nphi = numericValue;
@@ -224,7 +224,7 @@ public class InputFields : MonoBehaviour
         string str = maxNrOfSurfaceHits.text;
         bool isNumber = int.TryParse(str, out int numericValue);
 
-        if (isNumber && numericValue > 0)
+        if (isNumber && numericValue >= 0)
         {
             BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
             bellhopParams.MAXNRSURFACEHITS = numericValue;
@@ -236,14 +236,14 @@ public class InputFields : MonoBehaviour
         string str = maxNrOfBottomHits.text;
         bool isNumber = int.TryParse(str, out int numericValue);
 
-        if (isNumber && numericValue > 0)
+        if (isNumber && numericValue >= 0)
         {
             BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
             bellhopParams.MAXNRBOTTOMHITS = numericValue;
         }
     }
 
-    public void OnBellhopIterationsChange()
+    /*public void OnBellhopIterationsChange()
     {
         string str = bellhopIterations.text;
         bool isNumber = int.TryParse(str, out int numericValue);
@@ -253,7 +253,7 @@ public class InputFields : MonoBehaviour
             BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
             bellhopParams.BELLHOPITERATIONS = numericValue;
         }
-    }
+    }*/
 
     public void OnCallbackCommandEntered()
     {

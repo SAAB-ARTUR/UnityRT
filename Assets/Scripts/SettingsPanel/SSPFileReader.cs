@@ -122,8 +122,8 @@ public class SSPFileReader : MonoBehaviour
                 // Set coefficients for interpolation
                 float depth = SSP[j].depth;
                 float velocity = SSP[j].velocity;
-                float derivative1 = derivatives1[j] - b[j] * (SSP[j + 1].depth - SSP[j].depth);
-                float derivative2 = b[j];
+                float derivative1 = derivatives1[j]; // - b[j] * (SSP[j + 1].depth - SSP[j].depth);
+                float derivative2 = 0.0f; // b[j];
 
                 SSP[j] = new SSP_Data(depth, velocity, derivative1, derivative2);
 

@@ -48,20 +48,34 @@ SSPOutput ssp(float z, SSP soundSpeedProfile, uint Layer)
     float w = z - _SSPBuffer[Layer].depth;
 
     float c, cz, czz;
-    /*switch (soundSpeedProfile.type)
+    switch (soundSpeedProfile.type)
     {
-        default:
+        case 0: // linear interpolation
         {
             c = _SSPBuffer[Layer].velocity + w * _SSPBuffer[Layer].derivative1;
             cz = _SSPBuffer[Layer].derivative1;
             czz = 0.0;
             break;
         }
-    }*/
 
-    c = _SSPBuffer[Layer].velocity + w * _SSPBuffer[Layer].derivative1;
-    cz = _SSPBuffer[Layer].derivative1;
-    czz = 0.0;
+        case 1: // spline interpolation (not implemented yet)
+        {
+            break;
+        }
+
+        case 2: // quadratic interpolation (not implemented yet)
+        {
+            break;
+        }
+
+        default: // linear interpolation
+        {
+            c = _SSPBuffer[Layer].velocity + w * _SSPBuffer[Layer].derivative1;
+            cz = _SSPBuffer[Layer].derivative1;
+            czz = 0.0;
+            break;
+        }
+    }
 
     // Construct and return the output
     SSPOutput result;
