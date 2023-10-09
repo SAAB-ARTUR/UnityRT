@@ -10,14 +10,17 @@ public class Main : MonoBehaviour
 {
     public ComputeShader computeShader = null;
 
-    public GameObject srcSphere = null;    
+    public GameObject srcSphere = null;
+    public GameObject targetSphere = null;
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject waterplane = null;
-    [SerializeField] Camera sourceCamera = null;
+    public Camera sourceCamera = null; 
     [SerializeField] GameObject worldManager = null;
     [SerializeField] GameObject btnFilePicker = null;
     [SerializeField] GameObject bellhop = null;    
+
+    apiv2 api = null;
 
     private SourceParams.Properties? oldSourceParams = null;
     private BellhopParams.Properties? oldBellhopParams = null;
@@ -258,6 +261,8 @@ public class Main : MonoBehaviour
         rebuildRTAS = true;        
 
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
+
+        api = GetComponent<apiv2>();
     }
 
     int GetStartIndexBellhop(int idx, int idy)
@@ -281,32 +286,11 @@ public class Main : MonoBehaviour
         }
     }
 
-    void PlotBellhop(int idx, int idy)
-    {
-        // det kan eventuellt vara så att alla errors angående "invalid aabb" kan ha med att linjer ritas mellan alla punkter för en ray och vissa
-        // punkter ligger väldigt nära varandra, kan vara värt att undersöka att ta bort punkter som ligger för nära föregående och se om det löser
-        // problemet, för visualiseringens skulle borde det inte påverka något negativt eftersom de små små linjerna ändå inte går att se, plus att
-        // det blir färre linjer vilket borde minska minnesanvädningen
-        // Testade att bara lägga till punkter som har ett större avstånd mellan sig, blir fortfarande enormt många fel av oklar anledning, läst på om
-        // felet "object is too large or too far away from the origin" och det var någon som sa att man inte ska ha object mer än 5000 enheter från origo,
-        // men våra rays rör sig i detta fall max 300 enheter bort så det känns jätteskumt det som händer
-        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        
-        int rayIdx = idy + sourceParams.ntheta * idx;
-
-        if (sourceParams.showContributingRaysOnly && rayData[rayIdx].contributing != 1)
-        {
-            return;
-        }
+    List<Vector3> BellhopLine(int idx, int idy) {
 
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
         int offset = GetStartIndexBellhop(idx, idy);
-
-        line = new GameObject("Line").AddComponent<LineRenderer>();
-        line.startWidth = 0.03f;
-        line.endWidth = 0.03f;
-        line.useWorldSpace = true;
 
         List<Vector3> positions = new List<Vector3>();
 
@@ -338,6 +322,36 @@ public class Main : MonoBehaviour
                 break; // faulty position, break loop
             }
         }
+
+        return positions;
+
+
+    }
+
+    void PlotBellhop(int idx, int idy)
+    {
+        // det kan eventuellt vara så att alla errors angående "invalid aabb" kan ha med att linjer ritas mellan alla punkter för en ray och vissa
+        // punkter ligger väldigt nära varandra, kan vara värt att undersöka att ta bort punkter som ligger för nära föregående och se om det löser
+        // problemet, för visualiseringens skulle borde det inte påverka något negativt eftersom de små små linjerna ändå inte går att se, plus att
+        // det blir färre linjer vilket borde minska minnesanvädningen
+        // Testade att bara lägga till punkter som har ett större avstånd mellan sig, blir fortfarande enormt många fel av oklar anledning, läst på om
+        // felet "object is too large or too far away from the origin" och det var någon som sa att man inte ska ha object mer än 5000 enheter från origo,
+        // men våra rays rör sig i detta fall max 300 enheter bort så det känns jätteskumt det som händer
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        
+        int rayIdx = idy + sourceParams.ntheta * idx;
+
+        if (sourceParams.showContributingRaysOnly && rayData[rayIdx].contributing != 1)
+        {
+            return;
+        }
+
+        List<Vector3> positions = BellhopLine(idx, idy);   
+
+        line = new GameObject("Line").AddComponent<LineRenderer>();
+        line.startWidth = 0.03f;
+        line.endWidth = 0.03f;
+        line.useWorldSpace = true;
 
         line.positionCount = positions.Count;
         line.SetPositions(positions.ToArray());

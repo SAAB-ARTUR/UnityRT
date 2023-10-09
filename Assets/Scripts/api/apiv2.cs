@@ -16,12 +16,14 @@ public class apiv2 : MonoBehaviour
 
     string command = "";
 
-    Vector3? msg = null;
+    byte[]? msg = null;
 
     Main main = null;
 
     Process process = null;
     Thread thread1 = null;
+
+    List<List<Vector3>> rays = null;
 
     bool run = false;
 
@@ -58,19 +60,17 @@ public class apiv2 : MonoBehaviour
                 {
 
 
-                    byte[] bmsg = CreateOutputMessage((Vector3)msg);
-
-
-
+                    
                     // process.StandardInput.WriteLine(bmsg.Length.ToString());
                     //process.StandardInput.Flush();
 
                    
 
-                    byte[] blength = BitConverter.GetBytes(bmsg.Length);
+                    byte[] blength = BitConverter.GetBytes(msg.Length);
                     //UnityEngine.Debug.Log("blength: " + blength.Length.ToString());
                     //UnityEngine.Debug.Log("bmsglength: " + bmsg.Length.ToString());
-                    process.StandardInput.BaseStream.Write(blength.Concat(bmsg).ToArray(), 0, blength.Length + bmsg.Length); 
+                    byte[] total_message = blength.Concat(msg).ToArray();
+                    process.StandardInput.BaseStream.Write(total_message, 0, total_message.Length); 
                     process.StandardInput.BaseStream.Flush();
 
                     //process.StandardInput.BaseStream.Write(bmsg, 0, bmsg.Length);
@@ -129,7 +129,39 @@ public class apiv2 : MonoBehaviour
     private void FixedUpdate()
     {
 
-        msg = main.srcSphere.transform.position;
+        msg = CreateOutputMessage();
+
+        ByteBuffer bb = new ByteBuffer(msg);
+
+        // Test loading of the ray collection
+        SAAB.Artur.World w = SAAB.Artur.World.GetRootAsWorld(bb);
+
+        try
+        {
+
+            Vec3? v = w.RayCollections(0)?.Rays(0)?.XCartesian(1);
+
+            if (v != null)
+            {
+                UnityEngine.Debug.Log(v?.X);
+
+                UnityEngine.Debug.Log(v?.Y);
+
+                UnityEngine.Debug.Log(v?.Z);
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+
+
+        }
+
+
+
+
+
     }
 
 
@@ -143,33 +175,145 @@ public class apiv2 : MonoBehaviour
        
     }
 
-    byte[] CreateOutputMessage(Vector3 position)
+    byte[] CreateOutputMessage()
     {
 
+        // Access data required
+
+        // Source position
+        Vector3 psrc = main.srcSphere.transform.position;
+
+        // Source looking-at
+        Vector3 lookat = main.sourceCamera.transform.localToWorldMatrix.rotation.eulerAngles;
+
+        // Source spans
+        SourceParams sourceParams = main.srcSphere.GetComponent<SourceParams>();
+        int n_theta = sourceParams.ntheta;
+        int theta_width = sourceParams.theta; 
+
+
+        // Reciever position
+        Vector3 prec = main.targetSphere.transform.position;
+        
+
+
+
+        // START Creation of the message
+
+        
         // Create flatbuffer class
         FlatBufferBuilder fbb = new FlatBufferBuilder(1);
 
-        Vector3 p = position;
 
-        Offset<Vec3> v = Vec3.CreateVec3(fbb, (double)p.x, (double)p.y, (double)p.z);
-
-        //
+        // Sender
+        Offset<Vec3> posSrcOffset = Vec3.CreateVec3(fbb, (double)psrc.x, (double)psrc.y, (double)psrc.z);
         Sender.StartSender(fbb);
-        Sender.AddPosition(fbb, v);
-        
-        
+        Sender.AddPosition(fbb, posSrcOffset);
         Offset<Sender> s = Sender.EndSender(fbb);
 
+        // Reciever
+        Offset<Vec3> posRecOffset = Vec3.CreateVec3(fbb, (double)prec.x, (double)prec.y, (double)prec.z);
+        Reciever.StartReciever(fbb);
+        Reciever.AddPosition(fbb, posRecOffset);
+        Offset<Reciever> r = Reciever.EndReciever(fbb);
 
+        // Ray collections
+        Offset<RayCollection>[] rayCollectionCol = new Offset<RayCollection>[1];
 
+        
+        // TODO: Iterate over every combination of sender and reciever
+        rayCollectionCol[0] = AddRays(fbb, s, r);
+        VectorOffset rayCollectionsOffset = fbb.CreateVectorOfTables(rayCollectionCol);
+        
+
+        
+        // World
         SAAB.Artur.World.StartWorld(fbb);
         SAAB.Artur.World.AddSender(fbb, s);
+        SAAB.Artur.World.AddReciever(fbb, r);
+
+
+
+
+        SAAB.Artur.World.AddRayCollections(fbb, rayCollectionsOffset);
+
+
 
         Offset<SAAB.Artur.World> w = SAAB.Artur.World.EndWorld(fbb);
 
-        SAAB.Artur.World.FinishWorldBuffer(fbb, w);
 
+
+
+        SAAB.Artur.World.FinishWorldBuffer(fbb, w);
+       
 
         return fbb.DataBuffer.ToArray(fbb.DataBuffer.Position, fbb.Offset);
+    }
+
+    // Interface to recieve rays from main.
+    public void Rays(List<List<Vector3>> _rays) { 
+        rays = _rays;
+    }
+
+    Offset<RayCollection> AddRays(FlatBufferBuilder fbb, Offset<Sender> s, Offset<Reciever> r) {
+
+
+        
+        Offset<SAAB.Artur.Ray>[] raycol;
+        if (rays != null) {
+            raycol = new Offset<SAAB.Artur.Ray>[rays.Count];
+        }
+        else
+        {
+            raycol = new Offset<SAAB.Artur.Ray>[0];
+        }
+
+        if (rays != null) {
+
+            
+
+            for (int rayii = 0; rayii < rays.Count; rayii++){
+                //SAAB.Artur.Ray.StartXCartesianVector(fbb, rays.Count);
+                List<Vector3> ray = rays[rayii];
+
+                // Offset<Vec3>[] positions = new Offset<Vec3>[ray.Count];
+
+                SAAB.Artur.Ray.StartXCartesianVector(fbb, rays[rayii].Count);
+
+                for (int i = ray.Count -1 ; i >= 0; i--) {
+                    SAAB.Artur.Vec3.CreateVec3(fbb, ray[i].x, ray[i].y, ray[i].z);    
+                }
+                VectorOffset posoffset = fbb.EndVector();
+                
+
+
+
+                SAAB.Artur.Ray.StartRay(fbb);
+                SAAB.Artur.Ray.AddXCartesian(fbb, posoffset);
+
+                // TODO: Add cylindrical coordinates representation
+                // SAAB.Artur.Ray.AddXCylindrical(fbb, ...);
+                
+                
+                raycol[rayii] = SAAB.Artur.Ray.EndRay(fbb);
+                
+            
+            }
+
+
+        }
+        // VectorOffset raysOffset = fbb.CreateVectorOfTables(raycol);
+        VectorOffset vv = SAAB.Artur.RayCollection.CreateRaysVector(fbb, raycol);
+
+        SAAB.Artur.RayCollection.StartRayCollection(fbb);
+        
+        SAAB.Artur.RayCollection.AddRays(fbb, vv);
+        
+
+        //SAAB.Artur.RayCollection.AddSender(fbb, s);
+        //SAAB.Artur.RayCollection.AddReciever(fbb, r);
+        return SAAB.Artur.RayCollection.EndRayCollection(fbb);
+        
+        
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,6 +20,8 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField targets = null;
     [SerializeField] InputField maxNrOfSurfaceHits = null;
     [SerializeField] InputField maxNrOfBottomHits = null;
+
+    apiv2 api = null;
 
     private string oldTargets;
     // Start is called before the first frame update
@@ -40,6 +43,15 @@ public class InputFields : MonoBehaviour
         maxNrOfSurfaceHits.text = "0";
         maxNrOfBottomHits.text = "0";        
         callbackCommand.text = "This will do nothing for now.";
+
+                // Setup interface to API 
+        try {
+            api = GetComponent<apiv2>();
+        } catch
+        {
+            
+        }
+
     }
 
     public void OnNthetaChange()
@@ -194,7 +206,8 @@ public class InputFields : MonoBehaviour
 
     public void OnCallbackCommandEntered()
     {
-        Debug.Log("shshj");
+        string command = callbackCommand.text;
+        
     }
 
 
