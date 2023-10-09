@@ -601,11 +601,28 @@ public class Main : MonoBehaviour
             }
             Debug.Log("Contributing rays2: " + contributingRays2.Count);
 
+            Debug.Log("------------------------------------------------------------------------------------------------");
+
+            for (int i = 0; i < contributingRays2.Count; i++)
+            {
+                Debug.Log("Ray: " + i);
+                Debug.Log("alpha: " + contributingRays2[i].prd.alpha.ToString());
+                Debug.Log("Beta: " + contributingRays2[i].prd.beta.ToString());
+                Debug.Log("ntop: " + contributingRays2[i].prd.ntop.ToString());
+                Debug.Log("nbot: " + contributingRays2[i].prd.nbot.ToString());
+                Debug.Log("ncaust: " + contributingRays2[i].prd.ncaust.ToString());
+                Debug.Log("delay: " + contributingRays2[i].prd.delay.ToString());
+                Debug.Log("curve: " + contributingRays2[i].prd.curve.ToString());
+                Debug.Log("xn: " + contributingRays2[i].prd.xn.ToString());
+                Debug.Log("qi: " + contributingRays2[i].prd.qi.ToString());
+                Debug.Log("------------------------------------------------------------------------------------------------");
+            }
+
             Debug.Log("    angle     T   B   C         TL          dist         delay     beta     eig");
             
             //float freq = 150000;
             float[] freqs = new float[1] { 150000 };
-            float[] damp = new float[1] { 0.015f };
+            float[] damp = new float[1] { 0.015f/ 8.6858896f };
             // bottom properties
             float cp = 1600; // m/s
             float rho = 1.8f; // rho/rho0
@@ -632,8 +649,16 @@ public class Main : MonoBehaviour
                 float Arms = 0;
                 float Amp0 = Mathf.Sqrt(Mathf.Cos(contributingRays2[i].prd.alpha) * cr / MathF.Abs(contributingRays2[i].prd.qi) / targetSphereR);
 
+                Debug.Log("cr: " + cr);
+                Debug.Log("absqi: " + MathF.Abs(contributingRays2[i].prd.qi));
+                Debug.Log("xr: " + targetSphereR);
+
+                Debug.Log("Alpha: " + contributingRays2[i].prd.alpha);
+                Debug.Log("Amp0: " + Amp0);
+
                 // ray tangebt in r-direction
                 float Tg = Mathf.Cos(contributingRays2[i].prd.alpha) / cs;
+                Debug.Log("Tg: " + Tg);
 
 
                 for (int j = 0; j < freqs.Length; j++)
@@ -653,13 +678,22 @@ public class Main : MonoBehaviour
                         gamma = 0;
                     }
 
+                    Debug.Log("Rfa: " + Rfa);
+                    Debug.Log("Gamma: " + gamma);
+
                     // amplitude and phase
                     Amp[i, j] = Amp0 * MathF.Pow(Rfa, contributingRays2[i].prd.nbot) * MathF.Exp(-damp[j] * contributingRays2[i].prd.curve);
                     gamma = MathF.PI * contributingRays2[i].prd.ntop + gamma * contributingRays2[i].prd.nbot + MathF.PI / 2 * contributingRays2[i].prd.ncaust;
-                    Phase[i, j] = (gamma + MathF.PI) % 2*MathF.PI - MathF.PI;
+                    Phase[i, j] = (gamma + MathF.PI) % (2*MathF.PI) - MathF.PI;
+
+                    Debug.Log("Ampij: " + Amp[i, j]);
+                    Debug.Log("gamma: " + gamma);
+                    Debug.Log("Phaseij: " + Phase[i, j]);
 
                     // RMS amplitude
                     Arms += MathF.Pow(Amp[i, j], 2);
+
+                    Debug.Log("Arms: " + Arms);
 
                     // weighted amplitude
                     if (!contributingRays2[i].isEig)
@@ -673,6 +707,9 @@ public class Main : MonoBehaviour
                 float I1 = 1 / cs / rho;
                 float I2 = (Arms / freqs.Length) / cr / rho;
                 float TL = 10 * MathF.Log10(I1 / I2);
+
+                Debug.Log("I1: " + I1);
+                Debug.Log("I2: " + I2);
 
                 Debug.Log("TL: " + TL);
 
