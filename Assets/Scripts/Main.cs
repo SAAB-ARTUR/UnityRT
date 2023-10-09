@@ -471,6 +471,7 @@ public class Main : MonoBehaviour
 
         if ((!lockRayTracing && doRayTracing) || sourceParams.sendRaysContinously) // do raytracing if the user has pressed key C. only do it once though. or do it continously
         {
+            DateTime time1 = DateTime.Now; // measure time to do raytracing
             rayPositionDataAvail = false;
             foreach (LineRenderer line in lines)
             {
@@ -513,7 +514,7 @@ public class Main : MonoBehaviour
             // keep contributing rays only
             for (int i = sourceParams.nphi/2; i < rayData.Length; i+=steplength)
             {
-                if (rayData[i].beta < 1)
+                if (rayData[i].contributing == 1)
                 {
                     contributingRays.Add(rayData[i]);
                 }                
@@ -551,17 +552,8 @@ public class Main : MonoBehaviour
 
                         
                         contributingRays2.Add(eigRay);
-
-                        //isEigen[i] = true;
-                        //isEigen[i + 1] = false;
-
-
                         
-                        //contributingRays[i].iseig = 1; //true
-                        //contributingRays[i].alpha = w * contributingRays[i].alpha + (1 - w) * contributingRays[i + 1].alpha;
-                        //contributingRays[i + 1].iseig = 0; //false
-                        i++;
-                        Debug.Log("kjdkdjkldjlkdd");
+                        i++;                        
                     }
                     else
                     {
@@ -592,7 +584,7 @@ public class Main : MonoBehaviour
             PerEigenRayDataBuffer = new ComputeBuffer(contributingRays2.Count, perraydataByteSize);
             computeShader.SetBuffer(1, "EigenRayData", PerEigenRayDataBuffer);
 
-            computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);
+            computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);            
 
             threadGroupsX = Mathf.FloorToInt(1);
             threadGroupsY = Mathf.FloorToInt(contributingRays2.Count);
@@ -682,9 +674,13 @@ public class Main : MonoBehaviour
 
 
                 Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
-                
-
             }
+
+            DateTime time2 = DateTime.Now;
+
+            TimeSpan ts = time2 - time1;
+
+            Debug.Log("Time elapsed: " + ts.TotalMilliseconds + "ms");
 
             if (sourceParams.visualizeRays)
             {

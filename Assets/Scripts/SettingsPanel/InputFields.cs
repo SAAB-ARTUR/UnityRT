@@ -224,7 +224,7 @@ public class InputFields : MonoBehaviour
         string str = maxNrOfSurfaceHits.text;
         bool isNumber = int.TryParse(str, out int numericValue);
 
-        if (isNumber && numericValue > 0)
+        if (isNumber && numericValue >= 0)
         {
             BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
             bellhopParams.MAXNRSURFACEHITS = numericValue;
@@ -236,7 +236,7 @@ public class InputFields : MonoBehaviour
         string str = maxNrOfBottomHits.text;
         bool isNumber = int.TryParse(str, out int numericValue);
 
-        if (isNumber && numericValue > 0)
+        if (isNumber && numericValue >= 0)
         {
             BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
             bellhopParams.MAXNRBOTTOMHITS = numericValue;

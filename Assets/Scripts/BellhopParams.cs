@@ -53,17 +53,7 @@ public class BellhopParams : MonoBehaviour
             if (value >= 0) { maxNrBottomHits = value; }
             else { maxNrBottomHits = 0; }
         }
-    }
-
-    public int BELLHOPITERATIONS
-    {
-        get { return bellhopIterations; }
-        set
-        {
-            if (value > 0) { bellhopIterations = value; }
-            else { bellhopIterations = 1; }
-        }
-    }
+    }    
 
     public struct Properties
     {
