@@ -1,10 +1,11 @@
-Ray CreateRay(float3 origin, float3 direction, int nrOfInteractions)
+Ray CreateRay(float3 origin, float3 direction, int nrOfInteractions, float phi)
 {
     Ray ray;
     ray.origin = origin;
     ray.direction = direction;
     ray.energy = float3(1.0f, 1.0f, 1.0f);
     ray.nrOfInteractions = nrOfInteractions;
+    ray.phi = phi;
     return ray;
 }
 
@@ -20,7 +21,7 @@ Ray CreateCameraRay(float2 uv)
     direction = normalize(direction);
     int nrOfInteractions = 0;
 
-    return CreateRay(origin, direction, nrOfInteractions);
+    return CreateRay(origin, direction, nrOfInteractions, 0);
 }
 
 Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
@@ -35,7 +36,7 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
 
     // angles for srcSphere's forward vector (which is of length 1 meaning that r can be removed from all equations below)
     float origin_theta = acos(srcDirection.y);
-    float origin_phi = atan2(srcDirection.z, srcDirection.x);    
+    float origin_phi = atan2(srcDirection.z, srcDirection.x);
 
     // calculate the angular offset for the ray compared to the forward vector of the source
     //float offset_theta = origin_theta - theta_rad / 2 + id.y * dtheta;
@@ -44,11 +45,13 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
     //float offset_phi = 0;
     float offset_phi = origin_phi - phi_rad / 2 + (id.x + 1) * dphi;
 
+    //debugBuf[id.y * nphi + id.x] = float3(origin_phi, offset_phi, id.x);
+
     float s0 = sin(origin_phi);
     float c0 = cos(origin_phi);
 
     float s1 = sin(offset_phi - origin_phi);
-    float c1 = cos(offset_phi - origin_phi);
+    float c1 = cos(offset_phi - origin_phi);    
 
     float x = c0 * c1 * sin(offset_theta) - s0 * s1;
     float z = s0 * c1 * sin(offset_theta) + c0 * s1;
@@ -56,7 +59,11 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
 
     float3 direction = float3(x, y, z);
 
+    //debugBuf[id.y * nphi + id.x] = direction;
+
     int nrOfInteractions = 0;
 
-    return CreateRay(origin, direction, nrOfInteractions);
+    float rayPhi = -phi_rad / 2 + (id.x + 1) * dphi;
+
+    return CreateRay(origin, direction, nrOfInteractions, rayPhi);
 }

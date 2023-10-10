@@ -5614,7 +5614,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Show contributing rays
+  m_Text: Show contributing rays only
 --- !u!222 &1056176474
 CanvasRenderer:
   m_ObjectHideFlags: 0

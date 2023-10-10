@@ -64,10 +64,11 @@ public class Main : MonoBehaviour
         public float curve;
         public float xn;
         public float qi;
-        public float alpha;
+        public float theta;
+        public float phi;
         public uint contributing;
     }
-    private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 6;
+    private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 7;
 
     struct PerRayData2
     {
@@ -101,8 +102,7 @@ public class Main : MonoBehaviour
     
     private ComputeBuffer debugBuf;
     private float3[] debugger;
-
-    //TODO: fortsätt städa kod
+    
     //TODO: troligtvis kommer koden för hur eigenrays räknas ut behöva skrivas om lite när man skickar rays i fler phi-vinklar, fundera över det, (kom ihåg att se över shader-kod som just nu bara skickar
     //rays i en phi-riktning.
 
@@ -387,12 +387,12 @@ public class Main : MonoBehaviour
 
             //computeShader.SetBuffer(0, "alphaData", alphaData);
 
-            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta -1);            
+            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1);            
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dalpha", dtheta);
-            /*debugBuf = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
-            debugger = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
-            computeShader.SetBuffer(0, "debugBuf", debugBuf);*/
+            debugBuf = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+            debugger = new float3[sourceParams.nphi * sourceParams.ntheta];
+            computeShader.SetBuffer(0, "debugBuf", debugBuf);
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -497,7 +497,7 @@ public class Main : MonoBehaviour
             computeShader.SetTexture(0, "Result", _target);
 
             //int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
-            int threadGroupsX = Mathf.FloorToInt(1);
+            int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi);
             //int threadGroupsY = Mathf.FloorToInt(1);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
@@ -508,13 +508,18 @@ public class Main : MonoBehaviour
             rayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
-            /*debugBuf.GetData(debugger);
-            Debug.Log("origin_theta" + debugger[0].x + ", dtheta" + debugger[0].y + ", ntheta" + debugger[0].z);*/
+            debugBuf.GetData(debugger);
 
-            int steplength = sourceParams.nphi;
+            /*for (int i = 0; i < debugger.Length; i++)
+            {
+                Debug.Log("phi " + debugger[i].x + ", alpha " + debugger[i].y + ", 1234 " + debugger[i].z);
+            } */           
+
+            //int steplength = sourceParams.nphi;
 
             // keep contributing rays only
-            for (int i = sourceParams.nphi / 2; i < rayData.Length; i += steplength)
+            //for (int i = sourceParams.nphi / 2; i < rayData.Length; i += steplength)
+            for (int i = 0; i < rayData.Length; i++)
             {
                 if (rayData[i].contributing == 1)
                 {
@@ -522,11 +527,15 @@ public class Main : MonoBehaviour
                 }
             }
 
+            Debug.Log(contributingRays.Count);
+            
+
             // compute eigenrays
-            for (int i = 0; i < contributingRays.Count - 1; i++)
+            for (int i = 0; i < contributingRays.Count - 1; i++) // nu blir den här fucked eftersom rays kan ligga blandat
             {
+                Debug.Log(contributingRays[i].phi);
                 // find pairs of rays
-                if (contributingRays[i + 1].alpha < contributingRays[i].alpha + 1.5 * dtheta)
+                if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i+1].phi)
                 {
                     float n1 = contributingRays[i].xn;
                     float n2 = contributingRays[i + 1].xn;
@@ -546,7 +555,8 @@ public class Main : MonoBehaviour
                         eigenray.qi = contributingRays[i].qi;
                         eigenray.xn = contributingRays[i].xn;
                         eigenray.beta = contributingRays[i].beta;
-                        eigenray.alpha = w * contributingRays[i].alpha + (1 - w) * contributingRays[i + 1].alpha;
+                        eigenray.theta = w * contributingRays[i].theta + (1 - w) * contributingRays[i + 1].theta;
+                        eigenray.phi = 0;
 
                         PerRayData2 eigRay;
                         eigRay.prd = eigenray;
@@ -567,115 +577,118 @@ public class Main : MonoBehaviour
                 }
             }
 
-            // trace the eigenrays
-            PerEigenRayData = new PerRayData[contributingRays2.Count];
-
-            eigenalphas = new float[contributingRays2.Count]; // ändra det här sen till nåt bättre
-            for (int i = 0; i < contributingRays2.Count; i++)
+            if (contributingRays2.Count > 0)
             {
-                eigenalphas[i] = contributingRays2[i].prd.alpha;                
-            }
+                // trace the eigenrays
+                PerEigenRayData = new PerRayData[contributingRays2.Count];
 
-            eigenAlphaBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float));
-
-            eigenAlphaBuffer.SetData(eigenalphas); // fill buffer of alpha values
-            computeShader.SetBuffer(1, "eigenAlphaData", eigenAlphaBuffer);
-
-            // init return data buffer
-            PerEigenRayDataBuffer = new ComputeBuffer(contributingRays2.Count, perraydataByteSize);
-            computeShader.SetBuffer(1, "EigenRayData", PerEigenRayDataBuffer);
-
-            computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);
-
-            threadGroupsX = Mathf.FloorToInt(1);
-            threadGroupsY = Mathf.FloorToInt(contributingRays2.Count);
-
-            //send eigenrays
-            computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
-
-            PerEigenRayDataBuffer.GetData(PerEigenRayData);
-
-            // compute transmission loss
-
-            Debug.Log("    angle     T   B   C         TL          dist         delay     beta     eig");
-
-            float[] freqs = new float[1] { 150000 };
-            float[] damp = new float[1] { 0.015f / 8.6858896f };
-            // bottom properties
-            float cp = 1600; // m/s
-            float rho = 1.8f; // rho/rho0
-            float bottom_alpha = 0.025f; // dB/m
-
-            // sound speed: source, receiver            
-            float cs = LayerSpeed(SSP, sourceCamera.transform.position.y, 0);
-            float cr = LayerSpeed(SSP, targetSphere.transform.position.y, 0);
-            float cwater = LayerSpeed(SSP, world.GetWaterDepth(), 0);
-
-            float[,] Amp = new float[contributingRays2.Count, freqs.Length];
-            float[,] Phase = new float[contributingRays2.Count, freqs.Length];
-
-            float xdiff = targetSphere.transform.position.x - sourceCamera.transform.position.x;
-            float zdiff = targetSphere.transform.position.z - sourceCamera.transform.position.z;
-
-            float targetSphereR = MathF.Sqrt(MathF.Pow(xdiff, 2) + MathF.Pow(zdiff, 2));
-
-            for (int i = 0; i < PerEigenRayData.Length; i++) // TODO: deyya behöver bytas till indexering samt att det inte ska vara övr eigenrays utan de rays som kommer igenom förra steget
-            {
-                // amplitudes
-                float Arms = 0;
-                float Amp0 = Mathf.Sqrt(Mathf.Cos(PerEigenRayData[i].alpha) * cr / MathF.Abs(PerEigenRayData[i].qi) / targetSphereR);
-
-                // ray tangebt in r-direction
-                float Tg = Mathf.Cos(PerEigenRayData[i].alpha) / cs;
-
-
-                for (int j = 0; j < freqs.Length; j++)
+                eigenalphas = new float[contributingRays2.Count]; // ändra det här sen till nåt bättre
+                for (int i = 0; i < contributingRays2.Count; i++)
                 {
-                    float Rfa, gamma;
-                    // bottom reflection coefficient
-                    if (PerEigenRayData[i].nbot > 0)
-                    {
-                        float omega = 2 * MathF.PI * freqs[j];
-                        float2 RfaGamma = bottom_reflection(cwater, cp, rho, bottom_alpha, Tg, omega, damp[j]);
-                        Rfa = RfaGamma.x;
-                        gamma = RfaGamma.y;
-                    }
-                    else
-                    {
-                        Rfa = 1;
-                        gamma = 0;
-                    }
-
-                    // amplitude and phase
-                    Amp[i, j] = Amp0 * MathF.Pow(Rfa, PerEigenRayData[i].nbot) * MathF.Exp(-damp[j] * PerEigenRayData[i].curve);
-                    gamma = MathF.PI * PerEigenRayData[i].ntop + gamma * PerEigenRayData[i].nbot + MathF.PI / 2 * PerEigenRayData[i].ncaust;
-                    Phase[i, j] = (gamma + MathF.PI) % (2 * MathF.PI) - MathF.PI;
-
-                    // RMS amplitude
-                    Arms += MathF.Pow(Amp[i, j], 2);
-
-                    // weighted amplitude
-                    if (!contributingRays2[i].isEig)
-                    {
-                        Amp[i, j] *= (1 - PerEigenRayData[i].beta);
-                    }
+                    eigenalphas[i] = contributingRays2[i].prd.theta;
                 }
 
-                // transmission loss
-                rho = 1;
-                float I1 = 1 / cs / rho;
-                float I2 = (Arms / freqs.Length) / cr / rho;
-                float TL = 10 * MathF.Log10(I1 / I2);
+                eigenAlphaBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float));
 
-                float alpha_deg = PerEigenRayData[i].alpha * 180 / MathF.PI;
+                eigenAlphaBuffer.SetData(eigenalphas); // fill buffer of alpha values
+                computeShader.SetBuffer(1, "eigenAlphaData", eigenAlphaBuffer);
 
-                string data = alpha_deg.ToString("F6") + " " + PerEigenRayData[i].ntop + " " + PerEigenRayData[i].nbot + " " + PerEigenRayData[i].ncaust + " " + TL.ToString("F6") +
-                                " " + PerEigenRayData[i].curve.ToString("F6") + " " + PerEigenRayData[i].delay.ToString("F6") + " " + PerEigenRayData[i].beta.ToString("F6") +
-                                " " + contributingRays2[i].isEig;
+                // init return data buffer
+                PerEigenRayDataBuffer = new ComputeBuffer(contributingRays2.Count, perraydataByteSize);
+                computeShader.SetBuffer(1, "EigenRayData", PerEigenRayDataBuffer);
+
+                computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);
+
+                threadGroupsX = Mathf.FloorToInt(1);
+                threadGroupsY = Mathf.FloorToInt(contributingRays2.Count);
+
+                // send eigenrays
+                computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
+
+                PerEigenRayDataBuffer.GetData(PerEigenRayData);
+
+               // compute transmission loss
+
+                Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
+
+                float[] freqs = new float[1] { 150000 };
+                float[] damp = new float[1] { 0.015f / 8.6858896f };
+                // bottom properties
+                float cp = 1600; // m/s
+                float rho = 1.8f; // rho/rho0
+                float bottom_alpha = 0.025f; // dB/m
+
+                // sound speed: source, receiver            
+                float cs = LayerSpeed(SSP, sourceCamera.transform.position.y, 0);
+                float cr = LayerSpeed(SSP, targetSphere.transform.position.y, 0);
+                float cwater = LayerSpeed(SSP, world.GetWaterDepth(), 0);
+
+                float[,] Amp = new float[contributingRays2.Count, freqs.Length];
+                float[,] Phase = new float[contributingRays2.Count, freqs.Length];
+
+                float xdiff = targetSphere.transform.position.x - sourceCamera.transform.position.x;
+                float zdiff = targetSphere.transform.position.z - sourceCamera.transform.position.z;
+
+                float targetSphereR = MathF.Sqrt(MathF.Pow(xdiff, 2) + MathF.Pow(zdiff, 2));
+
+                for (int i = 0; i < PerEigenRayData.Length; i++)
+                {
+                    // amplitudes
+                    float Arms = 0;
+                    float Amp0 = Mathf.Sqrt(Mathf.Cos(PerEigenRayData[i].theta) * cr / MathF.Abs(PerEigenRayData[i].qi) / targetSphereR);
+
+                    // ray tangebt in r-direction
+                    float Tg = Mathf.Cos(PerEigenRayData[i].theta) / cs;
+
+                    for (int j = 0; j < freqs.Length; j++)
+                    {
+                        float Rfa, gamma;
+                        // bottom reflection coefficient
+                        if (PerEigenRayData[i].nbot > 0)
+                        {
+                            float omega = 2 * MathF.PI * freqs[j];
+                            float2 RfaGamma = bottom_reflection(cwater, cp, rho, bottom_alpha, Tg, omega, damp[j]);
+                            Rfa = RfaGamma.x;
+                            gamma = RfaGamma.y;
+                        }
+                        else
+                        {
+                            Rfa = 1;
+                            gamma = 0;
+                        }
+
+                        // amplitude and phase
+                        Amp[i, j] = Amp0 * MathF.Pow(Rfa, PerEigenRayData[i].nbot) * MathF.Exp(-damp[j] * PerEigenRayData[i].curve);
+                        gamma = MathF.PI * PerEigenRayData[i].ntop + gamma * PerEigenRayData[i].nbot + MathF.PI / 2 * PerEigenRayData[i].ncaust;
+                        Phase[i, j] = (gamma + MathF.PI) % (2 * MathF.PI) - MathF.PI;
+
+                        // RMS amplitude
+                        Arms += MathF.Pow(Amp[i, j], 2);
+
+                        // weighted amplitude
+                        if (!contributingRays2[i].isEig)
+                        {
+                            Amp[i, j] *= (1 - PerEigenRayData[i].beta);
+                        }
+                    }
+
+                    // transmission loss
+                    rho = 1;
+                    float I1 = 1 / cs / rho;
+                    float I2 = (Arms / freqs.Length) / cr / rho;
+                    float TL = 10 * MathF.Log10(I1 / I2);
+
+                    float theta_deg = PerEigenRayData[i].theta * 180 / MathF.PI;
+                    float phi_deg = PerEigenRayData[i].phi * 180 / MathF.PI;
+
+                    string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerEigenRayData[i].ntop + " " + PerEigenRayData[i].nbot + " " + PerEigenRayData[i].ncaust + " " +
+                                    TL.ToString("F6") + " " + PerEigenRayData[i].curve.ToString("F6") + " " + PerEigenRayData[i].delay.ToString("F6") + " " + PerEigenRayData[i].beta.ToString("F6") +
+                                    " " + contributingRays2[i].isEig;
 
 
-                Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
-            }
+                    Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
+                }
+            }       
 
             DateTime time2 = DateTime.Now;
 
@@ -838,3 +851,11 @@ public class Main : MonoBehaviour
         //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
     }
 }
+
+
+// tanke: skicka alla rays, lägg till intressanta rays i lista som det görs nu, spara både theta och phi vinklar för att veta vilken riktning stråle gick. då bör koden som redan är
+//      skriven för transmission loss funka som tidigare utan problem, sen behöver man lägga till ett extra fält i printen.
+//      fortfarande oklart hur shader-koden ska hantera saker
+//      eventuellt kan man kanske byta på hur buffern fylls alltså att närliggande rays i buffern skiljer sig i theta-led (förutom edge cases då)
+// tanke: eventuellt kanske man ska skapa en ny buffer som har redan på positionerna för rays i den andra sändningen för att då kunna toggla mellan att rita alla rays och eigenrays,
+//          man byter då vilken buffer/array man ritar ifrån

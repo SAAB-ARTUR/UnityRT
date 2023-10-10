@@ -10,7 +10,7 @@ float3 toCartesian(float phi, float2 rz)
 }
 
 void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
-            uint maxbot, uint offset, float phi, inout PerRayData prd)
+            uint maxbot, uint offset, float phi, float rayPhi, inout PerRayData prd)
 {    
     SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
     
@@ -81,7 +81,6 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
             Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
             Tray = reflection.Tray;
             p = reflection.p;
-
         }
 
         // Reset for the next step
@@ -116,16 +115,11 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
     float tz = x.y - x0.y;
     float rlen = sqrt(tr * tr + tz * tz);
     tr = tr / rlen;
-    tz = tz / rlen;
+    tz = tz / rlen;    
 
     // Interpolate
     float xn;
     float xs2;
-
-    float diffx = xr.x - x0.x;
-    float diffy = xr.y - x0.y;
-    float diffx2 = x.x - x0.x;
-    float diffy2 = x.y - x0.y;
 
     xs2 = tr * (xr.x - x0.x) + tz * (xr.y - x0.y); // proportional distance along ray
     xn = -tz * (xr.x - x0.x) + tr * (xr.y - x0.y); // normal distance to ray
@@ -162,10 +156,29 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
     prd.curve = curve;
     prd.xn = xn;
     prd.qi = qi;
-    prd.alpha = alpha;
+    prd.theta = alpha;
+    prd.phi = rayPhi;
 
-    if (beta < 1) {
-        prd.contributing = 1;
+    if (beta < 1) {// Detta är inte bra löst eftersom det utgår ifrån att sändaren tittar direkt på mottagaren
+        // calculate angle between source, receiver and end of ray
+        float origin_phi = atan2(srcDirection.z, srcDirection.x); // calculate angle that source is viewing at
+        // rotate the receiver around the y-axis to have the z-ccordinate be 0
+        float srcXnorm = receiverPosition.x * cos(-origin_phi) - receiverPosition.z * sin(-origin_phi);
+        float srcZnorm = receiverPosition.z * cos(-origin_phi) + receiverPosition.x * sin(-origin_phi);
+
+        float dx = srcXnorm - srcPosition.x;
+        float dz = srcZnorm - x_cart.z;
+       
+        float angle = atan2(dz, dx);
+
+        float kappa = 10;
+
+        if (abs(angle) < kappa) {
+            prd.contributing = 1;
+        }
+        else {
+            prd.contributing = 0;
+        }       
     }
     else {
         prd.contributing = 0;
@@ -174,7 +187,7 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
 
 
 void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
-    uint maxbot, float phi, inout PerRayData prd) 
+    uint maxbot, float phi, float rayPhi, inout PerRayData prd)
 {
     SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
 
@@ -201,8 +214,8 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
     float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));
     float current_distance = original_distance;
     float previous_distance = original_distance;
-    float3 x0_cart;
-    float3 x_cart;
+    /*float3 x0_cart;
+    float3 x_cart;*/
 
     //rayPositionsBuffer[0 + offset] = toCartesian(phi, xs);
     uint istep = 1;
@@ -255,8 +268,8 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
         tau = stepOutput.tau;
         len = stepOutput.len;
 
-        x0_cart = toCartesian(phi, x0);
-        x_cart = toCartesian(phi, x);
+        /*x0_cart = toCartesian(phi, x0);
+        x_cart = toCartesian(phi, x);*/
 
         // distance between ray and receiver
         //current_distance = sqrt(pow((x_cart.x - receiverPosition.x), 2) + pow((x_cart.y - receiverPosition.y), 2) + pow((x_cart.z - receiverPosition.z), 2));
@@ -286,10 +299,10 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
     float xn;
     float xs2;
 
-    float diffx = xr.x - x0.x;
+    /*float diffx = xr.x - x0.x;
     float diffy = xr.y - x0.y;
     float diffx2 = x.x - x0.x;
-    float diffy2 = x.y - x0.y;
+    float diffy2 = x.y - x0.y;*/
 
     xs2 = tr * (xr.x - x0.x) + tz * (xr.y - x0.y); // proportional distance along ray
     xn = -tz * (xr.x - x0.x) + tr * (xr.y - x0.y); // normal distance to ray
@@ -326,7 +339,8 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
     prd.curve = curve;
     prd.xn = xn;
     prd.qi = qi;
-    prd.alpha = alpha;
+    prd.theta = alpha;
+    prd.phi = rayPhi;
 
     if (beta < 1) {
         prd.contributing = 1;
