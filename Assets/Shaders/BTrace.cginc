@@ -171,7 +171,8 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
        
         float angle = atan2(dz, dx);
 
-        float kappa = 0.0873f; // kappa determines how much a ray can miss the target with in phi and still be considered to affect the target
+        // varför påverkar kappa resultatet när man skickar rakt fram????????
+        float kappa = 10; // kappa determines how much a ray can miss the target with in phi and still be considered to affect the target
 
         if (abs(angle) < kappa) {
             prd.contributing = 1;
