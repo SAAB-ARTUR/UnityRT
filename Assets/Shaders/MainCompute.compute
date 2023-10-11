@@ -19,6 +19,7 @@ struct PerRayData {
     float theta;
     float phi;
     uint contributing;
+    float TL;
 };
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;

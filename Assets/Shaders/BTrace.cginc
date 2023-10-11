@@ -158,6 +158,7 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
     prd.qi = qi;
     prd.theta = alpha;
     prd.phi = rayPhi;
+    prd.TL = 0;
 
     if (beta < 1) {// Detta är inte bra löst eftersom det utgår ifrån att sändaren tittar direkt på mottagaren
         // calculate angle between source, receiver and end of ray
@@ -341,6 +342,7 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
     prd.qi = qi;
     prd.theta = alpha;
     prd.phi = rayPhi;
+    prd.TL = 0;
 
     if (beta < 1) {
         prd.contributing = 1;

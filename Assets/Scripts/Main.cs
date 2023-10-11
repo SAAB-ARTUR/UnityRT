@@ -67,8 +67,9 @@ public class Main : MonoBehaviour
         public float theta;
         public float phi;
         public uint contributing;
+        public float TL;
     }
-    private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 7;
+    private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 8;
 
     struct PerRayData2
     {
@@ -580,6 +581,7 @@ public class Main : MonoBehaviour
                         eigenray.beta = contributingRays[i].beta;
                         eigenray.theta = w * contributingRays[i].theta + (1 - w) * contributingRays[i + 1].theta;
                         eigenray.phi = contributingRays[i].phi;
+                        eigenray.TL = 0;
 
                         PerRayData2 eigRay;
                         eigRay.prd = eigenray;
