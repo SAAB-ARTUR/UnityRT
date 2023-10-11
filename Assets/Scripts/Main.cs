@@ -95,8 +95,8 @@ public class Main : MonoBehaviour
         0.31745753f, 0.32570317f, 0.33394885f, 0.34219450f, 0.35044014f, 0.35868579f, 0.36693144f, 0.37517709f, 0.38342273f, 0.39166838f, 0.39991406f, 0.40815970f, 0.41640535f, 0.42465100f, 0.43289664f,
         0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };*/
 
-    private ComputeBuffer eigenAlphaBuffer;
-    private float[] eigenalphas = null;
+    private ComputeBuffer eigenAnglesBuffer;
+    private float2[] eigenangles = null;
     private ComputeBuffer PerEigenRayDataBuffer;
     private PerRayData[] PerEigenRayData = null;
     
@@ -308,7 +308,14 @@ public class Main : MonoBehaviour
     }
 
     void PlotBellhop(int idx, int idy)
-    {        
+    {
+        // det kan eventuellt vara så att alla errors angående "invalid aabb" kan ha med att linjer ritas mellan alla punkter för en ray och vissa
+        // punkter ligger väldigt nära varandra, kan vara värt att undersöka att ta bort punkter som ligger för nära föregående och se om det löser
+        // problemet, för visualiseringens skulle borde det inte påverka något negativt eftersom de små små linjerna ändå inte går att se, plus att
+        // det blir färre linjer vilket borde minska minnesanvädningen
+        // Testade att bara lägga till punkter som har ett större avstånd mellan sig, blir fortfarande enormt många fel av oklar anledning, läst på om
+        // felet "object is too large or too far away from the origin" och det var någon som sa att man inte ska ha object mer än 5000 enheter från origo,
+        // men våra rays rör sig i detta fall max 300 enheter bort så det känns jätteskumt det som händer
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         
         int rayIdx = idy * sourceParams.nphi + idx;
@@ -330,22 +337,38 @@ public class Main : MonoBehaviour
         List<Vector3> positions = new List<Vector3>();
 
         for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
-        {
-            //if (rayPositions[offset + i].x != 0f || rayPositions[offset + i].y != 0f || rayPositions[offset + i].z != 0f)
+        {            
+            /*if (i == 0) // add the first position
+            {
+                positions.Add(new Vector3(rayPositions[offset].x, rayPositions[offset].y, rayPositions[offset].z));
+                continue;
+            }
+            else
+            {
+                // calc distance between current point and previous
+                Vector3 pos1 = positions[positions.Count-1];
+                Vector3 pos2 = rayPositions[offset + i];
+                float distance = MathF.Sqrt(MathF.Pow(pos1.x - pos2.x, 2) + MathF.Pow(pos1.y - pos2.y, 2) + MathF.Pow(pos1.z - pos2.z, 2));
+                if (distance < 1) // if points are too close, don't add the current point
+                {
+                    continue;
+                }
+            }*/            
+            
             if (rayPositions[offset + i].y <= 0f )
             {
                 positions.Add(new Vector3(rayPositions[offset + i].x, rayPositions[offset + i].y, rayPositions[offset + i].z));
             }
             else
             {
-                break;
+                break; // faulty position, break loop
             }
         }
 
         line.positionCount = positions.Count;
         line.SetPositions(positions.ToArray());
 
-        lines.Add(line);
+        lines.Add(line);        
     }
 
     void Update()
@@ -533,7 +556,7 @@ public class Main : MonoBehaviour
             // compute eigenrays
             for (int i = 0; i < contributingRays.Count - 1; i++) // nu blir den här fucked eftersom rays kan ligga blandat
             {
-                Debug.Log(contributingRays[i].phi);
+                Debug.Log(i+": " + contributingRays[i].phi);
                 // find pairs of rays
                 if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i+1].phi)
                 {
@@ -556,7 +579,7 @@ public class Main : MonoBehaviour
                         eigenray.xn = contributingRays[i].xn;
                         eigenray.beta = contributingRays[i].beta;
                         eigenray.theta = w * contributingRays[i].theta + (1 - w) * contributingRays[i + 1].theta;
-                        eigenray.phi = 0;
+                        eigenray.phi = contributingRays[i].phi;
 
                         PerRayData2 eigRay;
                         eigRay.prd = eigenray;
@@ -582,16 +605,17 @@ public class Main : MonoBehaviour
                 // trace the eigenrays
                 PerEigenRayData = new PerRayData[contributingRays2.Count];
 
-                eigenalphas = new float[contributingRays2.Count]; // ändra det här sen till nåt bättre
+                eigenangles = new float2[contributingRays2.Count]; // ändra det här sen till nåt bättre
                 for (int i = 0; i < contributingRays2.Count; i++)
                 {
-                    eigenalphas[i] = contributingRays2[i].prd.theta;
+                    eigenangles[i].x = contributingRays2[i].prd.theta;
+                    eigenangles[i].y = contributingRays2[i].prd.phi;
                 }
 
-                eigenAlphaBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float));
+                eigenAnglesBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float)*2);
 
-                eigenAlphaBuffer.SetData(eigenalphas); // fill buffer of alpha values
-                computeShader.SetBuffer(1, "eigenAlphaData", eigenAlphaBuffer);
+                eigenAnglesBuffer.SetData(eigenangles); // fill buffer of alpha values
+                computeShader.SetBuffer(1, "eigenAnglesData", eigenAnglesBuffer);
 
                 // init return data buffer
                 PerEigenRayDataBuffer = new ComputeBuffer(contributingRays2.Count, perraydataByteSize);

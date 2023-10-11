@@ -26,7 +26,7 @@ RWStructuredBuffer<float3> rayPositionsBuffer;
 //StructuredBuffer<float> alphaData;
 //RWStructuredBuffer<float3> debugBuf;
 RWStructuredBuffer<PerRayData> EigenRayData;
-StructuredBuffer<float> eigenAlphaData;
+StructuredBuffer<float2> eigenAnglesData;
 
 
 float4x4 _SourceCameraToWorld;
@@ -153,7 +153,8 @@ void TraceEigenRays(uint3 id : SV_DispatchThreadID)
 
     float3 raydir = normalize(ray.direction);
 
-    float alpha = eigenAlphaData[id.y];
+    float alpha = eigenAnglesData[id.y].x;
+    float phi = eigenAnglesData[id.y].y;
     float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
     float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
@@ -163,7 +164,7 @@ void TraceEigenRays(uint3 id : SV_DispatchThreadID)
 
     PerRayData prd;    
     
-    btrace_eig(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, _Phi, ray.phi, prd);
+    btrace_eig(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, _Phi, phi, prd);
 
     EigenRayData[id.y] = prd;
 
