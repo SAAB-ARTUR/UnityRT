@@ -25,9 +25,10 @@ struct PerRayData {
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> rayPositionsBuffer;
 //StructuredBuffer<float> alphaData;
-//RWStructuredBuffer<float3> debugBuf;
+RWStructuredBuffer<float3> debugBuf;
 RWStructuredBuffer<PerRayData> EigenRayData;
 StructuredBuffer<float2> eigenAnglesData;
+StructuredBuffer<float2> FreqsAndDampData;
 
 
 float4x4 _SourceCameraToWorld;
@@ -53,6 +54,8 @@ float3 srcDirection;
 float3 srcPosition;
 float3 receiverPosition;
 float dalpha;
+
+uint freqsdamps;
 
 struct SSP_Data 
 {
@@ -165,7 +168,7 @@ void TraceEigenRays(uint3 id : SV_DispatchThreadID)
 
     PerRayData prd;    
     
-    btrace_eig(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, _Phi, phi, prd);
+    btrace_eig(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, _Phi, phi, prd, id);
 
     EigenRayData[id.y] = prd;
 

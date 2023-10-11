@@ -103,10 +103,11 @@ public class Main : MonoBehaviour
     
     private ComputeBuffer debugBuf;
     private float3[] debugger;
-    
-    //TODO: troligtvis kommer koden för hur eigenrays räknas ut behöva skrivas om lite när man skickar rays i fler phi-vinklar, fundera över det, (kom ihåg att se över shader-kod som just nu bara skickar
-    //rays i en phi-riktning.
 
+    private ComputeBuffer FreqDampBuffer;
+    private float2[] freqsdamps;
+    
+    
     private void ReleaseResources()
     {
         if (rtas != null)
@@ -416,7 +417,7 @@ public class Main : MonoBehaviour
             computeShader.SetFloat("dalpha", dtheta);
             debugBuf = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             debugger = new float3[sourceParams.nphi * sourceParams.ntheta];
-            computeShader.SetBuffer(0, "debugBuf", debugBuf);
+            computeShader.SetBuffer(1, "debugBuf", debugBuf);
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -532,7 +533,7 @@ public class Main : MonoBehaviour
             rayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
-            debugBuf.GetData(debugger);
+            //debugBuf.GetData(debugger);
 
             /*for (int i = 0; i < debugger.Length; i++)
             {
@@ -625,6 +626,15 @@ public class Main : MonoBehaviour
 
                 computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);
 
+                freqsdamps = new float2[1];
+                freqsdamps[0].x = 150000;
+                freqsdamps[0].y = 0.015f / 8.6858896f;
+
+                FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
+                FreqDampBuffer.SetData(freqsdamps);
+                computeShader.SetBuffer(1, "FreqsAndDampData", FreqDampBuffer);
+                computeShader.SetInt("freqsdamps", freqsdamps.Length);
+
                 threadGroupsX = Mathf.FloorToInt(1);
                 threadGroupsY = Mathf.FloorToInt(contributingRays2.Count);
 
@@ -632,10 +642,23 @@ public class Main : MonoBehaviour
                 computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
 
                 PerEigenRayDataBuffer.GetData(PerEigenRayData);
+                debugBuf.GetData(debugger);
 
-               // compute transmission loss
+                for (int i = 0; i < PerEigenRayData.Length; i++)
+                {
+                    Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+                }
+
+                // compute transmission loss
 
                 Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
+
+                for (int i = 0; i < PerEigenRayData.Length; i++)
+                {
+                    Debug.Log(i + ": " + PerEigenRayData[i].TL);
+                }
+                
+                
 
                 float[] freqs = new float[1] { 150000 };
                 float[] damp = new float[1] { 0.015f / 8.6858896f };
@@ -648,6 +671,8 @@ public class Main : MonoBehaviour
                 float cs = LayerSpeed(SSP, sourceCamera.transform.position.y, 0);
                 float cr = LayerSpeed(SSP, targetSphere.transform.position.y, 0);
                 float cwater = LayerSpeed(SSP, world.GetWaterDepth(), 0);
+
+                
 
                 float[,] Amp = new float[contributingRays2.Count, freqs.Length];
                 float[,] Phase = new float[contributingRays2.Count, freqs.Length];
@@ -663,8 +688,10 @@ public class Main : MonoBehaviour
                     float Arms = 0;
                     float Amp0 = Mathf.Sqrt(Mathf.Cos(PerEigenRayData[i].theta) * cr / MathF.Abs(PerEigenRayData[i].qi) / targetSphereR);
 
-                    // ray tangebt in r-direction
+                    // ray tangent in r-direction
                     float Tg = Mathf.Cos(PerEigenRayData[i].theta) / cs;
+
+                    
 
                     for (int j = 0; j < freqs.Length; j++)
                     {
@@ -685,7 +712,7 @@ public class Main : MonoBehaviour
 
                         // amplitude and phase
                         Amp[i, j] = Amp0 * MathF.Pow(Rfa, PerEigenRayData[i].nbot) * MathF.Exp(-damp[j] * PerEigenRayData[i].curve);
-                        gamma = MathF.PI * PerEigenRayData[i].ntop + gamma * PerEigenRayData[i].nbot + MathF.PI / 2 * PerEigenRayData[i].ncaust;
+                        //gamma = MathF.PI * PerEigenRayData[i].ntop + gamma * PerEigenRayData[i].nbot + MathF.PI / 2 * PerEigenRayData[i].ncaust;
                         Phase[i, j] = (gamma + MathF.PI) % (2 * MathF.PI) - MathF.PI;
 
                         // RMS amplitude
@@ -696,6 +723,7 @@ public class Main : MonoBehaviour
                         {
                             Amp[i, j] *= (1 - PerEigenRayData[i].beta);
                         }
+                        Debug.Log(-damp[j] + " " + PerEigenRayData[i].curve + " " + 27);
                     }
 
                     // transmission loss
@@ -703,6 +731,8 @@ public class Main : MonoBehaviour
                     float I1 = 1 / cs / rho;
                     float I2 = (Arms / freqs.Length) / cr / rho;
                     float TL = 10 * MathF.Log10(I1 / I2);
+                    
+
 
                     float theta_deg = PerEigenRayData[i].theta * 180 / MathF.PI;
                     float phi_deg = PerEigenRayData[i].phi * 180 / MathF.PI;
@@ -714,7 +744,7 @@ public class Main : MonoBehaviour
 
                     Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
                 }
-            }       
+            }
 
             DateTime time2 = DateTime.Now;
 
@@ -729,8 +759,8 @@ public class Main : MonoBehaviour
                 }                
             }            
 
-            /*PerEigenRayDataBuffer.Dispose();
-            eigenAlphaBuffer.Dispose();*/
+            PerEigenRayDataBuffer.Dispose();
+            eigenAnglesBuffer.Dispose();
         }
 
         if (!sourceParams.visualizeRays)
