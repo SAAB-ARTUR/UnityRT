@@ -15,7 +15,7 @@ public class Main : MonoBehaviour
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject waterplane = null;
     [SerializeField] Camera sourceCamera = null;
-    [SerializeField] GameObject world_manager = null;
+    [SerializeField] GameObject worldManager = null;
     [SerializeField] GameObject btnFilePicker = null;
     [SerializeField] GameObject bellhop = null;
 
@@ -36,18 +36,18 @@ public class Main : MonoBehaviour
     private RayTracingAccelerationStructure rtas = null;
     private bool rebuildRTAS = false;
 
-    private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
+    /*private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
     private SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
     private WaterplaneInstanceData waterplaneInstanceData = null;
-    private TargetInstanceData targetInstanceData = null;
+    private TargetInstanceData targetInstanceData = null;*/
 
     private Vector3 oldTargetPostion;
 
     private SSPFileReader _SSPFileReader = null;
     private List<SSPFileReader.SSP_Data> SSP = null;
-    private ComputeBuffer _SSPBuffer;
+    private ComputeBuffer SSPBuffer;
 
-    private ComputeBuffer rayPositionsBuffer;
+    private ComputeBuffer RayPositionsBuffer;
     private float3[] rayPositions = null;
     private bool rayPositionDataAvail = false;
 
@@ -81,28 +81,15 @@ public class Main : MonoBehaviour
     private PerRayData[] rayData = null;
     private float dtheta = 0;
     private List<PerRayData> contributingRays = new List<PerRayData>();
-    private List<PerRayData2> contributingRays2 = new List<PerRayData2>();
-    //private bool[] isEigen = null;
-    //private ComputeBuffer alphaData;
+    private List<PerRayData2> contributingRays2 = new List<PerRayData2>();    
 
-    /*private float[] alphas = new float[128] { -0.52359879f, -0.51535314f, -0.50710750f, -0.49886185f, -0.49061620f, -0.48237056f, -0.47412491f, -0.46587926f, -0.45763358f, -0.44938794f, -0.44114229f,
-                                            -0.43289664f, -0.42465100f, -0.41640535f, -0.40815970f, -0.39991406f, -0.39166838f, -0.38342273f, -0.37517709f, -0.36693144f, -0.35868579f, -0.35044014f,
-                                            -0.34219450f, -0.33394885f, -0.32570317f, -0.31745753f, -0.30921188f, -0.30096623f, -0.29272059f, -0.28447494f, -0.27622926f, -0.26798365f, -0.25973800f,
-                                            -0.25149235f, -0.24324667f, -0.23500103f, -0.22675538f, -0.21850973f, -0.21026407f, -0.20201842f, -0.19377278f, -0.18552713f, -0.17728147f, -0.16903582f,
-        -0.16079018f, -0.15254453f, -0.14429887f, -0.13605322f, -0.12780759f, -0.11956193f, -0.11131628f, -0.10307062f, -0.094824977f, -0.086579323f, -0.078333676f, -0.070088021f, -0.061842378f, -0.053596724f,
-        -0.045351077f, -0.037105422f, -0.028859776f, -0.020614125f, -0.012368475f, -0.0041228253f, 0.0041228253f, 0.012368475f, 0.020614125f, 0.028859776f, 0.037105422f, 0.045351077f, 0.053596724f, 0.061842378f,
-        0.070088021f, 0.078333676f, 0.086579323f, 0.094824977f, 0.10307062f, 0.11131628f, 0.11956193f, 0.12780759f, 0.13605322f, 0.14429887f, 0.15254453f, 0.16079018f, 0.16903582f, 0.17728147f, 0.18552713f,
-        0.19377278f, 0.20201842f, 0.21026407f, 0.21850973f, 0.22675538f, 0.23500103f, 0.24324667f, 0.25149235f, 0.25973800f, 0.26798365f, 0.27622926f, 0.28447494f, 0.29272059f, 0.30096623f, 0.30921188f,
-        0.31745753f, 0.32570317f, 0.33394885f, 0.34219450f, 0.35044014f, 0.35868579f, 0.36693144f, 0.37517709f, 0.38342273f, 0.39166838f, 0.39991406f, 0.40815970f, 0.41640535f, 0.42465100f, 0.43289664f,
-        0.44114229f, 0.44938794f, 0.45763358f, 0.46587926f, 0.47412491f, 0.48237056f, 0.49061620f, 0.49886185f, 0.50710750f, 0.51535314f, 0.52359879f };*/
-
-    private ComputeBuffer eigenAnglesBuffer;
-    private float2[] eigenangles = null;
+    private ComputeBuffer EigenAnglesBuffer;
+    private float2[] eigenAngles = null;
     private ComputeBuffer PerEigenRayDataBuffer;
     private PerRayData[] PerEigenRayData = null;
     
-    private ComputeBuffer debugBuf;
-    private float3[] debugger;
+    //private ComputeBuffer debugBuf;
+    //private float3[] debugger;
 
     private ComputeBuffer FreqDampBuffer;
     private float2[] freqsdamps;
@@ -143,9 +130,14 @@ public class Main : MonoBehaviour
             targetInstanceData = null;
         }*/
         
-        _SSPBuffer?.Release();
-        rayPositionsBuffer?.Release();
+        SSPBuffer?.Release();
+        SSPBuffer = null;
+        RayPositionsBuffer?.Release();
+        RayPositionsBuffer = null;
         PerRayDataBuffer?.Release();
+        PerRayDataBuffer = null;
+        FreqDampBuffer?.Release();
+        FreqDampBuffer = null;
         //alphaData?.Release();
         //debugBuf?.Release();
     }
@@ -165,10 +157,10 @@ public class Main : MonoBehaviour
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();        
 
-        if (rayPositionsBuffer == null)
+        if (RayPositionsBuffer == null)
         {
-            rayPositionsBuffer = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
-            SetComputeBuffer("rayPositionsBuffer", rayPositionsBuffer);
+            RayPositionsBuffer = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+            SetComputeBuffer("RayPositionsBuffer", RayPositionsBuffer);
         }
 
         if (rayPositions == null)
@@ -188,16 +180,16 @@ public class Main : MonoBehaviour
             rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
         }
 
-        if (surfaceInstanceData == null)
+        /*if (surfaceInstanceData == null)
         {            
             surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
         }        
         if (seafloorInstanceData == null)
         {            
             seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
-        }
+        }*/
 
-        World world = world_manager.GetComponent<World>();
+        /*World world = world_manager.GetComponent<World>();
         int nrOfWaterplanes = world.GetNrOfWaterplanes();
         float depth = world.GetWaterDepth();
         if (nrOfWaterplanes > 0 && (waterplaneInstanceData == null || waterplaneInstanceData.layers != nrOfWaterplanes || waterplaneInstanceData.depth != depth))
@@ -223,7 +215,7 @@ public class Main : MonoBehaviour
                 targetInstanceData.Dispose();
             }
             targetInstanceData = new TargetInstanceData();
-        }
+        }*/
     }
 
     private void SetComputeBuffer(string name, ComputeBuffer buffer)
@@ -263,7 +255,7 @@ public class Main : MonoBehaviour
     }
 
     private void BuildWorld() {
-        World world = world_manager.GetComponent<World>();
+        World world = worldManager.GetComponent<World>();
         world.AddSource(sourceCamera);
         world.AddSurface(surface);
         world.AddBottom(seafloor);
@@ -295,10 +287,7 @@ public class Main : MonoBehaviour
 
         oldTargetPostion = targetSphere.transform.position;
 
-        _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
-
-        /*alphaData = new ComputeBuffer(128, sizeof(float));
-        alphaData.SetData(alphas);*/
+        _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();        
     }
 
     int GetStartIndexBellhop(int idx, int idy)
@@ -382,17 +371,17 @@ public class Main : MonoBehaviour
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();        
 
         if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams))
-        {
+        {            
             rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
             rayPositionDataAvail = false;
             rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
             oldSourceParams = sourceParams.ToStruct();
             oldBellhopParams = bellhopParams.ToStruct();
 
-            if (rayPositionsBuffer != null)
+            if (RayPositionsBuffer != null)
             {
-                rayPositionsBuffer.Release();
-                rayPositionsBuffer = null;
+                RayPositionsBuffer.Release();
+                RayPositionsBuffer = null;
             }
 
             if (PerRayDataBuffer != null)
@@ -408,16 +397,14 @@ public class Main : MonoBehaviour
             computeShader.SetInt("nphi", sourceParams.nphi);
 
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
-            computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
-
-            //computeShader.SetBuffer(0, "alphaData", alphaData);
+            computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);            
 
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1);            
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dalpha", dtheta);
-            debugBuf = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
+            /*debugBuf = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             debugger = new float3[sourceParams.nphi * sourceParams.ntheta];
-            computeShader.SetBuffer(1, "debugBuf", debugBuf);
+            computeShader.SetBuffer(1, "debugBuf", debugBuf);*/
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -435,8 +422,7 @@ public class Main : MonoBehaviour
             oldVisualiseContributingRays = sourceParams.showContributingRaysOnly;
 
             if (rayPositionDataAvail && sourceParams.visualizeRays)
-            {
-                Debug.Log("ray data available, plot rays");
+            {                
                 foreach (LineRenderer line in lines)
                 {
                     Destroy(line.gameObject);
@@ -450,20 +436,20 @@ public class Main : MonoBehaviour
             }
         }
 
-        World world = world_manager.GetComponent<World>();
+        World world = worldManager.GetComponent<World>();
 
         if (_SSPFileReader.SSPFileHasChanged())
         {
             _SSPFileReader.AckSSPFileHasChanged();            
             SSP = _SSPFileReader.GetSSPData();
 
-            if (_SSPBuffer != null)
+            if (SSPBuffer != null)
             {
-                _SSPBuffer.Release();
+                SSPBuffer.Release();
             }
-            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
-            _SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
-            SetComputeBuffer("_SSPBuffer", _SSPBuffer);
+            SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
+            SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
+            SetComputeBuffer("_SSPBuffer", SSPBuffer);
             world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
             _SSPFileReader.UpdateDepthSlider();
@@ -530,20 +516,11 @@ public class Main : MonoBehaviour
             computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
             // read results from buffers into arrays
-            rayPositionsBuffer.GetData(rayPositions);
+            RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
-            PerRayDataBuffer.GetData(rayData);
-            //debugBuf.GetData(debugger);
+            PerRayDataBuffer.GetData(rayData);            
 
-            /*for (int i = 0; i < debugger.Length; i++)
-            {
-                Debug.Log("phi " + debugger[i].x + ", alpha " + debugger[i].y + ", 1234 " + debugger[i].z);
-            } */           
-
-            //int steplength = sourceParams.nphi;
-
-            // keep contributing rays only
-            //for (int i = sourceParams.nphi / 2; i < rayData.Length; i += steplength)
+            // keep contributing rays only            
             for (int i = 0; i < rayData.Length; i++)
             {
                 if (rayData[i].contributing == 1)
@@ -552,13 +529,9 @@ public class Main : MonoBehaviour
                 }
             }
 
-            Debug.Log(contributingRays.Count);
-            
-
             // compute eigenrays
             for (int i = 0; i < contributingRays.Count - 1; i++) // nu blir den här fucked eftersom rays kan ligga blandat
-            {
-                Debug.Log(i+": " + contributingRays[i].phi);
+            {                
                 // find pairs of rays
                 if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i+1].phi)
                 {
@@ -608,23 +581,23 @@ public class Main : MonoBehaviour
                 // trace the eigenrays
                 PerEigenRayData = new PerRayData[contributingRays2.Count];
 
-                eigenangles = new float2[contributingRays2.Count]; // ändra det här sen till nåt bättre
+                eigenAngles = new float2[contributingRays2.Count]; // ändra det här sen till nåt bättre
                 for (int i = 0; i < contributingRays2.Count; i++)
                 {
-                    eigenangles[i].x = contributingRays2[i].prd.theta;
-                    eigenangles[i].y = contributingRays2[i].prd.phi;
+                    eigenAngles[i].x = contributingRays2[i].prd.theta;
+                    eigenAngles[i].y = contributingRays2[i].prd.phi;
                 }
 
-                eigenAnglesBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float)*2);
+                EigenAnglesBuffer = new ComputeBuffer(contributingRays2.Count, sizeof(float)*2);
 
-                eigenAnglesBuffer.SetData(eigenangles); // fill buffer of alpha values
-                computeShader.SetBuffer(1, "eigenAnglesData", eigenAnglesBuffer);
+                EigenAnglesBuffer.SetData(eigenAngles); // fill buffer of alpha values
+                computeShader.SetBuffer(1, "EigenAnglesData", EigenAnglesBuffer);
 
                 // init return data buffer
                 PerEigenRayDataBuffer = new ComputeBuffer(contributingRays2.Count, perraydataByteSize);
                 computeShader.SetBuffer(1, "EigenRayData", PerEigenRayDataBuffer);
 
-                computeShader.SetBuffer(1, "_SSPBuffer", _SSPBuffer);
+                computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
 
                 freqsdamps = new float2[1];
                 freqsdamps[0].x = 150000;
@@ -641,109 +614,20 @@ public class Main : MonoBehaviour
                 // send eigenrays
                 computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
 
-                PerEigenRayDataBuffer.GetData(PerEigenRayData);
-                debugBuf.GetData(debugger);
-
-                for (int i = 0; i < PerEigenRayData.Length; i++)
-                {
-                    Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-                }
-
-                // compute transmission loss
+                PerEigenRayDataBuffer.GetData(PerEigenRayData);                
 
                 Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
 
                 for (int i = 0; i < PerEigenRayData.Length; i++)
                 {
-                    Debug.Log(i + ": " + PerEigenRayData[i].TL);
-                }
-                
-                
-
-                float[] freqs = new float[1] { 150000 };
-                float[] damp = new float[1] { 0.015f / 8.6858896f };
-                // bottom properties
-                float cp = 1600; // m/s
-                float rho = 1.8f; // rho/rho0
-                float bottom_alpha = 0.025f; // dB/m
-
-                // sound speed: source, receiver            
-                float cs = LayerSpeed(SSP, sourceCamera.transform.position.y, 0);
-                float cr = LayerSpeed(SSP, targetSphere.transform.position.y, 0);
-                float cwater = LayerSpeed(SSP, world.GetWaterDepth(), 0);
-
-                
-
-                float[,] Amp = new float[contributingRays2.Count, freqs.Length];
-                float[,] Phase = new float[contributingRays2.Count, freqs.Length];
-
-                float xdiff = targetSphere.transform.position.x - sourceCamera.transform.position.x;
-                float zdiff = targetSphere.transform.position.z - sourceCamera.transform.position.z;
-
-                float targetSphereR = MathF.Sqrt(MathF.Pow(xdiff, 2) + MathF.Pow(zdiff, 2));
-
-                for (int i = 0; i < PerEigenRayData.Length; i++)
-                {
-                    // amplitudes
-                    float Arms = 0;
-                    float Amp0 = Mathf.Sqrt(Mathf.Cos(PerEigenRayData[i].theta) * cr / MathF.Abs(PerEigenRayData[i].qi) / targetSphereR);
-
-                    // ray tangent in r-direction
-                    float Tg = Mathf.Cos(PerEigenRayData[i].theta) / cs;
-
-                    
-
-                    for (int j = 0; j < freqs.Length; j++)
-                    {
-                        float Rfa, gamma;
-                        // bottom reflection coefficient
-                        if (PerEigenRayData[i].nbot > 0)
-                        {
-                            float omega = 2 * MathF.PI * freqs[j];
-                            float2 RfaGamma = bottom_reflection(cwater, cp, rho, bottom_alpha, Tg, omega, damp[j]);
-                            Rfa = RfaGamma.x;
-                            gamma = RfaGamma.y;
-                        }
-                        else
-                        {
-                            Rfa = 1;
-                            gamma = 0;
-                        }
-
-                        // amplitude and phase
-                        Amp[i, j] = Amp0 * MathF.Pow(Rfa, PerEigenRayData[i].nbot) * MathF.Exp(-damp[j] * PerEigenRayData[i].curve);
-                        //gamma = MathF.PI * PerEigenRayData[i].ntop + gamma * PerEigenRayData[i].nbot + MathF.PI / 2 * PerEigenRayData[i].ncaust;
-                        Phase[i, j] = (gamma + MathF.PI) % (2 * MathF.PI) - MathF.PI;
-
-                        // RMS amplitude
-                        Arms += MathF.Pow(Amp[i, j], 2);
-
-                        // weighted amplitude
-                        if (!contributingRays2[i].isEig)
-                        {
-                            Amp[i, j] *= (1 - PerEigenRayData[i].beta);
-                        }
-                        Debug.Log(-damp[j] + " " + PerEigenRayData[i].curve + " " + 27);
-                    }
-
-                    // transmission loss
-                    rho = 1;
-                    float I1 = 1 / cs / rho;
-                    float I2 = (Arms / freqs.Length) / cr / rho;
-                    float TL = 10 * MathF.Log10(I1 / I2);
-                    
-
-
                     float theta_deg = PerEigenRayData[i].theta * 180 / MathF.PI;
                     float phi_deg = PerEigenRayData[i].phi * 180 / MathF.PI;
 
                     string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerEigenRayData[i].ntop + " " + PerEigenRayData[i].nbot + " " + PerEigenRayData[i].ncaust + " " +
-                                    TL.ToString("F6") + " " + PerEigenRayData[i].curve.ToString("F6") + " " + PerEigenRayData[i].delay.ToString("F6") + " " + PerEigenRayData[i].beta.ToString("F6") +
-                                    " " + contributingRays2[i].isEig;
-
-
+                                    PerEigenRayData[i].TL.ToString("F6") + " " + PerEigenRayData[i].curve.ToString("F6") + " " + PerEigenRayData[i].delay.ToString("F6") + " " +
+                                    PerEigenRayData[i].beta.ToString("F6") + " " + contributingRays2[i].isEig;
                     Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
-                }
+                }                
             }
 
             DateTime time2 = DateTime.Now;
@@ -760,7 +644,7 @@ public class Main : MonoBehaviour
             }            
 
             PerEigenRayDataBuffer.Dispose();
-            eigenAnglesBuffer.Dispose();
+            EigenAnglesBuffer.Dispose();
         }
 
         if (!sourceParams.visualizeRays)
@@ -773,84 +657,6 @@ public class Main : MonoBehaviour
         }
         contributingRays.Clear();
         contributingRays2.Clear();
-    }
-
-    float2 bottom_reflection(float cwater, float cp, float rho, float bottom_alpha, float Tg, float omega, float alphaT)
-    {
-        // imaginary part of cp
-        float alpha = bottom_alpha / 8.6858896f + alphaT;
-        float ci = alpha * MathF.Pow(cp, 2) / omega;
-
-        float g1 = MathF.Pow(Tg, 2) - 1 / MathF.Pow(cwater, 2);
-        float h1 = 0;
-
-        float cp2 = cp * cp + ci * ci;
-        float x = cp / cp2;
-        float y = -ci / cp2;
-        float g2 = MathF.Pow(Tg, 2) - x * x + y * y;
-        float h2 = -2 * x * y;
-
-        float2 g1h1 = complexsqrt(g1, h1);
-        float2 g2h2 = complexsqrt(g2, h2);
-
-        float A = rho * g1h1.x - g2h2.x;
-        float B = rho * g1h1.y - g2h2.y;
-        float C = rho * g1h1.x + g2h2.x;
-        float D = rho * g1h1.y + g2h2.y;
-        float R = (A * C + B * D) / (C * C + D * D);
-        float Q = (B * C - A * D) / (C * C + D * D);
-
-        float Rfa = MathF.Sqrt(R * R + Q * Q);
-        float gamma = MathF.Atan2(Q, R);
-
-        return new float2(Rfa, gamma);
-    }
-
-    float2 complexsqrt(float a, float b)
-    {
-        float x, y;
-        if (a >= 0)
-        {
-            x = MathF.Sqrt((MathF.Sqrt(a * a + b * b) + a) / 2);
-            if (x > 0)
-            {
-                y = b / x / 2;
-            }
-            else
-            {
-                y = 0;
-            }
-        }
-        else
-        {
-            y = MathF.Sqrt((MathF.Sqrt(a * a + b * b) - a) / 2);
-            if (b < 0)
-            {
-                y = -y;
-            }
-            x = b / y / 2;
-        }
-
-        return new float2(x, y);
-    }
-
-    float LayerSpeed(List<SSPFileReader.SSP_Data> SSP, float depth, int Layer=0)
-    {        
-        while(Layer < SSP.Count - 1 && depth <= SSP[Layer + 1].depth)
-        {
-            Layer += 1;
-        }
-        while (depth > SSP[Layer].depth && Layer > 0)
-        {
-            Layer -= 1;
-        }
-
-        float w = depth - SSP[Layer].depth;
-
-        // linear interpolation for now
-        float c = SSP[Layer].velocity + w * SSP[Layer].derivative1;
-
-        return c;
     }
 
     void BuildRTAS()
@@ -907,11 +713,3 @@ public class Main : MonoBehaviour
         //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
     }
 }
-
-
-// tanke: skicka alla rays, lägg till intressanta rays i lista som det görs nu, spara både theta och phi vinklar för att veta vilken riktning stråle gick. då bör koden som redan är
-//      skriven för transmission loss funka som tidigare utan problem, sen behöver man lägga till ett extra fält i printen.
-//      fortfarande oklart hur shader-koden ska hantera saker
-//      eventuellt kan man kanske byta på hur buffern fylls alltså att närliggande rays i buffern skiljer sig i theta-led (förutom edge cases då)
-// tanke: eventuellt kanske man ska skapa en ny buffer som har redan på positionerna för rays i den andra sändningen för att då kunna toggla mellan att rita alla rays och eigenrays,
-//          man byter då vilken buffer/array man ritar ifrån

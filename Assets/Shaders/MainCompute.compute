@@ -23,25 +23,21 @@ struct PerRayData {
 };
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
-RWStructuredBuffer<float3> rayPositionsBuffer;
-//StructuredBuffer<float> alphaData;
-RWStructuredBuffer<float3> debugBuf;
+RWStructuredBuffer<float3> RayPositionsBuffer;
+//RWStructuredBuffer<float3> debugBuf;
 RWStructuredBuffer<PerRayData> EigenRayData;
-StructuredBuffer<float2> eigenAnglesData;
+StructuredBuffer<float2> EigenAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
 
 
 float4x4 _SourceCameraToWorld;
 float4x4 _CameraInverseProjection;
 
-//float2 _Pixel;
-
 uint _MAXINTERACTIONS;
 uint _BELLHOPSIZE;
 float deltas;
 uint _MAXBOTTOMHITS;
 uint _MAXSURFACEHITS;
-//uint _BELLHOPITERATIONS;
 
 static const float PI = 3.14159265f;
 
@@ -129,21 +125,18 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
     float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
     float zdiff = receiverPosition.z - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
-
-    //float2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), receiverPosition.y };   
+    
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), receiverPosition.y };
 
     PerRayData prd;
-
-    //TraceOutput t = btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, width, raydir, _Phi, prd);
-    uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
-    btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, _Phi, ray.phi, prd);
     
-    //PerRayDataBuffer[id.y * width + id.x] = prd;
+    uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
+    btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, _Phi, ray.phi, prd);    
+    
     PerRayDataBuffer[id.y + id.x * height] = prd;
 }
 
-
+#include "BTraceEig.cginc"
 #pragma kernel TraceEigenRays
 [numthreads(1, 1, 1)]
 void TraceEigenRays(uint3 id : SV_DispatchThreadID)
@@ -157,9 +150,8 @@ void TraceEigenRays(uint3 id : SV_DispatchThreadID)
 
     float3 raydir = normalize(ray.direction);
 
-    float alpha = eigenAnglesData[id.y].x;
-    float phi = eigenAnglesData[id.y].y;
-    float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
+    float alpha = EigenAnglesData[id.y].x;
+    float phi = EigenAnglesData[id.y].y;    
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
     float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
     float zdiff = receiverPosition.z - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
@@ -168,8 +160,7 @@ void TraceEigenRays(uint3 id : SV_DispatchThreadID)
 
     PerRayData prd;    
     
-    btrace_eig(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, _Phi, phi, prd, id);
+    btrace_eig(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd, id);
 
     EigenRayData[id.y] = prd;
-
 }

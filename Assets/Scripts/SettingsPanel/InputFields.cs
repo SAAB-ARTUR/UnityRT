@@ -29,8 +29,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] GameObject targetZSliderMin = null;
     [SerializeField] GameObject targetZSliderMax = null;
     [SerializeField] InputField maxNrOfSurfaceHits = null;
-    [SerializeField] InputField maxNrOfBottomHits = null;
-    //[SerializeField] InputField bellhopIterations = null;
+    [SerializeField] InputField maxNrOfBottomHits = null;    
 
 
     // Start is called before the first frame update
@@ -242,18 +241,6 @@ public class InputFields : MonoBehaviour
             bellhopParams.MAXNRBOTTOMHITS = numericValue;
         }
     }
-
-    /*public void OnBellhopIterationsChange()
-    {
-        string str = bellhopIterations.text;
-        bool isNumber = int.TryParse(str, out int numericValue);
-
-        if (isNumber && numericValue > 0)
-        {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-            bellhopParams.BELLHOPITERATIONS = numericValue;
-        }
-    }*/
 
     public void OnCallbackCommandEntered()
     {
