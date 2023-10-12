@@ -24,7 +24,8 @@ struct PerRayData {
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> RayPositionsBuffer;
-//RWStructuredBuffer<float3> debugBuf;
+StructuredBuffer<float> alphaData;
+RWStructuredBuffer<float3> debugBuf;
 RWStructuredBuffer<PerRayData> EigenRayData;
 StructuredBuffer<float2> EigenAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
@@ -118,7 +119,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
     float3 raydir = normalize(ray.direction);
 
-    float alpha = asin(raydir.y);    
+    //float alpha = asin(raydir.y);
+    float alpha = alphaData[id.y];
     float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
     //debugBuf[id.y * width + id.x] = float3(ray.phi, alpha, 1234);
 
@@ -131,7 +133,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     PerRayData prd;
     
     uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
-    btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, _Phi, ray.phi, prd);    
+    btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, _Phi, ray.phi, prd, id);    
     
     PerRayDataBuffer[id.y + id.x * height] = prd;
 }
