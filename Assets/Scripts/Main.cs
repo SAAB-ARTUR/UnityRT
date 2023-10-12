@@ -90,11 +90,11 @@ public class Main : MonoBehaviour
     private float dtheta = 0;
     private List<PerRayData> contributingRays = new List<PerRayData>();    
 
-    private ComputeBuffer EigenAnglesBuffer;    
-    private List<float2> eigenAngles = new List<float2>();
+    private ComputeBuffer ContributingAnglesBuffer;    
+    private List<float2> contributingAngles = new List<float2>();
     private List<bool> isEigenRay = new List<bool>();
-    private ComputeBuffer PerEigenRayDataBuffer;
-    private PerRayData[] PerEigenRayData = null;
+    private ComputeBuffer PerContributingRayDataBuffer;
+    private PerRayData[] PerContributingRayData = null;
     
     private ComputeBuffer debugBuf;
     private float3[] debugger;
@@ -146,8 +146,10 @@ public class Main : MonoBehaviour
         PerRayDataBuffer = null;
         FreqDampBuffer?.Release();
         FreqDampBuffer = null;
-        //alphaData?.Release();
+        alphaData?.Release();
+        alphaData = null;
         debugBuf?.Release();
+        debugBuf = null;
     }
 
     void OnDestroy()
@@ -340,7 +342,7 @@ public class Main : MonoBehaviour
 
         for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
         {            
-            /*if (i == 0) // add the first position
+            if (i == 0) // add the first position
             {
                 positions.Add(new Vector3(rayPositions[offset].x, rayPositions[offset].y, rayPositions[offset].z));
                 continue;
@@ -355,7 +357,7 @@ public class Main : MonoBehaviour
                 {
                     continue;
                 }
-            }*/            
+            }
             
             if (rayPositions[offset + i].y <= 0f )
             {
@@ -398,12 +400,10 @@ public class Main : MonoBehaviour
             }
             catch (Exception e)
             {
-                errorFree = false; // disable raytracing since buffers were not able to be created
+                errorFree = false; // disable raytracing since arrays were not able to be created
                 Debug.Log(e);
-            }
-            //rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * sourceParams.nphi * sourceParams.ntheta];
-            rayPositionDataAvail = false;
-            //rayData = new PerRayData[sourceParams.nphi * sourceParams.ntheta];
+            }            
+            rayPositionDataAvail = false;            
             oldSourceParams = sourceParams.ToStruct();
             oldBellhopParams = bellhopParams.ToStruct();
 
@@ -428,11 +428,11 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
             computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
 
-            computeShader.SetBuffer(0, "alphaData", alphaData);
+            //computeShader.SetBuffer(0, "thetaData", alphaData);
 
-            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta - 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
+            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
             dtheta = dtheta * MathF.PI / 180; // to radians
-            computeShader.SetFloat("dalpha", dtheta);
+            computeShader.SetFloat("dtheta", dtheta);
             debugBuf = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             debugger = new float3[sourceParams.nphi * sourceParams.ntheta];
             computeShader.SetBuffer(0, "debugBuf", debugBuf);
@@ -525,17 +525,17 @@ public class Main : MonoBehaviour
         //
 
         if ((!lockRayTracing && doRayTracing && errorFree) || sourceParams.sendRaysContinously) // do raytracing if the user has pressed key C. only do it once though. or do it continously
-        {
-            DateTime time1 = DateTime.Now; // measure time to do raytracing
+        {            
             rayPositionDataAvail = false;
-            foreach (LineRenderer line in lines)
+            foreach (LineRenderer line in lines) // delete lines from previous runs
             {
                 Destroy(line.gameObject);
             }
             lines.Clear();
 
-            lockRayTracing = true; // disable raytracing being done several times during one keypress
-            // do raytracing
+            lockRayTracing = true; // disable raytracing being done several times during one keypress            
+
+            DateTime time1 = DateTime.Now; // measure time to do raytracing
 
             CreateResources();
 
@@ -552,8 +552,7 @@ public class Main : MonoBehaviour
             computeShader.SetTexture(0, "Result", _target);            
 
             //int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
-            int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi);
-            //int threadGroupsY = Mathf.FloorToInt(1);
+            int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi);            
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
@@ -565,9 +564,11 @@ public class Main : MonoBehaviour
             PerRayDataBuffer.GetData(rayData);
             debugBuf.GetData(debugger);
 
-            for(int i = 0; i < sourceParams.nphi; i++)
+            Debug.Log(sourceCamera.transform.forward);
+
+            for(int i = 0; i < debugger.Length; i++)
             {
-                Debug.Log("Phi: " + debugger[i].x + " alpha: " + debugger[i].y + " 1234: " + debugger[i].z);
+                Debug.Log("theta: " + debugger[i].x + " _Phi: " + debugger[i].y + " 1234: " + debugger[i].z);
             }
 
             // keep contributing rays only            
@@ -576,7 +577,7 @@ public class Main : MonoBehaviour
                 if (rayData[i].contributing == 1)
                 {
                     contributingRays.Add(rayData[i]);
-                    Debug.Log("Theta: " + rayData[i].theta);
+                    /*Debug.Log("Theta: " + rayData[i].theta);
                     Debug.Log("Phi: " + rayData[i].phi);                    
                     Debug.Log("Beta: " + rayData[i].beta);
                     Debug.Log("ncaust: " + rayData[i].ncaust);
@@ -586,16 +587,15 @@ public class Main : MonoBehaviour
                     Debug.Log("curve: " + rayData[i].curve);
                     Debug.Log("qi: " + rayData[i].qi);
                     Debug.Log("xn: " + rayData[i].xn);
-                    Debug.Log("::::::::::::::::::::::::::::::::::::::::::::::");
+                    Debug.Log("::::::::::::::::::::::::::::::::::::::::::::::");*/
                 }                
             }
 
-            Debug.Log("-------------------------------");
+            //Debug.Log("-------------------------------");
 
             // compute eigenrays
-            for (int i = 0; i < contributingRays.Count - 1; i++) // nu blir den här fucked eftersom rays kan ligga blandat
-            {
-                Debug.Log(i);
+            /*for (int i = 0; i < contributingRays.Count - 1; i++)
+            {                
                 // find pairs of rays
                 if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i+1].phi)
                 {
@@ -605,14 +605,13 @@ public class Main : MonoBehaviour
 
                     float2 angles;
                     if (n1 * n2 <= 0 && tot > 0.9 && tot < 1.1)
-                    {
-                        Debug.Log("Eigen hittad");
+                    {                        
                         float w = n2 / (n2 - n1);
                         float theta = w * contributingRays[i].theta + (1 - w) * contributingRays[i + 1].theta;
                         float phi = contributingRays[i].phi;                        
                         angles.x = theta;
                         angles.y = phi;
-                        eigenAngles.Add(angles);
+                        contributingAngles.Add(angles);
                         isEigenRay.Add(true);                        
 
                         i++;
@@ -621,32 +620,25 @@ public class Main : MonoBehaviour
                     {
                         angles.x = contributingRays[i].theta;
                         angles.y = contributingRays[i].phi;
-                        eigenAngles.Add(angles);
+                        contributingAngles.Add(angles);
                         isEigenRay.Add(false);                        
                     }
                 }
-            }
+            }            
 
-            /*Debug.Log("-------------------------------------------------");
-            for (int i = 0; i < eigenAngles.Count; i++)
+            if (contributingAngles.Count > 0)
             {
-                Debug.Log(eigenAngles[i].x);
-                Debug.Log(eigenAngles[i].x * 180 / MathF.PI);
-            }*/
+                // trace the contributing rays
+                PerContributingRayData = new PerRayData[contributingAngles.Count];
 
-            if (eigenAngles.Count > 0)
-            {
-                // trace the eigenrays
-                PerEigenRayData = new PerRayData[eigenAngles.Count];
+                ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
 
-                EigenAnglesBuffer = new ComputeBuffer(eigenAngles.Count, sizeof(float) * 2);
-
-                EigenAnglesBuffer.SetData(eigenAngles); // fill buffer of alpha values
-                computeShader.SetBuffer(1, "EigenAnglesData", EigenAnglesBuffer);
+                ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of alpha values
+                computeShader.SetBuffer(1, "ContributingAnglesData", ContributingAnglesBuffer);
 
                 // init return data buffer
-                PerEigenRayDataBuffer = new ComputeBuffer(eigenAngles.Count, perraydataByteSize);
-                computeShader.SetBuffer(1, "EigenRayData", PerEigenRayDataBuffer);
+                PerContributingRayDataBuffer = new ComputeBuffer(contributingAngles.Count, perraydataByteSize);
+                computeShader.SetBuffer(1, "ContributingRayData", PerContributingRayDataBuffer);
 
                 computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
 
@@ -660,26 +652,26 @@ public class Main : MonoBehaviour
                 computeShader.SetInt("freqsdamps", freqsdamps.Length);
 
                 threadGroupsX = Mathf.FloorToInt(1);
-                threadGroupsY = Mathf.FloorToInt(eigenAngles.Count);
+                threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
 
                 // send eigenrays
                 computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
 
-                PerEigenRayDataBuffer.GetData(PerEigenRayData);
+                PerContributingRayDataBuffer.GetData(PerContributingRayData);
 
                 Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
 
-                for (int i = 0; i < PerEigenRayData.Length; i++)
+                for (int i = 0; i < PerContributingRayData.Length; i++)
                 {
-                    float theta_deg = PerEigenRayData[i].theta * 180 / MathF.PI;
-                    float phi_deg = PerEigenRayData[i].phi * 180 / MathF.PI;
+                    float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
+                    float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
 
-                    string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerEigenRayData[i].ntop + " " + PerEigenRayData[i].nbot + " " + PerEigenRayData[i].ncaust + " " +
-                                    PerEigenRayData[i].TL.ToString("F6") + " " + PerEigenRayData[i].curve.ToString("F6") + " " + PerEigenRayData[i].delay.ToString("F6") + " " +
-                                    PerEigenRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
+                    string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
+                                    PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
+                                    PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
                     Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
                 }
-            }
+            }*/
 
             DateTime time2 = DateTime.Now;
 
@@ -689,13 +681,14 @@ public class Main : MonoBehaviour
 
             if (sourceParams.visualizeRays)
             {
-                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) {                    
-                    PlotBellhop((int)sourceParams.nphi/2, itheta);
-                }                
-            }            
-
-            /*PerEigenRayDataBuffer.Dispose();
-            EigenAnglesBuffer.Dispose();*/
+                for (int iphi = 0; iphi < sourceParams.nphi; iphi++)
+                {
+                    for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                    {
+                        PlotBellhop(iphi, itheta);
+                    }
+                }
+            }
         }
 
         if (!sourceParams.visualizeRays)
@@ -707,7 +700,7 @@ public class Main : MonoBehaviour
             lines.Clear();
         }
         contributingRays.Clear();
-        eigenAngles.Clear();
+        contributingAngles.Clear();
         isEigenRay.Clear();        
     }
 

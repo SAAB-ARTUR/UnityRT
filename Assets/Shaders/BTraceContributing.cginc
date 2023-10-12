@@ -53,15 +53,15 @@ float2 bottom_reflection(float cwater, float cp, float rho, float bottom_alpha, 
 }
 
 // similar to btrace, but this function is only called for contributing rays, meaning that some simplifications can be made
-void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
-    uint maxbot, float rayPhi, inout PerRayData prd, uint3 id)
+void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
+    uint maxbot, float rayPhi, inout PerRayData prd)
 {
     SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
 
     // Initial conditions    
     float c = initialSsp.c;
     float2 x = xs;
-    float2 Tray = { cos(alpha) / c, -sin(alpha) / c };
+    float2 Tray = { cos(theta) / c, -sin(theta) / c };
     float p = 1;
     float q = 0;
     float tau = 0;
@@ -163,7 +163,7 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
     curve = len0 + s * (len - len0);
 
     // Beam radius
-    float RadMax = abs(qi) / initialSsp.c * dalpha;
+    float RadMax = abs(qi) / initialSsp.c * dtheta;
 
     float beta = abs(xn) / RadMax;
 
@@ -182,7 +182,7 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
     prd.curve = curve;
     prd.xn = xn;
     prd.qi = qi;
-    prd.theta = alpha;
+    prd.theta = theta;
     prd.phi = rayPhi;
 
     if (beta < 1) {
@@ -211,10 +211,10 @@ void btrace_eig(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, flo
 
     // amplitudes
     float Arms = 0;
-    float Amp0 = sqrt(cos(alpha) * cr / abs(qi) / xr.x);
+    float Amp0 = sqrt(cos(theta) * cr / abs(qi) / xr.x);
 
     // ray tangent in r-direction
-    float Tg = cos(alpha) / cs;
+    float Tg = cos(theta) / cs;
 
     for (uint i = 0; i < freqsdamps; i++) {
 

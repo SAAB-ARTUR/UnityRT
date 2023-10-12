@@ -36,7 +36,7 @@ public class World : MonoBehaviour
 
     private Camera sourceSphere;
     private GameObject surface;
-    private GameObject bottom;    
+    private GameObject bottom;        
 
     // Start is called before the first frame update
     void Start()
@@ -215,53 +215,7 @@ public class World : MonoBehaviour
     void Update()
     {
         state0 = state;
-        state = getCurrentState();        
-
-        //Vector3 worldPos = this.transform.position;     
-        
-
-
-        // Ensure planes stay at the same location
-        //SetPlaneDepthStationary(this.surface, 0);
-        //SetPlaneDepthStationary(this.bottom, this.waterDepth);
-
-
-
-        //Vector3 newPos = this.transform.position;
-        //newPos.y = worldPos.y;
-        //this.transform.position = newPos;
-
-
-
-        //Debug.Log(sourceDept2);
-
-        //SetPlaneDepthStationary(surface, 0);
-        //for (int i = 0; i<waterLayers.Length; i++)
-        //{
-
-        //  SetPlaneDepthStationary(waterLayers[i], waterLayerDepths[i]);
-
-        //}
-        //SetPlaneDepthStationary(bottom, waterDepth);
-
-        /*
-        if (sourceDept2 > 0 )
-        {
-
-            Vector3 p = sourceSphere.transform.position;
-            p.y = 0;
-            sourceSphere.transform.position = p;
-        //    this.transform.position = p;
-        }
-
-        if (sourceDept2 < -waterDepth) {
-
-            Vector3 p = sourceSphere.transform.position;
-            p.y = -waterDepth;
-            sourceSphere.transform.position = p;
-          //  this.transform.position = p;
-        }        
-        */
+        state = getCurrentState();
     }
 
     public int GetNrOfWaterplanes()

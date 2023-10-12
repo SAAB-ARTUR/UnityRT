@@ -9,7 +9,7 @@ float3 toCartesian(float phi, float2 rz)
     return float3(radius * cos(phi) + srcPosition.x, depth, radius * sin(phi) + srcPosition.z);
 }
 
-void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
+void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
             uint maxbot, uint offset, float phi, float rayPhi, inout PerRayData prd, uint3 id)
 {    
     SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
@@ -17,7 +17,7 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
     // Initial conditions    
     float c = initialSsp.c;
     float2 x = xs;
-    float2 Tray = { cos(alpha) / c, -sin(alpha) / c };
+    float2 Tray = { cos(theta) / c, -sin(theta) / c }; //ändra tillbaks till inget - här???
     float p = 1;
     float q = 0;
     float tau = 0;
@@ -136,7 +136,7 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
     curve = len0 + s * (len - len0);
     
     // Beam radius
-    float RadMax = abs(qi) / initialSsp.c * dalpha;
+    float RadMax = abs(qi) / initialSsp.c * dtheta;
 
     float beta = abs(xn) / RadMax;    
     
@@ -155,7 +155,7 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
     prd.curve = curve;
     prd.xn = xn;
     prd.qi = qi;
-    prd.theta = alpha;
+    prd.theta = theta;
     prd.phi = rayPhi;
     prd.TL = 0;
 
@@ -169,9 +169,7 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
         float dx = srcXnorm - srcPosition.x;
         float dz = srcZnorm - x_cart.z;
        
-        float angle = atan2(dz, dx);
-
-        //debugBuf[id.y * nphi + id.x] = float3(angle, alpha, origin_phi);
+        float angle = atan2(dz, dx);        
         
         float kappa = 10; // kappa determines how much a ray can miss the target with in phi and still be considered to affect the target
 
