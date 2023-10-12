@@ -73,9 +73,50 @@ def fix_axis():
     ax.set_zlim(*limits[2, :])
 
 
+def response_handled_message() -> bytes:
+
+    import Assets.Scripts.api.ControlSchema_generated as control_schema
+
+    builder = flatbuffers.Builder(1024)
+
+    control_schema.ResponseHandledStart(builder)
+    msg = control_schema.ResponseHandledEnd(builder)
+
+    control_schema.MessageStart(builder)
+    control_schema.MessageAddMessageType(builder, control_schema.MessageType().ResponseHandled)
+    control_schema.MessageAddMessage(builder, msg)
+    message = control_schema.MessageEnd(builder)
+
+    builder.Finish(message)
+
+    binary_message: bytearray
+    binary_message = builder.Output()
+    assert isinstance(binary_message, bytearray)
+
+    return bytes(binary_message)
+
+"""
+buf = open("ResponseHandled.bin", "rb").read()
+import Assets.Scripts.api.ControlSchema_generated as control_schema
+message = control_schema.Message.GetRootAs(buf)
+
+import base64
+print(base64.b64encode(buf).decode("ascii"))
+
+print(message.MessageType() == control_schema.MessageType().ResponseHandled)
+
+
+exit()
+msg = response_handled_message()
+open("ResponseHandled.bin", "wb").write(msg)
+"""
+
+
 while True:
-    sys.stdout.write("ok!\n")
-    sys.stdout.flush()
+    
+    
+    
+
     #blength = int.from_bytes(sys.stdin.buffer.read())
     blength = int.from_bytes(os.read(sys.stdin.fileno(), 4), sys.byteorder, signed = True)
     #sys.stdin.flush()
@@ -97,8 +138,18 @@ while True:
     fig.canvas.draw()
     plt.pause(0.001)
     #sys.stdin.buffer.flush()
-    sys.stdin.flush()
+    # sys.stdin.flush()
     
+    import base64
+
+    #os.write(sys.stdout.fileno(), response_handled_message()).
+    sys.stdout.write(base64.b64encode(response_handled_message()).decode("ascii") + "\n")
+    sys.stdout.flush()
+    #sys.stdout.buffer.write(response_handled_message())
+    #sys.stdout.buffer.flush()
+    #sys.stdout.flush()
+    #sys.stdout.write("ok!\n")
+    #sys.stdout.flush()
     
     """
     try:
