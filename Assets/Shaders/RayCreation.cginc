@@ -42,10 +42,8 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
     //float offset_theta = origin_theta - theta_rad / 2 + id.y * dtheta;
     float offset_theta = origin_theta - theta_rad / 2 + (id.y + 1) * dtheta;
     //float offset_phi = origin_phi + phi_rad / 2 - id.x * dphi;
-    //float offset_phi = 0;
-    float offset_phi = origin_phi - phi_rad / 2 + (id.x + 1) * dphi;
-
-    //debugBuf[id.y * nphi + id.x] = float3(origin_phi, offset_phi, id.x);
+    float offset_phi = 0;
+    //float offset_phi = origin_phi - phi_rad / 2 + (id.x + 1) * dphi;    
 
     float s0 = sin(origin_phi);
     float c0 = cos(origin_phi);
@@ -57,7 +55,14 @@ Ray CreateThetaPhiRay(uint3 id) // absolut sämstaste namnet någonsin
     float z = s0 * c1 * sin(offset_theta) + c0 * s1;
     float y = c1 * cos(offset_theta);
 
+    // rotate phi around the y-axis
+    offset_phi = -phi_rad / 2 + (id.x + 1) * dphi;
+    x = x * cos(-offset_phi) - z * sin(-offset_phi);
+    z = z * cos(-offset_phi) + x * sin(-offset_phi);
+
     float3 direction = float3(x, y, z);
+
+    //debugBuf[id.y * nphi + id.x] = float3(origin_theta, offset_theta, id.x);
 
     //debugBuf[id.y * nphi + id.x] = direction;
 

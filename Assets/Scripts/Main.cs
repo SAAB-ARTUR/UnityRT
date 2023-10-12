@@ -435,7 +435,7 @@ public class Main : MonoBehaviour
             computeShader.SetFloat("dalpha", dtheta);
             debugBuf = new ComputeBuffer(sourceParams.nphi * sourceParams.ntheta, 3 * sizeof(float));
             debugger = new float3[sourceParams.nphi * sourceParams.ntheta];
-            computeShader.SetBuffer(1, "debugBuf", debugBuf);
+            computeShader.SetBuffer(0, "debugBuf", debugBuf);
         }
         if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -560,12 +560,12 @@ public class Main : MonoBehaviour
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
-            //debugBuf.GetData(debugger);
+            debugBuf.GetData(debugger);
 
-            /*for(int i = 0; i < debugger.Length; i++)
+            for(int i = 0; i < sourceParams.nphi; i++)
             {
-                Debug.Log("")
-            }*/
+                Debug.Log("Phi: " + debugger[i].x + " alpha: " + debugger[i].y + " 1234: " + debugger[i].z);
+            }
 
             // keep contributing rays only            
             for (int i = 0; i < rayData.Length; i++)
@@ -624,12 +624,12 @@ public class Main : MonoBehaviour
                 }
             }
 
-            Debug.Log("-------------------------------------------------");
+            /*Debug.Log("-------------------------------------------------");
             for (int i = 0; i < eigenAngles.Count; i++)
             {
                 Debug.Log(eigenAngles[i].x);
                 Debug.Log(eigenAngles[i].x * 180 / MathF.PI);
-            }
+            }*/
 
             if (eigenAngles.Count > 0)
             {
@@ -673,7 +673,7 @@ public class Main : MonoBehaviour
 
                     string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerEigenRayData[i].ntop + " " + PerEigenRayData[i].nbot + " " + PerEigenRayData[i].ncaust + " " +
                                     PerEigenRayData[i].TL.ToString("F6") + " " + PerEigenRayData[i].curve.ToString("F6") + " " + PerEigenRayData[i].delay.ToString("F6") + " " +
-                                    PerEigenRayData[i].beta.ToString("F6") + " ";// + contributingRays2[i].isEig;
+                                    PerEigenRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
                     Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
                 }
             }

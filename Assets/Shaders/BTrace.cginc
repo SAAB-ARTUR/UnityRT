@@ -174,15 +174,14 @@ void btrace(SSP soundSpeedProfile, float alpha, float dalpha, float2 xs, float2 
         //debugBuf[id.y * nphi + id.x] = float3(angle, alpha, origin_phi);
 
         // varför påverkar kappa resultatet när man skickar rakt fram????????
-        float kappa = 0.174533f; // kappa determines how much a ray can miss the target with in phi and still be considered to affect the target
+        float kappa = 10; // kappa determines how much a ray can miss the target with in phi and still be considered to affect the target
 
         if (abs(angle) < kappa) {
             prd.contributing = 1;
         }
         else {
             prd.contributing = 0;
-        }       
-        //prd.contributing = 1;
+        }        
     }
     else {
         prd.contributing = 0;

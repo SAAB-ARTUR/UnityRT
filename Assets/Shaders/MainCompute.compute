@@ -117,12 +117,13 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     SSP soundSpeedProfile;
     soundSpeedProfile.type = 0;
 
-    float3 raydir = normalize(ray.direction);
+    //float3 raydir = normalize(ray.direction);
+    float3 raydir = ray.direction;
 
-    //float alpha = asin(raydir.y);
-    float alpha = alphaData[id.y];
+    float alpha = asin(raydir.y);
+    //float alpha = alphaData[id.y];
     float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
-    //debugBuf[id.y * width + id.x] = float3(ray.phi, alpha, 1234);
+    debugBuf[id.y * width + id.x] = float3(ray.phi, alpha, 1234);
 
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
     float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
