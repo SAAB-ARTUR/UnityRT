@@ -1,0 +1,96 @@
+namespace SAAB.Artur.Control;
+
+struct Vec3 {
+
+    x:double;
+    y:double; 
+    z:double;
+
+}
+
+struct CylindricalCoord {
+
+    r:double;
+    phi:double;
+    z:double;
+
+}
+
+struct AngleSpan {
+
+    n_phi:int;
+    phi_span:double;
+    
+    n_theta:int;
+    theta_span:double; 
+
+}
+
+struct SphericalDir {
+
+    phi:double;
+    theta:double;
+
+}
+
+table Sender {
+
+    position: Vec3;
+    angle_span: AngleSpan; 
+    look_at: SphericalDir;
+
+}
+
+table Reciever {
+
+    position: Vec3;
+
+}
+
+struct SoundSpeedAtDepth {
+
+    depth:double;
+    speed:double;
+
+}
+
+table SetupMessage {
+
+    sound_speed_profile:[SoundSpeedAtDepth];
+    eigen_rays:bool;
+    integration_steps:int;
+    integration_step_size:double;
+    max_bottom_hits:int;
+    max_surface_hits:int;
+    wait_for_response_handled:bool=true;
+
+}
+
+table ControlMessage {
+
+    sender:Sender;
+    reciever:Reciever;
+
+}
+
+table TraceNow {}
+table ResponseHandled {}
+
+union MessageType {
+
+    SetupMessage,
+    ControlMessage,
+    TraceNow,
+    ResponseHandled
+
+}
+
+table Message {
+
+    message:MessageType;
+
+}
+
+
+
+root_type Message;

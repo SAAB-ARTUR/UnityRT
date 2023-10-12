@@ -7,12 +7,13 @@ using System.Linq;
 using System.Threading;
 using Google.FlatBuffers;
 using SAAB.Artur;
+// using SAAB.Artur.Control;
 using UnityEngine;
 
 public class apiv2 : MonoBehaviour
 {
 
-    bool processreadyForData = false;
+    bool processreadyForData = true;
 
     string command = "";
 
@@ -101,6 +102,16 @@ public class apiv2 : MonoBehaviour
     private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
     {
         UnityEngine.Debug.Log("Python: " + e.Data);
+        
+        byte[] bb = Base64Decode(e.Data);
+
+
+        // Test read
+        SAAB.Artur.Control.Message m = SAAB.Artur.Control.Message.GetRootAsMessage(new ByteBuffer(bb));
+        SAAB.Artur.Control.MessageType tt = m.MessageType;
+
+        UnityEngine.Debug.Log(tt.ToString());
+        
         processreadyForData = true;
     }
 
@@ -228,7 +239,6 @@ public class apiv2 : MonoBehaviour
         VectorOffset rayCollectionsOffset = fbb.CreateVectorOfTables(rayCollectionCol);
         
 
-        
         // World
         SAAB.Artur.World.StartWorld(fbb);
         SAAB.Artur.World.AddSender(fbb, s);
@@ -318,4 +328,12 @@ public class apiv2 : MonoBehaviour
         
         
     }
+
+    public static byte[] Base64Decode(string base64EncodedData)
+    {
+
+        return Convert.FromBase64String(base64EncodedData);
+    }
 }
+
+
