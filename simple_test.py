@@ -27,19 +27,19 @@ limits[:, 1] = 10
 
 def plot_senders(senders, world: schema.World):
     p = world.Sender().Position()
-    pos = np.array([p.X(), p.Y(), p.Z()])
+    pos = np.array([p.X(), -p.Z(), p.Y()])
     senders.set_data_3d([pos[0]], [pos[1]], [pos[2]])
 
 def plot_reciever(recievers, world: schema.World):
     p = world.Reciever().Position()
-    pos = np.array([p.X(), p.Y(), p.Z()])
+    pos = np.array([p.X(), -p.Z(), p.Y()])
     recievers.set_data_3d([pos[0]], [pos[1]], [pos[2]])
 
 def plot_rays(rays, world: schema.World):
 
     def ray_coord(coord: schema.Vec3):
         
-        return [coord.X(), coord.Y(), coord.Z()]
+        return [coord.X(), -coord.Z(), coord.Y()]
 
     def extractRay(ray: schema.Ray):
 
@@ -54,6 +54,7 @@ def plot_rays(rays, world: schema.World):
 
         if len(raydata) > 0:
             rays.set_segments(raydata)
+            rays.do_3d_projection()
             print(raydata[0][1])
 
 def fix_axis():
