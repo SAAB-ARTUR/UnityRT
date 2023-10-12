@@ -460,9 +460,12 @@ public class Main : MonoBehaviour
                 }
                 lines.Clear();
 
-                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                for (int iphi = 0; iphi < sourceParams.nphi; iphi++)
                 {                    
-                    PlotBellhop((int)sourceParams.nphi / 2, itheta);
+                    for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                    {
+                        PlotBellhop(iphi, itheta);
+                    }
                 }
             }
         }
