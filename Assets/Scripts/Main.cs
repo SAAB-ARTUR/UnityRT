@@ -82,8 +82,9 @@ public class Main : MonoBehaviour
         public float phi;
         public uint contributing;
         public float TL;
+        public uint target;
     }
-    private int perraydataByteSize = sizeof(uint) * 4 + sizeof(float) * 8;    
+    private int perraydataByteSize = sizeof(uint) * 5 + sizeof(float) * 8;
 
     private ComputeBuffer PerRayDataBuffer;
     private PerRayData[] rayData = null;
@@ -95,13 +96,37 @@ public class Main : MonoBehaviour
     private List<bool> isEigenRay = new List<bool>();
     private ComputeBuffer PerContributingRayDataBuffer;
     private PerRayData[] PerContributingRayData = null;
-    
+    private ComputeBuffer RayTargetsBuffer;
+    private List<uint> rayTargets = new List<uint>();
+
     private ComputeBuffer debugBuf;
     private float3[] debugger;
 
     private ComputeBuffer FreqDampBuffer;
     private float2[] freqsdamps;
-    
+
+    struct Target
+    {
+        public float xpos;
+        public float ypos;
+        public float zpos;
+        public float phi; // angle from source to target
+        
+        public Target(float xpos, float ypos, float zpos, float srcX, float srcZ)
+        {
+            this.xpos = xpos;
+            this.ypos = ypos;
+            this.zpos = zpos;
+
+            float xdiff = xpos - srcX;
+            float zdiff = zpos - srcZ;
+            this.phi = MathF.Atan2(zdiff, xdiff);
+        }
+    }
+
+    private ComputeBuffer targetBuffer;
+    private int nrOfTargets = 2;
+    private int oldNrOfTargets = 0;    
     
     private void ReleaseResources()
     {
@@ -148,8 +173,8 @@ public class Main : MonoBehaviour
         FreqDampBuffer = null;
         alphaData?.Release();
         alphaData = null;
-        debugBuf?.Release();
-        debugBuf = null;
+        //debugBuf?.Release();
+        //debugBuf = null;
     }
 
     void OnDestroy()
@@ -243,7 +268,13 @@ public class Main : MonoBehaviour
 
         computeShader.SetVector("srcDirection", srcSphere.transform.forward);        
         computeShader.SetVector("srcPosition", srcSphere.transform.position);
-        computeShader.SetVector("receiverPosition", targetSphere.transform.position);
+
+        targetBuffer = new ComputeBuffer(nrOfTargets, 4 * sizeof(float));
+        //oldNrOfTargets = nrOfTargets;
+        Target[] targets = new Target[2] {new Target(targetSphere.transform.position.x, targetSphere.transform.position.y, targetSphere.transform.position.z, srcSphere.transform.position.x, srcSphere.transform.position.z),
+                                                        new Target(120, -20, 50, srcSphere.transform.position.x, srcSphere.transform.position.z)};
+        computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
+        targetBuffer.SetData(targets);
     }
 
     private void InitRenderTexture(SourceParams sourceParams)
@@ -293,14 +324,12 @@ public class Main : MonoBehaviour
         srcRenderer.material.SetColor("_Color", Color.green);
 
         BuildWorld();        
-        rebuildRTAS = true;
-
-        oldTargetPostion = targetSphere.transform.position;
+        rebuildRTAS = true;        
 
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
 
-        alphaData = new ComputeBuffer(128, sizeof(float));
-        alphaData.SetData(alphas);
+        //alphaData = new ComputeBuffer(128, sizeof(float));
+        //alphaData.SetData(alphas);
     }
 
     int GetStartIndexBellhop(int idx, int idy)
@@ -505,11 +534,25 @@ public class Main : MonoBehaviour
             rebuildRTAS = true;            
         }
 
+        /*if (oldNrOfTargets != nrOfTargets)
+        {
+            targetBuffer = new ComputeBuffer(nrOfTargets, 4 * sizeof(float));
+            oldNrOfTargets = nrOfTargets;
+            Target[] targets = new Target[2] {new Target(targetSphere.transform.position.x, targetSphere.transform.position.y, targetSphere.transform.position.z, srcSphere.transform.position.x, srcSphere.transform.position.z),
+                                                        new Target(120, -32.01f, 50, srcSphere.transform.position.x, srcSphere.transform.position.z)};
+            computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
+            targetBuffer.SetData(targets);
+        }
+
         if (oldTargetPostion != targetSphere.transform.position) // flytta till world??
         {
             oldTargetPostion = targetSphere.transform.position;
+            computeShader.SetVector("receiverPosition", targetSphere.transform.position);
             rebuildRTAS = true;
-        }
+            Target[] targets = new Target[2] {new Target(targetSphere.transform.position.x, targetSphere.transform.position.y, targetSphere.transform.position.z, srcSphere.transform.position.x, srcSphere.transform.position.z),
+                                                        new Target(120, -32.01f, 50, srcSphere.transform.position.x, srcSphere.transform.position.z)};
+            targetBuffer.SetData(targets);
+        }*/
 
         if (Input.GetKey(KeyCode.C)){
             doRayTracing = true;            
@@ -552,7 +595,7 @@ public class Main : MonoBehaviour
             computeShader.SetTexture(0, "Result", _target);
 
             //int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
-            int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
+            int threadGroupsX = Mathf.FloorToInt(nrOfTargets);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
@@ -564,12 +607,10 @@ public class Main : MonoBehaviour
             PerRayDataBuffer.GetData(rayData);
             debugBuf.GetData(debugger);
 
-            Debug.Log(sourceCamera.transform.forward);
-
-            //for(int i = 0; i < debugger.Length; i++)
-            //{
-            //    Debug.Log("theta: " + debugger[i].x + " _Phi: " + debugger[i].y + " 1234: " + debugger[i].z);
-            //}
+            for (int i = 0; i < debugger.Length; i++)
+            {
+                Debug.Log("phi: " + debugger[i].x + " idx: " + debugger[i].y + " 1234: " + debugger[i].z);
+            }
 
             // keep contributing rays only            
             for (int i = 0; i < rayData.Length; i++)
@@ -599,8 +640,8 @@ public class Main : MonoBehaviour
                         angles.x = theta;
                         angles.y = phi;
                         contributingAngles.Add(angles);
-                        isEigenRay.Add(true);                        
-
+                        isEigenRay.Add(true);
+                        rayTargets.Add(contributingRays[i].target);
                         i++;
                     }
                     else
@@ -608,12 +649,13 @@ public class Main : MonoBehaviour
                         angles.x = contributingRays[i].theta;
                         angles.y = contributingRays[i].phi;
                         contributingAngles.Add(angles);
-                        isEigenRay.Add(false);                        
+                        isEigenRay.Add(false);
+                        rayTargets.Add(contributingRays[i].target);
                     }
                 }
             }            
 
-            if (contributingAngles.Count > 0)
+            /*if (contributingAngles.Count > 0)
             {
                 // trace the contributing rays
                 PerContributingRayData = new PerRayData[contributingAngles.Count];
@@ -629,6 +671,10 @@ public class Main : MonoBehaviour
 
                 computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
 
+                RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
+                RayTargetsBuffer.SetData(rayTargets.ToArray());
+                computeShader.SetBuffer(1, "rayTargets", RayTargetsBuffer);
+
                 freqsdamps = new float2[1];
                 freqsdamps[0].x = 150000;
                 freqsdamps[0].y = 0.015f / 8.6858896f;
@@ -637,6 +683,8 @@ public class Main : MonoBehaviour
                 FreqDampBuffer.SetData(freqsdamps);
                 computeShader.SetBuffer(1, "FreqsAndDampData", FreqDampBuffer);
                 computeShader.SetInt("freqsdamps", freqsdamps.Length);
+
+                computeShader.SetBuffer(1, "targetBuffer", targetBuffer);
 
                 threadGroupsX = Mathf.FloorToInt(1);
                 threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
@@ -658,7 +706,7 @@ public class Main : MonoBehaviour
                                     PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
                     Debug.Log(data);
                 }
-            }
+            }*/
 
             DateTime time2 = DateTime.Now;
 
@@ -688,7 +736,8 @@ public class Main : MonoBehaviour
         }
         contributingRays.Clear();
         contributingAngles.Clear();
-        isEigenRay.Clear();        
+        isEigenRay.Clear();
+        rayTargets.Clear();
     }
 
     void BuildRTAS()

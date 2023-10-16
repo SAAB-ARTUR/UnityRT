@@ -32,25 +32,27 @@ float2 CreateCylindricalRay(uint3 id)
 
     // a set of rays are created based on the unit ray [1 0 0] (x-axis) and are then rotated according to the source's view direction
     float theta_rad = theta * PI / 180; //convert to radians
-    float phi_rad = phi * PI / 180;
+    //float phi_rad = phi * PI / 180;
 
     float dtheta = theta_rad / (ntheta + 1); // resolution in theta
-    float dphi = phi_rad / (nphi + 1); // resolution in phi
+    //float dphi = phi_rad / (nphi + 1); // resolution in phi
 
     float theta = theta_rad / 2 - (id.y + 1) * dtheta;
-    float phi = phi_rad / 2 - (id.x + 1) * dphi;
+    //float phi = phi_rad / 2 - (id.x + 1) * dphi;
 
     // angles for srcSphere's forward vector
     float origin_theta = -asin(srcY);
-    float origin_phi = atan2(srcZ, srcX);    
+    //float origin_phi = atan2(srcZ, srcX);    
 
-    if (srcZ == 0 && srcX == 0) {
+    /*if (srcZ == 0 && srcX == 0) {
         origin_phi = 0;
-    }
+    }*/
 
     // add source's view angle to the ray
     theta += origin_theta;
-    phi += origin_phi;
+    //phi += origin_phi;
+
+    float phi = targetBuffer[id.x].phi; // angle towards target id.x
 
     return float2(theta, phi);
 }

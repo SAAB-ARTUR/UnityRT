@@ -78,7 +78,10 @@ void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float
     float tau0;
     float len0;
 
-    float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));
+    //float3 receiverPosition = float3(targetBuffer[rayTargets[id.x]].xpos, targetBuffer[rayTargets[id.x]].ypos, targetBuffer[rayTargets[id.x]].zpos);
+
+    //float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));
+    float original_distance = sqrt(pow(xr.x, 2) + pow(xr.y, 2));
     float current_distance = original_distance;
     float previous_distance = original_distance;
 
@@ -184,6 +187,7 @@ void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float
     prd.qi = qi;
     prd.theta = theta;
     prd.phi = rayPhi;
+    prd.target = 0; // not important anymore
 
     if (beta < 1) {
         prd.contributing = 1; // this should always be the case for rays traced in this function
@@ -203,7 +207,6 @@ void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float
     float cr = ssp(xr.y, soundSpeedProfile, 0).c;
     float cwater = ssp(depth, soundSpeedProfile, 0).c;
 
-    // arrays    
     float Amp;
     float Phase;
 

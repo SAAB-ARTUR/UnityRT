@@ -17,7 +17,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     // Initial conditions    
     float c = initialSsp.c;
     float2 x = xs;
-    float2 Tray = { cos(theta) / c, -sin(theta) / c }; //ändra tillbaks till inget - här???
+    float2 Tray = { cos(theta) / c, -sin(theta) / c };
     float p = 1;
     float q = 0;
     float tau = 0;
@@ -32,9 +32,15 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
 
     float2 x0;
     float tau0;
-    float len0;    
+    float len0;
 
-    float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));    
+    //float3 receiverPosition = float3(targetBuffer[id.x].xpos, targetBuffer[id.x].ypos, targetBuffer[id.x].zpos);
+
+    //float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));
+    float original_distance = sqrt(pow(xr.x - xs.x, 2) + pow(xr.y - xs.y, 2));
+
+    
+
     float current_distance = original_distance;
     float previous_distance = original_distance;
     float3 x0_cart;
@@ -104,6 +110,8 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         istep++;
     }
 
+    debugBuf[id.y * nphi + id.x] = float3(x.x, xr.x, nbot);
+
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _BELLHOPSIZE; i++) { 
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);        
@@ -158,9 +166,10 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     prd.theta = theta;
     prd.phi = phi;
     prd.TL = 0;
+    prd.target = id.x;
 
     if (beta < 1) {// Detta är inte bra löst eftersom det utgår ifrån att sändaren tittar direkt på mottagaren
-        // calculate angle between receiver, source and end of ray
+        /*// calculate angle between receiver, source and end of ray
         float origin_phi = atan2(srcDirection.z, srcDirection.x); // calculate angle that source is viewing at
         // rotate the receiver around the y-axis to have the z-ccordinate be 0
         float srcXnorm = receiverPosition.x * cos(-origin_phi) - receiverPosition.z * sin(-origin_phi);
@@ -178,7 +187,8 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         }
         else {
             prd.contributing = 0;
-        }        
+        } */
+        prd.contributing = 1;
     }
     else {
         prd.contributing = 0;
