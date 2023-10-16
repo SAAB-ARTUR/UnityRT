@@ -55,7 +55,7 @@ def plot_rays(rays, world: schema.World):
         if len(raydata) > 0:
             rays.set_segments(raydata)
             rays.do_3d_projection()
-            print(raydata[0][1])
+            #print(raydata[0][1])
 
 def fix_axis():
 
@@ -95,6 +95,28 @@ def response_handled_message() -> bytes:
 
     return bytes(binary_message)
 
+def trace_message():
+
+    import Assets.Scripts.api.ControlSchema_generated as control_schema
+
+    builder = flatbuffers.Builder(1024)
+
+    control_schema.TraceNowStart(builder)
+    msg = control_schema.TraceNowEnd(builder)
+
+    control_schema.MessageStart(builder)
+    control_schema.MessageAddMessageType(builder, control_schema.MessageType().TraceNow)
+    control_schema.MessageAddMessage(builder, msg)
+    message = control_schema.MessageEnd(builder)
+
+    builder.Finish(message)
+
+    binary_message: bytearray
+    binary_message = builder.Output()
+    assert isinstance(binary_message, bytearray)
+
+    return bytes(binary_message)
+
 """
 buf = open("ResponseHandled.bin", "rb").read()
 import Assets.Scripts.api.ControlSchema_generated as control_schema
@@ -112,10 +134,16 @@ open("ResponseHandled.bin", "wb").write(msg)
 """
 
 
+def send(message: bytearray):
+
+    import base64
+    sys.stdout.write(base64.b64encode(message).decode("ascii") + "\n")
+    sys.stdout.flush()
+
 while True:
     
     
-    
+   
 
     #blength = int.from_bytes(sys.stdin.buffer.read())
     blength = int.from_bytes(os.read(sys.stdin.fileno(), 4), sys.byteorder, signed = True)
@@ -128,6 +156,7 @@ while True:
 
     #print("1" + str(buf))
     # print(buf2)
+
     world = schema.World.GetRootAs(buf)
     plot_senders(senders, world)
     plot_reciever(recievers, world)
@@ -140,11 +169,15 @@ while True:
     #sys.stdin.buffer.flush()
     # sys.stdin.flush()
     
-    import base64
 
+    
+    send(trace_message())
+    send(response_handled_message())
+    
     #os.write(sys.stdout.fileno(), response_handled_message()).
-    sys.stdout.write(base64.b64encode(response_handled_message()).decode("ascii") + "\n")
-    sys.stdout.flush()
+    
+
+
     #sys.stdout.buffer.write(response_handled_message())
     #sys.stdout.buffer.flush()
     #sys.stdout.flush()

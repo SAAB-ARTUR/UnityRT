@@ -29,7 +29,7 @@ public class Main : MonoBehaviour
 
     //private RayTracingVisualization sourceCameraScript = null;    
 
-    private bool doRayTracing = false;
+    public bool doRayTracing = false;
     private bool lockRayTracing = false;
     private bool errorFree = true;
 
@@ -281,12 +281,12 @@ public class Main : MonoBehaviour
         {
             for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
             {
-                PlotBellhop(iphi, itheta);
+                PlotBellhop(iphi, itheta, rayPositions);
             }
         }
     }
 
-    List<Vector3> BellhopLine(int idx, int idy) {
+    List<Vector3> BellhopLine(int idx, int idy, float3[] bds) {
 
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
@@ -328,7 +328,7 @@ public class Main : MonoBehaviour
 
     }
 
-    void PlotBellhop(int idx, int idy)
+    void PlotBellhop(int idx, int idy, float3[] bds)
     {
         // det kan eventuellt vara så att alla errors angående "invalid aabb" kan ha med att linjer ritas mellan alla punkter för en ray och vissa
         // punkter ligger väldigt nära varandra, kan vara värt att undersöka att ta bort punkter som ligger för nära föregående och se om det löser
@@ -346,7 +346,7 @@ public class Main : MonoBehaviour
             return;
         }
 
-        List<Vector3> positions = BellhopLine(idx, idy);   
+        List<Vector3> positions = BellhopLine(idx, idy, bds);   
 
         line = new GameObject("Line").AddComponent<LineRenderer>();
         line.startWidth = 0.03f;
@@ -616,10 +616,10 @@ public class Main : MonoBehaviour
         }
         else
         {
-            doRayTracing = false;
+            //doRayTracing = false;
             lockRayTracing = false;
-        }        
-        
+        }
+
         //
         // CHECK FOR UPDATES OVER //
         //
@@ -639,7 +639,7 @@ public class Main : MonoBehaviour
             {
                 BuildRTAS();
                 rebuildRTAS = false;
-            }            
+            }
 
             SetShaderParameters();            
             
@@ -661,6 +661,28 @@ public class Main : MonoBehaviour
                 {
                     contributingRays.Add(rayData[i]);
                 }                
+            }
+
+
+            // Communicate the rays with the api
+            if (api.enabled)
+            {
+
+                World world = worldManager.GetComponent<World>();
+                // Create a ray collection
+                List<List<Vector3>> rays = new List<List<Vector3>>();
+
+                for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++){
+                    for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                    {
+
+                        rays.Add(BellhopLine(iphi, itheta, rayPositions));
+
+                    }
+                }
+
+                api.Rays(rays);
+                Debug.Log(rays[0][0].ToString());
             }
 
             // check if a pair of contributing rays can be combined into an eigenray
@@ -691,6 +713,54 @@ public class Main : MonoBehaviour
         contributingAngles.Clear();
         isEigenRay.Clear();
         rayTargets.Clear();
+
+    }
+
+
+    // For calls from the API
+    public void TraceNow() {
+
+
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        Debug.Log("HEJ moltas");
+
+
+        CreateResources();
+        
+
+        SetShaderParameters();
+
+        World world = worldManager.GetComponent<World>();
+
+        int threadGroupsX = Mathf.FloorToInt(world.GetNrOfTargets());
+        int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
+
+
+        
+        computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+        Debug.Log("Dispatching done");
+
+        RayPositionsBuffer.GetData(rayPositions);
+
+        // Create a ray collection
+        List<List<Vector3>> rays = new List<List<Vector3>>();
+
+        // API should really be enabled if trace has been called. Just to be certain. 
+        if (api.enabled) {
+
+            for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++){
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                {
+
+                    rays.Add(BellhopLine(iphi, itheta, rayPositions));
+
+                }
+            }
+
+            api.Rays(rays);
+        }
+        
+        
     }
 
     void BuildRTAS()

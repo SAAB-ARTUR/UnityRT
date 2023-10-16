@@ -5,8 +5,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Xml.Serialization;
 using Google.FlatBuffers;
 using SAAB.Artur;
+
 // using SAAB.Artur.Control;
 using UnityEngine;
 
@@ -24,7 +26,9 @@ public class apiv2 : MonoBehaviour
     Process process = null;
     Thread thread1 = null;
 
-    List<List<Vector3>> rays = null;
+    List<List<Vector3>> rays = new List<List<Vector3>>();
+
+    Queue<SAAB.Artur.Control.Message> messageQueue = new Queue<SAAB.Artur.Control.Message>();
 
     bool run = false;
 
@@ -103,16 +107,43 @@ public class apiv2 : MonoBehaviour
     {
         UnityEngine.Debug.Log("Python: " + e.Data);
         
+
+
         byte[] bb = Base64Decode(e.Data);
 
 
         // Test read
         SAAB.Artur.Control.Message m = SAAB.Artur.Control.Message.GetRootAsMessage(new ByteBuffer(bb));
-        SAAB.Artur.Control.MessageType tt = m.MessageType;
 
-        UnityEngine.Debug.Log(tt.ToString());
+        messageQueue.Enqueue(m);
+
+        UnityEngine.Debug.Log("Queue length: "  + messageQueue.Count);
+
+
         
-        processreadyForData = true;
+    }
+
+    void Control(SAAB.Artur.Control.ControlMessage m) { 
+        // TODO 
+    }
+
+    void ChangeSetup(SAAB.Artur.Control.SetupMessage m) { 
+        
+        // TODO
+
+    }
+
+    void Trace() {
+
+
+        UnityEngine.Debug.Log("TRACING222");
+        UnityEngine.Debug.Log(rays.Count.ToString());
+        main.TraceNow();
+
+        //main.doRayTracing = true;
+
+        UnityEngine.Debug.Log(rays.Count.ToString());
+
     }
 
     ProcessStartInfo RunExternal()
@@ -142,39 +173,48 @@ public class apiv2 : MonoBehaviour
 
         msg = CreateOutputMessage();
 
-        ByteBuffer bb = new ByteBuffer(msg);
+    }
 
-        // Test loading of the ray collection
-        SAAB.Artur.World w = SAAB.Artur.World.GetRootAsWorld(bb);
 
-        try
-        {
+    private void Update()
+    {
 
-            Vec3? v = w.RayCollections(0)?.Rays(0)?.XCartesian(1);
+        // Work on the queue
 
-            if (v != null)
+        if (messageQueue.Count > 0) {
+
+            SAAB.Artur.Control.Message m = messageQueue.Dequeue();
+            UnityEngine.Debug.Log("Queue length " + messageQueue.Count);
+
+            SAAB.Artur.Control.MessageType tt = m.MessageType;
+            UnityEngine.Debug.Log(tt.ToString());
+
+            switch (tt)
             {
-                UnityEngine.Debug.Log(v?.X);
+                case SAAB.Artur.Control.MessageType.ResponseHandled:
+                    processreadyForData = true;
+                    break;
 
-                UnityEngine.Debug.Log(v?.Y);
+                case SAAB.Artur.Control.MessageType.ControlMessage:
+                    Control(m.Message_AsControlMessage());
+                    break;
 
-                UnityEngine.Debug.Log(v?.Z);
+                case SAAB.Artur.Control.MessageType.TraceNow:
+                    UnityEngine.Debug.Log("TRACING");
+                    Trace();
+                    break;
+                case SAAB.Artur.Control.MessageType.SetupMessage:
+                    ChangeSetup(m.Message_AsSetupMessage());
+                    break;
+                case SAAB.Artur.Control.MessageType.NONE: break;
+
             }
-
-
-        }
-        catch (Exception ex)
-        {
-
-
         }
 
-
-
+        
 
 
     }
-
 
     private void OnDisable()
     {
