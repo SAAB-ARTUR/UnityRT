@@ -125,7 +125,7 @@ public class Main : MonoBehaviour
     }
 
     private ComputeBuffer targetBuffer;
-    private int nrOfTargets = 2;
+    private int nrOfTargets = 1;
     private int oldNrOfTargets = 0;    
     
     private void ReleaseResources()
@@ -271,7 +271,7 @@ public class Main : MonoBehaviour
 
         targetBuffer = new ComputeBuffer(nrOfTargets, 4 * sizeof(float));
         //oldNrOfTargets = nrOfTargets;
-        Target[] targets = new Target[2] {new Target(targetSphere.transform.position.x, targetSphere.transform.position.y, targetSphere.transform.position.z, srcSphere.transform.position.x, srcSphere.transform.position.z),
+        Target[] targets = new Target[1] {/*new Target(targetSphere.transform.position.x, targetSphere.transform.position.y, targetSphere.transform.position.z, srcSphere.transform.position.x, srcSphere.transform.position.z),*/
                                                         new Target(120, -20, 50, srcSphere.transform.position.x, srcSphere.transform.position.z)};
         computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
         targetBuffer.SetData(targets);
@@ -619,7 +619,9 @@ public class Main : MonoBehaviour
                 {
                     contributingRays.Add(rayData[i]);
                 }                
-            }           
+            }
+
+            Debug.Log(contributingRays.Count);
 
             // compute eigenrays
             for (int i = 0; i < contributingRays.Count - 1; i++)
@@ -655,7 +657,7 @@ public class Main : MonoBehaviour
                 }
             }            
 
-            /*if (contributingAngles.Count > 0)
+            if (contributingAngles.Count > 0)
             {
                 // trace the contributing rays
                 PerContributingRayData = new PerRayData[contributingAngles.Count];
@@ -706,7 +708,7 @@ public class Main : MonoBehaviour
                                     PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
                     Debug.Log(data);
                 }
-            }*/
+            }
 
             DateTime time2 = DateTime.Now;
 

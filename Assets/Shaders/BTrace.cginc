@@ -37,9 +37,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     //float3 receiverPosition = float3(targetBuffer[id.x].xpos, targetBuffer[id.x].ypos, targetBuffer[id.x].zpos);
 
     //float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));
-    float original_distance = sqrt(pow(xr.x - xs.x, 2) + pow(xr.y - xs.y, 2));
-
-    
+    float original_distance = sqrt(pow(xr.x - xs.x, 2) + pow(xr.y - xs.y, 2));    
 
     float current_distance = original_distance;
     float previous_distance = original_distance;
