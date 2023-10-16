@@ -203,9 +203,7 @@ void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float
     float cr = ssp(xr.y, soundSpeedProfile, 0).c;
     float cwater = ssp(depth, soundSpeedProfile, 0).c;
 
-    // arrays
-    //float Amp[freqsdamps];
-    //float Phase[freqsdamps];
+    // arrays    
     float Amp;
     float Phase;
 

@@ -420,9 +420,9 @@ public class Main : MonoBehaviour
             }
 
             // update values in shader
-            computeShader.SetInt("theta", sourceParams.theta);
+            computeShader.SetFloat("theta", sourceParams.theta);
             computeShader.SetInt("ntheta", sourceParams.ntheta);
-            computeShader.SetInt("phi", sourceParams.phi);
+            computeShader.SetFloat("phi", sourceParams.phi);
             computeShader.SetInt("nphi", sourceParams.nphi);
 
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
@@ -549,10 +549,10 @@ public class Main : MonoBehaviour
 
             InitRenderTexture(sourceParams);
             
-            computeShader.SetTexture(0, "Result", _target);            
+            computeShader.SetTexture(0, "Result", _target);
 
             //int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
-            int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi);            
+            int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
@@ -566,10 +566,10 @@ public class Main : MonoBehaviour
 
             Debug.Log(sourceCamera.transform.forward);
 
-            for(int i = 0; i < debugger.Length; i++)
-            {
-                Debug.Log("theta: " + debugger[i].x + " _Phi: " + debugger[i].y + " 1234: " + debugger[i].z);
-            }
+            //for(int i = 0; i < debugger.Length; i++)
+            //{
+            //    Debug.Log("theta: " + debugger[i].x + " _Phi: " + debugger[i].y + " 1234: " + debugger[i].z);
+            //}
 
             // keep contributing rays only            
             for (int i = 0; i < rayData.Length; i++)
@@ -577,24 +577,11 @@ public class Main : MonoBehaviour
                 if (rayData[i].contributing == 1)
                 {
                     contributingRays.Add(rayData[i]);
-                    /*Debug.Log("Theta: " + rayData[i].theta);
-                    Debug.Log("Phi: " + rayData[i].phi);                    
-                    Debug.Log("Beta: " + rayData[i].beta);
-                    Debug.Log("ncaust: " + rayData[i].ncaust);
-                    Debug.Log("ntop: " + rayData[i].ntop);
-                    Debug.Log("nbot: " + rayData[i].nbot);
-                    Debug.Log("delay: " + rayData[i].delay);
-                    Debug.Log("curve: " + rayData[i].curve);
-                    Debug.Log("qi: " + rayData[i].qi);
-                    Debug.Log("xn: " + rayData[i].xn);
-                    Debug.Log("::::::::::::::::::::::::::::::::::::::::::::::");*/
                 }                
-            }
-
-            //Debug.Log("-------------------------------");
+            }           
 
             // compute eigenrays
-            /*for (int i = 0; i < contributingRays.Count - 1; i++)
+            for (int i = 0; i < contributingRays.Count - 1; i++)
             {                
                 // find pairs of rays
                 if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i+1].phi)
@@ -669,9 +656,9 @@ public class Main : MonoBehaviour
                     string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
                                     PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
                                     PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
-                    Debug.Log(data); // blir inte jättesnyggt, men det är samma resultat som matlab iallafall
+                    Debug.Log(data);
                 }
-            }*/
+            }
 
             DateTime time2 = DateTime.Now;
 

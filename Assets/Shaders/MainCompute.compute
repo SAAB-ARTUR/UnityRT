@@ -25,7 +25,7 @@ struct PerRayData {
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> RayPositionsBuffer;
 //StructuredBuffer<float> thetaData;
-RWStructuredBuffer<float3> debugBuf;
+//RWStructuredBuffer<float3> debugBuf;
 RWStructuredBuffer<PerRayData> ContributingRayData;
 StructuredBuffer<float2> ContributingAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
@@ -43,9 +43,9 @@ uint _MAXSURFACEHITS;
 static const float PI = 3.14159265f;
 
 float depth;
-uint theta;
+float theta;
 uint ntheta;
-uint phi;
+float phi;
 uint nphi;
 float3 srcDirection;
 float3 srcPosition;
@@ -74,7 +74,6 @@ struct Ray
     float3 direction;
     float3 energy;
     uint nrOfInteractions;
-    float phi;
 };
 
 #include "BTrace.cginc"
@@ -105,30 +104,20 @@ RayHit CreateRayHit()
 //- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
 #include "HitHandler.cginc"
 
-[numthreads(1,8,1)]
+[numthreads(8,8,1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
     // Get the dimensions of the RenderTexture
     uint width, height;
-    Result.GetDimensions(width, height);
+    Result.GetDimensions(width, height);   
 
-    Ray ray = CreateThetaPhiRay(id);
-
-    float2 angles = CreateRay2(id);
+    float2 angles = CreateCylindricalRay(id);
 
     SSP soundSpeedProfile;
-    soundSpeedProfile.type = 0;
-
-    //float3 raydir = normalize(ray.direction);
-    float3 raydir = ray.direction;
-
-    //float theta = -asin(raydir.y);
-    //float alpha = alphaData[id.y];
-    //float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
+    soundSpeedProfile.type = 0;   
+    
     float theta = angles.x;
-    float _Phi = angles.y;
-
-    //debugBuf[id.y * width + id.x] = float3(theta, atan2(0,0), 1234);
+    float phi = angles.y;   
 
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
     float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
@@ -139,7 +128,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     PerRayData prd;
     
     uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
-    btrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, _Phi, ray.phi, prd, id);    
+    btrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);    
     
     PerRayDataBuffer[id.y + id.x * height] = prd;
 }
@@ -150,13 +139,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 void TraceContributingRays(uint3 id : SV_DispatchThreadID)
 {
     // id is 1D for now, id.y is the only thing needed
-
-    Ray ray = CreateThetaPhiRay(id);
-
     SSP soundSpeedProfile;
-    soundSpeedProfile.type = 0;
-
-    float3 raydir = normalize(ray.direction);
+    soundSpeedProfile.type = 0;    
 
     float theta = ContributingAnglesData[id.y].x;
     float phi = ContributingAnglesData[id.y].y;    

@@ -10,7 +10,7 @@ float3 toCartesian(float phi, float2 rz)
 }
 
 void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 xr, float depth, float deltas, uint maxtop,
-            uint maxbot, uint offset, float phi, float rayPhi, inout PerRayData prd, uint3 id)
+            uint maxbot, uint offset, float phi, inout PerRayData prd, uint3 id)
 {    
     SSPOutput initialSsp = ssp(xs.y, soundSpeedProfile, 0);
     
@@ -156,7 +156,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     prd.xn = xn;
     prd.qi = qi;
     prd.theta = theta;
-    prd.phi = rayPhi;
+    prd.phi = phi;
     prd.TL = 0;
 
     if (beta < 1) {// Detta är inte bra löst eftersom det utgår ifrån att sändaren tittar direkt på mottagaren
