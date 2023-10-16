@@ -33,7 +33,7 @@ public class Main : MonoBehaviour
     private RayTracingVisualization sourceCameraScript = null;
     private RenderTexture _target;
 
-    private bool doRayTracing = false;
+    public bool doRayTracing = false;
     private bool lockRayTracing = false;    
 
     private LineRenderer line = null;
@@ -287,7 +287,7 @@ public class Main : MonoBehaviour
         return (idy * sourceParams.nphi + idx) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
     }
 
-    List<Vector3> BellhopLine(int idx, int idy) {
+    List<Vector3> BellhopLine(int idx, int idy, float3[] bds) {
 
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
@@ -312,9 +312,9 @@ public class Main : MonoBehaviour
 
     }
 
-    void PlotBellhop(int idx, int idy)
+    void PlotBellhop(int idx, int idy, float3[] bds)
     {
-        List<Vector3> positions = BellhopLine(idx, idy);   
+        List<Vector3> positions = BellhopLine(idx, idy, bds);   
 
         line = new GameObject("Line").AddComponent<LineRenderer>();
         line.startWidth = 0.03f;
@@ -329,8 +329,9 @@ public class Main : MonoBehaviour
     }
 
     // Update is called once per frame
+
     void Update()
-    {        
+    {
         //
         // CHECK FOR UPDATES
         //
@@ -338,7 +339,7 @@ public class Main : MonoBehaviour
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
         if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams))
-            {
+        {
             //Debug.Log("Reeinit raybuffer");
             // reinit rds array
             //rds = new RayData[sourceParams.ntheta * sourceParams.nphi * sourceParams.MAXINTERACTIONS];
@@ -369,17 +370,17 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
             computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
         }
-        if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
-        {            
+        if (bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
+        {
             oldMaxSurfaceHits = bellhopParams.MAXNRSURFACEHITS;
-            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);            
+            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);
         }
         if (bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
         {
             oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
             computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);
-        }        
-        if(bellhopParams.BELLHOPITERATIONS != oldBellhopIterations)
+        }
+        if (bellhopParams.BELLHOPITERATIONS != oldBellhopIterations)
         {
             oldBellhopIterations = bellhopParams.BELLHOPITERATIONS;
             computeShader.SetInt("_BELLHOPITERATIONS", bellhopParams.BELLHOPITERATIONS);
@@ -390,25 +391,25 @@ public class Main : MonoBehaviour
 
         if (_SSPFileReader.SSPFileHasChanged())
         {
-            _SSPFileReader.AckSSPFileHasChanged();            
+            _SSPFileReader.AckSSPFileHasChanged();
             SSP = _SSPFileReader.GetSSPData();
 
             if (_SSPBuffer != null)
             {
                 _SSPBuffer.Release();
             }
-            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float)*4); // SSP_data struct consists of 4 floats
+            _SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float) * 4); // SSP_data struct consists of 4 floats
             _SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
             SetComputeBuffer("_SSPBuffer", _SSPBuffer);
             world.SetNrOfWaterplanes(SSP.Count - 2);
             world.SetWaterDepth(SSP.Last().depth);
             _SSPFileReader.UpdateDepthSlider();
-        }        
-        
+        }
+
         if (world.StateChanged())
         {
             BuildWorld();
-            rebuildRTAS = true;            
+            rebuildRTAS = true;
         }
 
         if (oldTargetPostion != targetSphere.transform.position) // flytta till world??
@@ -417,15 +418,16 @@ public class Main : MonoBehaviour
             rebuildRTAS = true;
         }
 
-        if (Input.GetKey(KeyCode.C)){
-            doRayTracing = true;            
+        if (Input.GetKey(KeyCode.C))
+        {
+            doRayTracing = true;
         }
         else
         {
-            doRayTracing = false;
+            //doRayTracing = false;
             lockRayTracing = false;
-        }        
-        
+        }
+
         //
         // CHECK FOR UPDATES OVER //
         //
@@ -447,34 +449,37 @@ public class Main : MonoBehaviour
             {
                 BuildRTAS();
                 rebuildRTAS = false;
-            }            
+            }
 
             SetShaderParameters();
 
             InitRenderTexture(sourceParams);
-            
+
             computeShader.SetTexture(0, "Result", _target);
 
             // loopa här ????
 
             int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
-            int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
+            int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
 
-            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);     
+            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
             xrayBuf.GetData(bds);
 
+            //doRayTracing = false;
 
             // Communicate the rays with the api
-            if (api.enabled) { 
-                
+            if (api.enabled)
+            {
+
                 // Create a ray collection
                 List<List<Vector3>> rays = new List<List<Vector3>>();
 
 
-                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) { 
-                    
-                    rays.Add(BellhopLine((int)sourceParams.nphi / 2, itheta));
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                {
+
+                    rays.Add(BellhopLine((int)sourceParams.nphi / 2, itheta, bds));
 
                 }
 
@@ -485,11 +490,12 @@ public class Main : MonoBehaviour
 
             if (sourceParams.visualizeRays)
             {
-                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++) {
-                    PlotBellhop((int)sourceParams.nphi/2, itheta);
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                {
+                    PlotBellhop((int)sourceParams.nphi / 2, itheta, bds);
                 }
 
-                
+
 
                 //_rayPointsBuffer.GetData(rds);
 
@@ -575,6 +581,51 @@ public class Main : MonoBehaviour
             }
             lines.Clear();
         }
+
+    }
+
+
+    // For calls from the API
+    public void TraceNow() {
+
+
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        Debug.Log("HEJ moltas");
+
+
+        CreateResources();
+        
+
+        SetShaderParameters();
+        
+        InitRenderTexture(sourceParams);
+        computeShader.SetTexture(0, "Result", _target);
+
+        int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
+        int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
+
+
+        
+        computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+        Debug.Log("Dispatching done");
+
+        xrayBuf.GetData(bds);
+
+        // Create a ray collection
+        List<List<Vector3>> rays = new List<List<Vector3>>();
+
+        // API should really be enabled if trace has been called. Just to be certain. 
+        if (api.enabled) {
+            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+            {
+
+                rays.Add(BellhopLine((int)sourceParams.nphi / 2, itheta, bds));
+
+            }
+
+            api.Rays(rays);
+        }
+        
         
     }
 
