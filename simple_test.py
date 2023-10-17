@@ -49,10 +49,13 @@ def plot_rays(rays, world: schema.World):
     if world.RayCollectionsLength() > 0:
         num_rays = world.RayCollections(0).RaysLength()
         raydata = [
-         extractRay(world.RayCollections(0).Rays(ii)) for ii in range(num_rays)]
+         extractRay(world.RayCollections(0).Rays(ii)) for ii in range(num_rays)
+        ]
         
+        raydata = [raydata[ii] for ii in range(len(raydata)) if len(raydata[ii]) > 0 ]
 
         if len(raydata) > 0:
+            
             rays.set_segments(raydata)
             rays.do_3d_projection()
             #print(raydata[0][1])
@@ -117,21 +120,71 @@ def trace_message():
 
     return bytes(binary_message)
 
+theta = 0
+def move_message():
+
+    import Assets.Scripts.api.ControlSchema_generated as control_schema
+
+    builder = flatbuffers.Builder(1024)
+
+    # control_schema.ControlMessageStart(builder)
+
+    global theta
+    current_pos = [10 * np.cos(theta), 10 * np.sin(theta), -25 + 10 * np.sin(theta)]
+    
+    theta += 0.1 
+    position = control_schema.CreateVec3(builder, current_pos[0], current_pos[1], current_pos[2])
+    
+    control_schema.SenderStart(builder)
+    control_schema.SenderAddPosition(builder, position)
+    msg = control_schema.SenderEnd(builder)
+
+    control_schema.ControlMessageStart(builder)
+    control_schema.ControlMessageAddSender(builder, msg)
+    msg = control_schema.ControlMessageEnd(builder)
+
+    control_schema.MessageStart(builder)
+    control_schema.MessageAddMessageType(builder, control_schema.MessageType().ControlMessage)
+    control_schema.MessageAddMessage(builder, msg)
+    message = control_schema.MessageEnd(builder)
+
+    builder.Finish(message)
+
+    binary_message: bytearray
+    binary_message = builder.Output()
+    assert isinstance(binary_message, bytearray)
+
+
+
+
+    return bytes(binary_message)
+
 """
-buf = open("ResponseHandled.bin", "rb").read()
+msg = move_message()
+open("MoveMessage.bin", "wb").write(msg)
+
+buf = open("MoveMessage.bin", "rb").read()
 import Assets.Scripts.api.ControlSchema_generated as control_schema
 message = control_schema.Message.GetRootAs(buf)
 
 import base64
 print(base64.b64encode(buf).decode("ascii"))
 
-print(message.MessageType() == control_schema.MessageType().ResponseHandled)
+# Read as a Control message
+control_msg = control_schema.ControlMessage()
+control_msg.Init(message.Message().Bytes, message.Message().Pos)
+
+print(control_msg.Sender().Position().X())
 
 
-exit()
 msg = response_handled_message()
 open("ResponseHandled.bin", "wb").write(msg)
+
+
+msg = move_message()
+open("MoveMessage.bin", "wb").write(msg)
 """
+
 
 
 def send(message: bytearray):
@@ -152,7 +205,11 @@ while True:
 
     # buf2 = open("SAVE_FILENAME.whatever", "rb").read()
 
+    # print(blength)
+
     buf = os.read(sys.stdin.fileno(), blength)
+
+    # print(buf)
 
     #print("1" + str(buf))
     # print(buf2)
@@ -160,7 +217,10 @@ while True:
     world = schema.World.GetRootAs(buf)
     plot_senders(senders, world)
     plot_reciever(recievers, world)
+
+    
     plot_rays(rays, world)
+
 
     fix_axis()
 
@@ -168,10 +228,10 @@ while True:
     plt.pause(0.001)
     #sys.stdin.buffer.flush()
     # sys.stdin.flush()
-    
-
-    
+    send(move_message())
     send(trace_message())
+    
+    
     send(response_handled_message())
     
     #os.write(sys.stdout.fileno(), response_handled_message()).

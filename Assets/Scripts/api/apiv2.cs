@@ -11,6 +11,7 @@ using SAAB.Artur;
 
 // using SAAB.Artur.Control;
 using UnityEngine;
+using UnityTemplateProjects;
 
 public class apiv2 : MonoBehaviour
 {
@@ -115,16 +116,54 @@ public class apiv2 : MonoBehaviour
         // Test read
         SAAB.Artur.Control.Message m = SAAB.Artur.Control.Message.GetRootAsMessage(new ByteBuffer(bb));
 
+        UnityEngine.Debug.Log("Trying to place in queue...");
+
         messageQueue.Enqueue(m);
 
+        UnityEngine.Debug.Log("Trying to place in queue... SUCCESS");
         UnityEngine.Debug.Log("Queue length: "  + messageQueue.Count);
 
 
         
     }
 
-    void Control(SAAB.Artur.Control.ControlMessage m) { 
-        // TODO 
+    void Control(SAAB.Artur.Control.ControlMessage m) {
+
+        UnityEngine.Debug.Log("Got control message");
+
+        SAAB.Artur.Control.Vec3? pr = m.Reciever?.Position;
+        UnityEngine.Debug.Log("Got control message2" + (m.Sender != null));
+        
+
+        if (m.Sender != null) {
+            UnityEngine.Debug.Log("Got control message2" + (m.Sender.Value.Position != null));
+            if (m.Sender.Value.Position != null)
+            {
+
+                SAAB.Artur.Control.Vec3 ps = m.Sender.Value.Position.Value;
+                UnityEngine.Debug.Log("Position x: " + ps.X);
+
+                main.sourceCamera.GetComponent<SimpleSourceController>().DirectJumpTo(new Vector3((float)ps.X, (float)ps.Z, (float)ps.Y));
+
+
+            }
+
+        }
+
+        SAAB.Artur.Control.SphericalDir? lookAt = m.Sender?.LookAt;
+        SAAB.Artur.Control.AngleSpan? angleSpan = m.Sender?.AngleSpan;
+
+
+        
+
+        //Quaternion.LookRotation();
+
+        SimpleSourceController c = main.sourceCamera.GetComponent<SimpleSourceController>();
+        
+        //c.DirectJumpTo(new Vector3(((float)ps?.X), ((float)ps?.Y), ((float)ps?.Z)));
+        //c.DirectLookAt();
+
+
     }
 
     void ChangeSetup(SAAB.Artur.Control.SetupMessage m) { 
@@ -168,18 +207,14 @@ public class apiv2 : MonoBehaviour
 
 
     // Update is called once per frame
-    private void FixedUpdate()
+    private void Update()
     {
 
         msg = CreateOutputMessage();
 
-    }
-
-
-    private void Update()
-    {
 
         // Work on the queue
+        UnityEngine.Debug.Log("Queue length " + messageQueue.Count);
 
         if (messageQueue.Count > 0) {
 

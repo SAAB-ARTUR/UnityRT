@@ -484,7 +484,7 @@ public class Main : MonoBehaviour
                 }
 
                 api.Rays(rays);
-                Debug.Log(rays[0][0].ToString());
+                // Debug.Log(rays[0][0].ToString());
             }
 
 
