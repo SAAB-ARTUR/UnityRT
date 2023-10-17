@@ -125,7 +125,7 @@ public class Main : MonoBehaviour
     }
 
     private ComputeBuffer targetBuffer;
-    private int nrOfTargets = 1;
+    private int nrOfTargets = 2;
     private int oldNrOfTargets = 0;    
     
     private void ReleaseResources()
@@ -271,7 +271,7 @@ public class Main : MonoBehaviour
 
         targetBuffer = new ComputeBuffer(nrOfTargets, 4 * sizeof(float));
         //oldNrOfTargets = nrOfTargets;
-        Target[] targets = new Target[1] {/*new Target(targetSphere.transform.position.x, targetSphere.transform.position.y, targetSphere.transform.position.z, srcSphere.transform.position.x, srcSphere.transform.position.z),*/
+        Target[] targets = new Target[2] {new Target(targetSphere.transform.position.x, targetSphere.transform.position.y, targetSphere.transform.position.z, srcSphere.transform.position.x, srcSphere.transform.position.z),
                                                         new Target(120, -20, 50, srcSphere.transform.position.x, srcSphere.transform.position.z)};
         computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
         targetBuffer.SetData(targets);
@@ -350,8 +350,9 @@ public class Main : MonoBehaviour
         // felet "object is too large or too far away from the origin" och det var någon som sa att man inte ska ha object mer än 5000 enheter från origo,
         // men våra rays rör sig i detta fall max 300 enheter bort så det känns jätteskumt det som händer
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        
-        int rayIdx = idy * sourceParams.nphi + idx;
+
+        //int rayIdx = idy * sourceParams.nphi + idx;
+        int rayIdx = idy + sourceParams.ntheta * idx;
 
         if (sourceParams.showContributingRaysOnly && rayData[rayIdx].contributing != 1)
         {
@@ -609,7 +610,7 @@ public class Main : MonoBehaviour
 
             for (int i = 0; i < debugger.Length; i++)
             {
-                Debug.Log("phi: " + debugger[i].x + " idx: " + debugger[i].y + " 1234: " + debugger[i].z);
+                Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }
 
             // keep contributing rays only            
@@ -622,6 +623,19 @@ public class Main : MonoBehaviour
             }
 
             Debug.Log(contributingRays.Count);
+            Debug.Log("-------------------------------------------------------");
+            for (int i = 0; i < contributingRays.Count; i++)
+            {
+                Debug.Log("Theta: " + contributingRays[i].theta);
+                Debug.Log("phi: " + contributingRays[i].phi);
+                Debug.Log("beta: " + contributingRays[i].beta);
+                Debug.Log("contributing: " + contributingRays[i].contributing);
+                Debug.Log("nbot: " + contributingRays[i].nbot);
+                Debug.Log("ntop: " + contributingRays[i].ntop);
+                Debug.Log("ncaust: " + contributingRays[i].ncaust);
+                Debug.Log("-------------------------------------------------------");
+            }
+
 
             // compute eigenrays
             for (int i = 0; i < contributingRays.Count - 1; i++)
@@ -657,7 +671,7 @@ public class Main : MonoBehaviour
                 }
             }            
 
-            if (contributingAngles.Count > 0)
+            /*if (contributingAngles.Count > 0)
             {
                 // trace the contributing rays
                 PerContributingRayData = new PerRayData[contributingAngles.Count];
@@ -708,7 +722,7 @@ public class Main : MonoBehaviour
                                     PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
                     Debug.Log(data);
                 }
-            }
+            }*/
 
             DateTime time2 = DateTime.Now;
 

@@ -108,7 +108,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         istep++;
     }
 
-    debugBuf[id.y * nphi + id.x] = float3(x.x, xr.x, nbot);
+//    debugBuf[id.y * nphi + id.x] = float3(x.x, xr.x, nbot);
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _BELLHOPSIZE; i++) { 

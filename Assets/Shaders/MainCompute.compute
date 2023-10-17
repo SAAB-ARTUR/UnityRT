@@ -136,6 +136,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
     float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
 
+    debugBuf[id.y + id.x * height] = float3(targetBuffer[id.x].xpos, targetBuffer[id.x].ypos, targetBuffer[id.x].zpos);
+
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };    
 
     PerRayData prd;
