@@ -7342,7 +7342,7 @@ MonoBehaviour:
   bellhop: {fileID: 2049076833}
   callbackCommand: {fileID: 215135128}
   target: {fileID: 2001379511}
-  targets: {fileID: 0}
+  targets: {fileID: 1266202795}
   maxNrOfSurfaceHits: {fileID: 430234515}
   maxNrOfBottomHits: {fileID: 1651382321}
 --- !u!1 &2099791814

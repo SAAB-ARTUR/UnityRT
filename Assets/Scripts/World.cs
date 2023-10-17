@@ -56,13 +56,6 @@ public class World : MonoBehaviour
             float xdiff = xpos - srcX;
             float zdiff = zpos - srcZ;
             this.phi = MathF.Atan2(zdiff, xdiff);
-
-            Debug.Log("xpos: " + xpos);
-            Debug.Log("ypos: " + ypos);
-            Debug.Log("zpos: " + zpos);
-            Debug.Log("xdiff: " + xdiff);
-            Debug.Log("zdiff: " + zdiff);
-            Debug.Log("phi: " + this.phi);
         }        
     }
 
@@ -279,25 +272,50 @@ public class World : MonoBehaviour
         waterDepth = depth;
     }
 
-    public void CreateTargets(List<int> targetCoords)
-    {
+    public bool CreateTargets(List<int> targetCoords)
+    {         
+        // try tp create the new targets
+        List<GameObject> tempTargets = new List<GameObject>();
+
+        // first target position denotes the 'main' target
+        if (targetCoords[0] <= range / 2 && targetCoords[0] >= -range / 2 && targetCoords[2] <= range / 2 && targetCoords[2] >= -range / 2 && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
+        {
+            target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
+        }
+        else
+        {            
+            return false; // target out of volume, abort changes and keep old targets
+        }
+
+        for(int i = 3; i < targetCoords.Count; i+=3)
+        {
+            if (targetCoords[i] <= range / 2 && targetCoords[i] >= -range / 2 && targetCoords[i+2] <= range / 2 && targetCoords[i+2] >= -range / 2 && targetCoords[i+1] <= 0 && targetCoords[i+1] >= waterDepth)
+            {
+                GameObject temp = Instantiate(target, new Vector3(targetCoords[i], targetCoords[i + 1], targetCoords[i + 2]), Quaternion.identity); // create a new target
+                tempTargets.Add(temp);
+            }
+            else
+            {                
+                return false; // target out of volume, abort changes and keep old targets
+            }            
+        }
+        // target creation successful
+
         foreach (GameObject t in targets) // destroy old targets
         {
             Destroy(t);
         }
         targets.Clear(); // clear the list and fill it with new targets
-        targetStructs.Clear();
 
-        // first target position denotes the 'main' target
-        target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
-
-        for(int i = 3; i < targetCoords.Count; i+=3)
+        foreach (GameObject t in tempTargets) // add the new targets to the target list
         {
-            GameObject temp = Instantiate(target, new Vector3(targetCoords[i], targetCoords[i + 1], targetCoords[i + 2]), Quaternion.identity); // create a new target
-            targets.Add(temp);
+            targets.Add(t);
         }
+
         nrOfTargets = 1 + targets.Count;
         targetChange = true;
+
+        return true; // target creation successful
     }
 
     public int GetNrOfTargets()

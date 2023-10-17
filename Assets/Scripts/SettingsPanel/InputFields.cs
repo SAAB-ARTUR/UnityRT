@@ -111,7 +111,7 @@ public class InputFields : MonoBehaviour
                         else
                         {
                             targets.text = oldTargets;
-                            Debug.Log("Incorrectly formatted target list");
+                            Debug.Log("Incorrectly formatted target list!");
                             return;
                         }
                     }
@@ -121,7 +121,7 @@ public class InputFields : MonoBehaviour
         catch(Exception e)
         {
             targets.text = oldTargets;
-            Debug.Log("Incorrectly formatted target list");
+            Debug.Log("Incorrectly formatted target list!");
             Debug.Log(e);
         }
 
@@ -129,15 +129,19 @@ public class InputFields : MonoBehaviour
         if (targetCoords.Count % 3 != 0 || targetCoords.Count <= 0)
         {
             targets.text = oldTargets;
-            Debug.Log("Incorrectly formatted target list");
+            Debug.Log("Incorrectly formatted target list!");
             return;
         }
 
         // create the targets from the coords
         World world = world_manager.GetComponent<World>();
-        world.CreateTargets(targetCoords);
-
-        targetCoords.Clear();
+        if (!world.CreateTargets(targetCoords))
+        {
+            targets.text = oldTargets;
+            Debug.Log("Incorrectly formatted target list, one or more targets are outside the volume boundaries!");
+            return;
+        }
+        
         oldTargets = targets.text;
     }
 
