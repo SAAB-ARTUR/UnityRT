@@ -25,13 +25,10 @@ struct PerRayData {
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> RayPositionsBuffer;
-//StructuredBuffer<float> thetaData;
 RWStructuredBuffer<float3> debugBuf;
 RWStructuredBuffer<PerRayData> ContributingRayData;
 StructuredBuffer<float2> ContributingAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
-
-
 
 struct Target {
     float xpos;
@@ -57,11 +54,8 @@ static const float PI = 3.14159265f;
 float depth;
 float theta;
 uint ntheta;
-float phi;
-uint nphi;
 float3 srcDirection;
 float3 srcPosition;
-//float3 receiverPosition;
 float dtheta;
 
 uint freqsdamps;
@@ -134,9 +128,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
     float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
-    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
-
-    debugBuf[id.y + id.x * height] = float3(targetBuffer[id.x].xpos, targetBuffer[id.x].ypos, targetBuffer[id.x].zpos);
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;    
 
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };    
 
@@ -159,9 +151,7 @@ void TraceContributingRays(uint3 id : SV_DispatchThreadID)
 
     float theta = ContributingAnglesData[id.y].x;
     float phi = ContributingAnglesData[id.y].y;    
-    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
-    /*float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
-    float zdiff = receiverPosition.z - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;*/
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };    
 
     float xdiff = targetBuffer[rayTargets[id.x]].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
     float zdiff = targetBuffer[rayTargets[id.x]].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;

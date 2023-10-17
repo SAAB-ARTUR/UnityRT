@@ -143,10 +143,4 @@ public class SSPFileReader : MonoBehaviour
     {
         return SSP;
     }
-
-    public void UpdateDepthSlider()
-    {
-        InputFields inputFields = settingsPanel.GetComponent<InputFields>();
-        inputFields.UpdateDepth();
-    }
 }

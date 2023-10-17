@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityTemplateProjects;
@@ -36,7 +38,46 @@ public class World : MonoBehaviour
 
     private Camera sourceSphere;
     private GameObject surface;
-    private GameObject bottom;        
+    private GameObject bottom;
+
+    public struct Target
+    {
+        public float xpos;
+        public float ypos;
+        public float zpos;
+        public float phi; // angle from source to target
+
+        public Target(float xpos, float ypos, float zpos, float srcX, float srcZ)
+        {
+            this.xpos = xpos;
+            this.ypos = ypos;
+            this.zpos = zpos;
+
+            float xdiff = xpos - srcX;
+            float zdiff = zpos - srcZ;
+            this.phi = MathF.Atan2(zdiff, xdiff);
+
+            Debug.Log("xpos: " + xpos);
+            Debug.Log("ypos: " + ypos);
+            Debug.Log("zpos: " + zpos);
+            Debug.Log("xdiff: " + xdiff);
+            Debug.Log("zdiff: " + zdiff);
+            Debug.Log("phi: " + this.phi);
+        }        
+    }
+
+    private bool targetChange = false;
+
+    public int GetDataSizeOfTarget()
+    {
+        return 4 * sizeof(float);
+    }
+
+    [SerializeField] GameObject target;
+    private List<GameObject> targets = new List<GameObject>();
+    private List<Target> targetStructs = new List<Target>();
+
+    private int nrOfTargets = 1;
 
     // Start is called before the first frame update
     void Start()
@@ -236,5 +277,62 @@ public class World : MonoBehaviour
     public void SetWaterDepth(float depth)
     {
         waterDepth = depth;
+    }
+
+    public void CreateTargets(List<int> targetCoords)
+    {
+        foreach (GameObject t in targets) // destroy old targets
+        {
+            Destroy(t);
+        }
+        targets.Clear(); // clear the list and fill it with new targets
+        targetStructs.Clear();
+
+        // first target position denotes the 'main' target
+        target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
+
+        for(int i = 3; i < targetCoords.Count; i+=3)
+        {
+            GameObject temp = Instantiate(target, new Vector3(targetCoords[i], targetCoords[i + 1], targetCoords[i + 2]), Quaternion.identity); // create a new target
+            targets.Add(temp);
+        }
+        nrOfTargets = 1 + targets.Count;
+        targetChange = true;
+    }
+
+    public int GetNrOfTargets()
+    {
+        return nrOfTargets;
+    }
+
+    public List<Target> GetTargets(float srcX, float srcZ)
+    {
+        targetStructs.Clear();
+        // add the original target to the list
+        Target ta_orig = new Target(target.transform.position.x, target.transform.position.y, target.transform.position.z, srcX, srcZ);
+        targetStructs.Add(ta_orig);
+
+        foreach (GameObject t in targets) // create structs of the target gameobjects
+        {
+            Target ta = new Target(t.transform.position.x, t.transform.position.y, t.transform.position.z, srcX, srcZ);
+            targetStructs.Add(ta);
+        }        
+
+        return targetStructs;
+    }
+
+    public Vector3 GetMainTargetPosition()
+    {
+        return target.transform.position;
+    }
+
+    public bool hasChanged()
+    {
+        return targetChange;
+    }
+
+    public void AckChange()
+    {
+        targetChange = false;
     }
 }

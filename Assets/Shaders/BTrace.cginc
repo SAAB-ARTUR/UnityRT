@@ -33,10 +33,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     float2 x0;
     float tau0;
     float len0;
-
-    //float3 receiverPosition = float3(targetBuffer[id.x].xpos, targetBuffer[id.x].ypos, targetBuffer[id.x].zpos);
-
-    //float original_distance = sqrt(pow((srcPosition.x - receiverPosition.x), 2) + pow((srcPosition.y - receiverPosition.y), 2) + pow((srcPosition.z - receiverPosition.z), 2));
+    
     float original_distance = sqrt(pow(xr.x - xs.x, 2) + pow(xr.y - xs.y, 2));    
 
     float current_distance = original_distance;
@@ -46,8 +43,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
 
     RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);    
     uint istep = 1;
-
-    //while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
+    
     while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
     {
         // Apply caustic phase change
@@ -96,19 +92,13 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         x0_cart = toCartesian(phi, x0);
         x_cart = toCartesian(phi, x);
         
-        // distance between ray and receiver
-        //current_distance = sqrt(pow((x_cart.x - receiverPosition.x), 2) + pow((x_cart.y - receiverPosition.y), 2) + pow((x_cart.z - receiverPosition.z), 2));
-        current_distance = sqrt(pow((x.x - xr.x), 2) + pow((x.y - xr.y), 2));
-
-        // Distance left to the receiver
-        //xxs = (x.x - x0.x) * (xr.x - x.x) + (x.y - x0.y) * (xr.y - x.y);
+        // distance between ray and receiver        
+        current_distance = sqrt(pow((x.x - xr.x), 2) + pow((x.y - xr.y), 2));        
 
         RayPositionsBuffer[istep + offset] = x_cart;        
 
         istep++;
     }
-
-//    debugBuf[id.y * nphi + id.x] = float3(x.x, xr.x, nbot);
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _BELLHOPSIZE; i++) { 
@@ -166,26 +156,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     prd.TL = 0;
     prd.target = id.x;
 
-    if (beta < 1) {// Detta är inte bra löst eftersom det utgår ifrån att sändaren tittar direkt på mottagaren
-        /*// calculate angle between receiver, source and end of ray
-        float origin_phi = atan2(srcDirection.z, srcDirection.x); // calculate angle that source is viewing at
-        // rotate the receiver around the y-axis to have the z-ccordinate be 0
-        float srcXnorm = receiverPosition.x * cos(-origin_phi) - receiverPosition.z * sin(-origin_phi);
-        float srcZnorm = receiverPosition.z * cos(-origin_phi) + receiverPosition.x * sin(-origin_phi);
-
-        float dx = srcXnorm - srcPosition.x;
-        float dz = srcZnorm - x_cart.z;
-       
-        float angle = atan2(dz, dx);        
-        
-        float kappa = 10; // kappa determines how much a ray can miss the target with in phi and still be considered to affect the target
-
-        if (abs(angle) < kappa) {
-            prd.contributing = 1;
-        }
-        else {
-            prd.contributing = 0;
-        } */
+    if (beta < 1) {
         prd.contributing = 1;
     }
     else {
