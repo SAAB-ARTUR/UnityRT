@@ -274,18 +274,8 @@ public class World : MonoBehaviour
 
     public bool CreateTargets(List<int> targetCoords)
     {         
-        // try tp create the new targets
-        List<GameObject> tempTargets = new List<GameObject>();
-
-        // first target position denotes the 'main' target
-        if (targetCoords[0] <= range / 2 && targetCoords[0] >= -range / 2 && targetCoords[2] <= range / 2 && targetCoords[2] >= -range / 2 && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
-        {
-            target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
-        }
-        else
-        {            
-            return false; // target out of volume, abort changes and keep old targets
-        }
+        // try tp create the new targets, everything needs to be successful for a change to take place
+        List<GameObject> tempTargets = new List<GameObject>();        
 
         for(int i = 3; i < targetCoords.Count; i+=3)
         {
@@ -299,6 +289,17 @@ public class World : MonoBehaviour
                 return false; // target out of volume, abort changes and keep old targets
             }            
         }
+
+        // first target position denotes the 'main' target
+        if (targetCoords[0] <= range / 2 && targetCoords[0] >= -range / 2 && targetCoords[2] <= range / 2 && targetCoords[2] >= -range / 2 && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
+        {
+            target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
+        }
+        else
+        {
+            return false; // target out of volume, abort changes and keep old targets
+        }
+
         // target creation successful
 
         foreach (GameObject t in targets) // destroy old targets
@@ -344,7 +345,7 @@ public class World : MonoBehaviour
         return target.transform.position;
     }
 
-    public bool hasChanged()
+    public bool HasChanged()
     {
         return targetChange;
     }

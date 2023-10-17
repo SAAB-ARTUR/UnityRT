@@ -285,8 +285,7 @@ public class Main : MonoBehaviour
     }
 
     int GetStartIndexBellhop(int idx, int idy)
-    {
-        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+    {        
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
         World world = worldManager.GetComponent<World>();
 
@@ -303,8 +302,7 @@ public class Main : MonoBehaviour
         // felet "object is too large or too far away from the origin" och det var någon som sa att man inte ska ha object mer än 5000 enheter från origo,
         // men våra rays rör sig i detta fall max 300 enheter bort så det känns jätteskumt det som händer
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-
-        //int rayIdx = idy * sourceParams.nphi + idx;
+        
         int rayIdx = idy + sourceParams.ntheta * idx;
 
         if (sourceParams.showContributingRaysOnly && rayData[rayIdx].contributing != 1)
@@ -358,6 +356,94 @@ public class Main : MonoBehaviour
         lines.Add(line);        
     }
 
+    void ComputeEigenRays()
+    {
+        for (int i = 0; i < contributingRays.Count - 1; i++) // TODO: här blir det problem eftersom sista strålen kan skippas
+        {
+            // find pairs of rays
+            if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i + 1].phi)
+            {
+                float n1 = contributingRays[i].xn;
+                float n2 = contributingRays[i + 1].xn;
+                float tot = contributingRays[i].beta + contributingRays[i + 1].beta;
+
+                float2 angles;
+                if (n1 * n2 <= 0 && tot > 0.9 && tot < 1.1)
+                {
+                    float w = n2 / (n2 - n1);
+                    float theta = w * contributingRays[i].theta + (1 - w) * contributingRays[i + 1].theta;
+                    float phi = contributingRays[i].phi;
+                    angles.x = theta;
+                    angles.y = phi;
+                    contributingAngles.Add(angles);
+                    isEigenRay.Add(true);
+                    rayTargets.Add(contributingRays[i].target);
+                    i++;
+                }
+                else
+                {
+                    angles.x = contributingRays[i].theta;
+                    angles.y = contributingRays[i].phi;
+                    contributingAngles.Add(angles);
+                    isEigenRay.Add(false);
+                    rayTargets.Add(contributingRays[i].target);
+                }
+            }
+        }
+    }
+
+    void TraceContributingRays()
+    {
+        PerContributingRayData = new PerRayData[contributingAngles.Count];
+
+        ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
+
+        ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
+        computeShader.SetBuffer(1, "ContributingAnglesData", ContributingAnglesBuffer);
+
+        // init return data buffer
+        PerContributingRayDataBuffer = new ComputeBuffer(contributingAngles.Count, perraydataByteSize);
+        computeShader.SetBuffer(1, "ContributingRayData", PerContributingRayDataBuffer);
+
+        computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
+
+        RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
+        RayTargetsBuffer.SetData(rayTargets.ToArray());
+        computeShader.SetBuffer(1, "rayTargets", RayTargetsBuffer);
+
+        freqsdamps = new float2[1];
+        freqsdamps[0].x = 150000;
+        freqsdamps[0].y = 0.015f / 8.6858896f;
+
+        FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
+        FreqDampBuffer.SetData(freqsdamps);
+        computeShader.SetBuffer(1, "FreqsAndDampData", FreqDampBuffer);
+        computeShader.SetInt("freqsdamps", freqsdamps.Length);
+
+        computeShader.SetBuffer(1, "targetBuffer", targetBuffer);
+
+        int threadGroupsX = Mathf.FloorToInt(1);
+        int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
+
+        // send eigenrays
+        computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
+
+        PerContributingRayDataBuffer.GetData(PerContributingRayData);
+
+        Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
+
+        for (int i = 0; i < PerContributingRayData.Length; i++)
+        {
+            float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
+            float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
+
+            string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
+                            PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
+                            PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
+            Debug.Log(data);
+        }
+    }
+
     void Update()
     {        
         //
@@ -368,7 +454,7 @@ public class Main : MonoBehaviour
         World world = worldManager.GetComponent<World>();
         errorFree = true;
 
-        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.hasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
+        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.HasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
         {
             world.AckChange();
             oldNrOfTargets = world.GetNrOfTargets();
@@ -527,8 +613,7 @@ public class Main : MonoBehaviour
             InitRenderTexture(sourceParams, world);
             
             computeShader.SetTexture(0, "Result", _target);
-
-            //int threadGroupsX = Mathf.FloorToInt(sourceParams.nphi / 8.0f);
+            
             int threadGroupsX = Mathf.FloorToInt(world.GetNrOfTargets());
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
@@ -549,91 +634,12 @@ public class Main : MonoBehaviour
                 }                
             }
 
-            // compute eigenrays
-            for (int i = 0; i < contributingRays.Count - 1; i++) // här blir det roblem eftersom sista strålen kan skippas
-            {                
-                // find pairs of rays
-                if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i+1].phi)
-                {
-                    float n1 = contributingRays[i].xn;
-                    float n2 = contributingRays[i + 1].xn;
-                    float tot = contributingRays[i].beta + contributingRays[i + 1].beta;
-
-                    float2 angles;
-                    if (n1 * n2 <= 0 && tot > 0.9 && tot < 1.1)
-                    {                        
-                        float w = n2 / (n2 - n1);
-                        float theta = w * contributingRays[i].theta + (1 - w) * contributingRays[i + 1].theta;
-                        float phi = contributingRays[i].phi;                        
-                        angles.x = theta;
-                        angles.y = phi;
-                        contributingAngles.Add(angles);
-                        isEigenRay.Add(true);
-                        rayTargets.Add(contributingRays[i].target);
-                        i++;
-                    }
-                    else
-                    {
-                        angles.x = contributingRays[i].theta;
-                        angles.y = contributingRays[i].phi;
-                        contributingAngles.Add(angles);
-                        isEigenRay.Add(false);
-                        rayTargets.Add(contributingRays[i].target);
-                    }
-                }
-            }            
+            // check if a pair of contributing rays can be combined into an eigenray
+            ComputeEigenRays();
 
             if (contributingAngles.Count > 0)
             {
-                // trace the contributing rays
-                PerContributingRayData = new PerRayData[contributingAngles.Count];
-
-                ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
-
-                ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
-                computeShader.SetBuffer(1, "ContributingAnglesData", ContributingAnglesBuffer);
-
-                // init return data buffer
-                PerContributingRayDataBuffer = new ComputeBuffer(contributingAngles.Count, perraydataByteSize);
-                computeShader.SetBuffer(1, "ContributingRayData", PerContributingRayDataBuffer);
-
-                computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
-
-                RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
-                RayTargetsBuffer.SetData(rayTargets.ToArray());
-                computeShader.SetBuffer(1, "rayTargets", RayTargetsBuffer);
-
-                freqsdamps = new float2[1];
-                freqsdamps[0].x = 150000;
-                freqsdamps[0].y = 0.015f / 8.6858896f;
-
-                FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
-                FreqDampBuffer.SetData(freqsdamps);
-                computeShader.SetBuffer(1, "FreqsAndDampData", FreqDampBuffer);
-                computeShader.SetInt("freqsdamps", freqsdamps.Length);
-
-                computeShader.SetBuffer(1, "targetBuffer", targetBuffer);
-
-                threadGroupsX = Mathf.FloorToInt(1);
-                threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
-
-                // send eigenrays
-                computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
-
-                PerContributingRayDataBuffer.GetData(PerContributingRayData);
-
-                Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
-
-                for (int i = 0; i < PerContributingRayData.Length; i++)
-                {
-                    float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
-                    float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
-
-                    string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
-                                    PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
-                                    PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
-                    Debug.Log(data);
-                }
+                TraceContributingRays();               
             }
 
             DateTime time2 = DateTime.Now;

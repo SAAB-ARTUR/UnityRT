@@ -15,8 +15,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField nrOfIntegrationSteps = null;
     [SerializeField] InputField integrationStepSize = null;
     [SerializeField] GameObject bellhop = null;
-    [SerializeField] InputField callbackCommand = null;
-    [SerializeField] GameObject target = null;    
+    [SerializeField] InputField callbackCommand = null;     
     [SerializeField] InputField targets = null;
     [SerializeField] InputField maxNrOfSurfaceHits = null;
     [SerializeField] InputField maxNrOfBottomHits = null;
