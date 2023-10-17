@@ -682,7 +682,7 @@ public class Main : MonoBehaviour
                 }
 
                 api.Rays(rays);
-                Debug.Log(rays[0][0].ToString());
+                // Debug.Log(rays[0][0].ToString());
             }
 
             // check if a pair of contributing rays can be combined into an eigenray
