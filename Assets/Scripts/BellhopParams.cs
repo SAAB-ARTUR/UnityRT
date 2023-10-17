@@ -11,9 +11,7 @@ public class BellhopParams : MonoBehaviour
     [SerializeField]
     private int maxNrSurfaceHits = 0;
     [SerializeField]
-    private int maxNrBottomHits = 0;
-    [SerializeField]
-    private int bellhopIterations = 1;
+    private int maxNrBottomHits = 0;    
 
     public int BELLHOPINTEGRATIONSTEPS
     {

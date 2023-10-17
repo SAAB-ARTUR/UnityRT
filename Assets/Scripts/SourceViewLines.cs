@@ -57,7 +57,7 @@ public class SourceVewLines : MonoBehaviour
         float origin_phi = (float)Math.Atan2(this.transform.forward.z, this.transform.forward.x);
 
         float theta_rad = srcParams.theta * PI / 180; //convert to radians
-        float phi_rad = srcParams.phi * PI / 180;
+        float phi_rad = srcParams.theta * PI / 180;
 
         float s0 = (float)Math.Sin(origin_phi);
         float c0 = (float)Math.Cos(origin_phi);

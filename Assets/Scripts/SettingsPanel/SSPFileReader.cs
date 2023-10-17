@@ -9,8 +9,7 @@ using AnotherFileBrowser.Windows; // https://github.com/SrejonKhan/AnotherFileBr
 
 
 public class SSPFileReader : MonoBehaviour
-{
-    [SerializeField] GameObject settingsPanel = null;
+{    
     private bool filepathHasChanged = false;
     private List<SSP_Data> SSP = null;
 
@@ -142,11 +141,5 @@ public class SSPFileReader : MonoBehaviour
     public List<SSP_Data> GetSSPData()
     {
         return SSP;
-    }
-
-    public void UpdateDepthSlider()
-    {
-        InputFields inputFields = settingsPanel.GetComponent<InputFields>();
-        inputFields.UpdateDepth();
     }
 }

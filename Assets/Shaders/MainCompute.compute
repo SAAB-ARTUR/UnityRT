@@ -15,42 +15,50 @@ struct PerRayData {
     float delay;
     float curve;
     float xn;
-    float qi;
-    float alpha;
+    float qi;    
+    float theta;
+    float phi;
     uint contributing;
+    float TL;
+    uint target;
 };
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
-RWStructuredBuffer<float3> rayPositionsBuffer;
-//StructuredBuffer<float> alphaData;
-//RWStructuredBuffer<float3> debugBuf;
-RWStructuredBuffer<PerRayData> EigenRayData;
-StructuredBuffer<float> eigenAlphaData;
+RWStructuredBuffer<float3> RayPositionsBuffer;
+RWStructuredBuffer<float3> debugBuf;
+RWStructuredBuffer<PerRayData> ContributingRayData;
+StructuredBuffer<float2> ContributingAnglesData;
+StructuredBuffer<float2> FreqsAndDampData;
 
+struct Target {
+    float xpos;
+    float ypos;
+    float zpos;
+    float phi;
+};
+
+StructuredBuffer<Target> targetBuffer;
+StructuredBuffer<uint> rayTargets;
 
 float4x4 _SourceCameraToWorld;
 float4x4 _CameraInverseProjection;
-
-//float2 _Pixel;
 
 uint _MAXINTERACTIONS;
 uint _BELLHOPSIZE;
 float deltas;
 uint _MAXBOTTOMHITS;
 uint _MAXSURFACEHITS;
-//uint _BELLHOPITERATIONS;
 
 static const float PI = 3.14159265f;
 
 float depth;
-uint theta;
+float theta;
 uint ntheta;
-uint phi;
-uint nphi;
 float3 srcDirection;
 float3 srcPosition;
-float3 receiverPosition;
-float dalpha;
+float dtheta;
+
+uint freqsdamps;
 
 struct SSP_Data 
 {
@@ -109,61 +117,50 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     uint width, height;
     Result.GetDimensions(width, height);
 
-    // comvert id x and y values to a 1d index, each ray is allocated MAXINTERACTIONS slots for its interactions (surface/bottom hits, turning points)
-    //uint index1D = (id.y * width + id.x) * _MAXINTERACTIONS; 
-
-    Ray ray = CreateThetaPhiRay(id);
+    float2 angles = CreateCylindricalRay(id);
 
     SSP soundSpeedProfile;
-    soundSpeedProfile.type = 0;
+    soundSpeedProfile.type = 0;   
+    
+    float theta = angles.x;
+    float phi = angles.y;   
 
-    float3 raydir = normalize(ray.direction);
-
-    float alpha = asin(raydir.y);
-    //float alpha = alphaData[id.y * width + id.x];
-    float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
-    float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
-    float zdiff = receiverPosition.z - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
 
-    //float2 xr = { sqrt((pow(receiverPosition.x, 2.0) + pow(receiverPosition.z, 2.0))), receiverPosition.y };   
-    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), receiverPosition.y };
+    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;    
+
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };    
 
     PerRayData prd;
-
-    //TraceOutput t = btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, id, width, raydir, _Phi, prd);
-    uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
-    btrace(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, _Phi, prd);
     
-    PerRayDataBuffer[id.y * width + id.x] = prd;
+    uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
+    btrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
+    
+    PerRayDataBuffer[id.y + id.x * height] = prd;
 }
 
-
-#pragma kernel TraceEigenRays
+#include "BTraceContributing.cginc"
+#pragma kernel TraceContributingRays
 [numthreads(1, 1, 1)]
-void TraceEigenRays(uint3 id : SV_DispatchThreadID)
+void TraceContributingRays(uint3 id : SV_DispatchThreadID)
 {
     // id is 1D for now, id.y is the only thing needed
-
-    Ray ray = CreateThetaPhiRay(id);
-
     SSP soundSpeedProfile;
-    soundSpeedProfile.type = 0;
+    soundSpeedProfile.type = 0;    
 
-    float3 raydir = normalize(ray.direction);
+    float theta = ContributingAnglesData[id.y].x;
+    float phi = ContributingAnglesData[id.y].y;    
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };    
 
-    float alpha = eigenAlphaData[id.y];
-    float _Phi = sign(raydir.z) * acos(raydir.x / sqrt(pow(raydir.x, 2.0) + pow(raydir.z, 2.0)));
-    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
-    float xdiff = receiverPosition.x - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
-    float zdiff = receiverPosition.z - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+    float xdiff = targetBuffer[rayTargets[id.x]].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[rayTargets[id.x]].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
 
-    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), receiverPosition.y };
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[rayTargets[id.x]].ypos };
 
     PerRayData prd;    
     
-    btrace_eig(soundSpeedProfile, alpha, dalpha, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, _Phi, prd);
+    btrace_contributing(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
 
-    EigenRayData[id.y] = prd;
-
+    ContributingRayData[id.y] = prd;
 }

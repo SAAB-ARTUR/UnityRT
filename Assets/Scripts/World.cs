@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityTemplateProjects;
@@ -36,7 +38,39 @@ public class World : MonoBehaviour
 
     private Camera sourceSphere;
     private GameObject surface;
-    private GameObject bottom;    
+    private GameObject bottom;
+
+    public struct Target
+    {
+        public float xpos;
+        public float ypos;
+        public float zpos;
+        public float phi; // angle from source to target
+
+        public Target(float xpos, float ypos, float zpos, float srcX, float srcZ)
+        {
+            this.xpos = xpos;
+            this.ypos = ypos;
+            this.zpos = zpos;
+
+            float xdiff = xpos - srcX;
+            float zdiff = zpos - srcZ;
+            this.phi = MathF.Atan2(zdiff, xdiff);
+        }        
+    }
+
+    private bool targetChange = false;
+
+    public int GetDataSizeOfTarget()
+    {
+        return 4 * sizeof(float);
+    }
+
+    [SerializeField] GameObject target;
+    private List<GameObject> targets = new List<GameObject>();
+    private List<Target> targetStructs = new List<Target>();
+
+    private int nrOfTargets = 1;
 
     // Start is called before the first frame update
     void Start()
@@ -215,53 +249,7 @@ public class World : MonoBehaviour
     void Update()
     {
         state0 = state;
-        state = getCurrentState();        
-
-        //Vector3 worldPos = this.transform.position;     
-        
-
-
-        // Ensure planes stay at the same location
-        //SetPlaneDepthStationary(this.surface, 0);
-        //SetPlaneDepthStationary(this.bottom, this.waterDepth);
-
-
-
-        //Vector3 newPos = this.transform.position;
-        //newPos.y = worldPos.y;
-        //this.transform.position = newPos;
-
-
-
-        //Debug.Log(sourceDept2);
-
-        //SetPlaneDepthStationary(surface, 0);
-        //for (int i = 0; i<waterLayers.Length; i++)
-        //{
-
-        //  SetPlaneDepthStationary(waterLayers[i], waterLayerDepths[i]);
-
-        //}
-        //SetPlaneDepthStationary(bottom, waterDepth);
-
-        /*
-        if (sourceDept2 > 0 )
-        {
-
-            Vector3 p = sourceSphere.transform.position;
-            p.y = 0;
-            sourceSphere.transform.position = p;
-        //    this.transform.position = p;
-        }
-
-        if (sourceDept2 < -waterDepth) {
-
-            Vector3 p = sourceSphere.transform.position;
-            p.y = -waterDepth;
-            sourceSphere.transform.position = p;
-          //  this.transform.position = p;
-        }        
-        */
+        state = getCurrentState();
     }
 
     public int GetNrOfWaterplanes()
@@ -282,5 +270,88 @@ public class World : MonoBehaviour
     public void SetWaterDepth(float depth)
     {
         waterDepth = depth;
+    }
+
+    public bool CreateTargets(List<int> targetCoords)
+    {         
+        // try tp create the new targets, everything needs to be successful for a change to take place
+        List<GameObject> tempTargets = new List<GameObject>();        
+
+        for(int i = 3; i < targetCoords.Count; i+=3)
+        {
+            if (targetCoords[i] <= range / 2 && targetCoords[i] >= -range / 2 && targetCoords[i+2] <= range / 2 && targetCoords[i+2] >= -range / 2 && targetCoords[i+1] <= 0 && targetCoords[i+1] >= waterDepth)
+            {
+                GameObject temp = Instantiate(target, new Vector3(targetCoords[i], targetCoords[i + 1], targetCoords[i + 2]), Quaternion.identity); // create a new target
+                tempTargets.Add(temp);
+            }
+            else
+            {                
+                return false; // target out of volume, abort changes and keep old targets
+            }            
+        }
+
+        // first target position denotes the 'main' target
+        if (targetCoords[0] <= range / 2 && targetCoords[0] >= -range / 2 && targetCoords[2] <= range / 2 && targetCoords[2] >= -range / 2 && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
+        {
+            target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
+        }
+        else
+        {
+            return false; // target out of volume, abort changes and keep old targets
+        }
+
+        // target creation successful
+
+        foreach (GameObject t in targets) // destroy old targets
+        {
+            Destroy(t);
+        }
+        targets.Clear(); // clear the list and fill it with new targets
+
+        foreach (GameObject t in tempTargets) // add the new targets to the target list
+        {
+            targets.Add(t);
+        }
+
+        nrOfTargets = 1 + targets.Count;
+        targetChange = true;
+
+        return true; // target creation successful
+    }
+
+    public int GetNrOfTargets()
+    {
+        return nrOfTargets;
+    }
+
+    public List<Target> GetTargets(float srcX, float srcZ)
+    {
+        targetStructs.Clear();
+        // add the original target to the list
+        Target ta_orig = new Target(target.transform.position.x, target.transform.position.y, target.transform.position.z, srcX, srcZ);
+        targetStructs.Add(ta_orig);
+
+        foreach (GameObject t in targets) // create structs of the target gameobjects
+        {
+            Target ta = new Target(t.transform.position.x, t.transform.position.y, t.transform.position.z, srcX, srcZ);
+            targetStructs.Add(ta);
+        }        
+
+        return targetStructs;
+    }
+
+    public Vector3 GetMainTargetPosition()
+    {
+        return target.transform.position;
+    }
+
+    public bool HasChanged()
+    {
+        return targetChange;
+    }
+
+    public void AckChange()
+    {
+        targetChange = false;
     }
 }
