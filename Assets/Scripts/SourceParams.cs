@@ -13,13 +13,13 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
 
         public float phi;
         public int nphi;
-        public int MAXINTERACTIONS;
+        //public int MAXINTERACTIONS;
         public bool sendRaysContinously;
         public bool visualizeRays;
     }
 
     const int MIN_SIZE_ANG = 8;
-    const int MIN_INTERACTIONS = 1;
+    //const int MIN_INTERACTIONS = 1;
 
     public int theta = 0;
     [SerializeField]
@@ -45,17 +45,17 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         }
     }
 
-    public int MAXINTERACTIONS {
+    /*public int MAXINTERACTIONS {
         get { return _maxInteractions; }
         set
         {
             if (value > MIN_INTERACTIONS) { _maxInteractions = value; }
             else { _maxInteractions = MIN_INTERACTIONS; }
         }
-    }
+    }*/
 
-    [SerializeField]
-    private int _maxInteractions;
+    //[SerializeField]
+    //private int _maxInteractions;
 
     public bool sendRaysContinously = false;
     public bool visualizeRays = false;
@@ -64,7 +64,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
     {   
         ntheta = _ntheta;
         nphi = _nphi;
-        MAXINTERACTIONS = _maxInteractions;
+        //MAXINTERACTIONS = _maxInteractions;
 
     }
     public object Clone()
@@ -74,7 +74,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         s.ntheta = ntheta;  
         s.phi = phi;
         s.nphi = nphi;
-        s.MAXINTERACTIONS = MAXINTERACTIONS;
+        //s.MAXINTERACTIONS = MAXINTERACTIONS;
         s.sendRaysContinously = sendRaysContinously;
         s.visualizeRays = visualizeRays;
         return s;
@@ -90,7 +90,7 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
         p.phi = phi;    
         p.nphi = nphi;
 
-        p.MAXINTERACTIONS = MAXINTERACTIONS;
+        //p.MAXINTERACTIONS = MAXINTERACTIONS;
         p.sendRaysContinously = sendRaysContinously;
         p.visualizeRays = visualizeRays;
         return p;
@@ -116,8 +116,8 @@ public class SourceParams : MonoBehaviour, ICloneable, IEquatable<SourceParams>
             this.theta == other.theta &&
             this.ntheta == other.ntheta &&
             this.phi == other.phi &&
-            this.nphi == other.nphi &&
-            this.MAXINTERACTIONS == other.MAXINTERACTIONS
+            this.nphi == other.nphi //&&
+            //this.MAXINTERACTIONS == other.MAXINTERACTIONS
             ) { 
             return true;
         }

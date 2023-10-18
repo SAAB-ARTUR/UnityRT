@@ -67,19 +67,15 @@ public class World : MonoBehaviour
             return true;
         }
 
-        if (state.depth != state0.depth || state.range != state0.range || state.nrOfWaterplanes != state0.nrOfWaterplanes || ! state.position.Equals(state0.position)) {
-            Debug.Log("Change in world");
+        if (state.depth != state0.depth || state.range != state0.range || state.nrOfWaterplanes != state0.nrOfWaterplanes || ! state.position.Equals(state0.position)) {            
             return true;
         }
 
         return false;
     }
 
-    public void AddSource(Camera test) {
-        //Debug.Log("Added source");
+    public void AddSource(Camera test) {        
         this.sourceSphere = test;
-
-        Debug.Log("Applying. Please wait");
 
         SimpleSourceController controller = test.GetComponent<SimpleSourceController>();    
         

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace UnityTemplateProjects
@@ -256,7 +257,24 @@ namespace UnityTemplateProjects
 
             //m_InterpolatingCameraState.UpdateTransform(transform);
 
-        } 
+        }
+
+        public void DirectJumpTo(Vector3 position) {
+            m_TargetCameraState.y = position.y;
+            m_TargetCameraState.x = position.x;
+            m_TargetCameraState.z = position.z;
+
+            m_InterpolatingCameraState.x = m_TargetCameraState.x;
+            m_InterpolatingCameraState.y = m_TargetCameraState.y;
+            m_InterpolatingCameraState.z = m_TargetCameraState.z;
+        }
+
+        public void DirectLookAt(float yaw, float pitch, float roll) {
+
+            m_TargetCameraState.yaw = yaw; m_TargetCameraState.pitch = pitch; m_TargetCameraState.roll = roll;
+            m_InterpolatingCameraState.yaw = yaw; m_InterpolatingCameraState.pitch = pitch; m_InterpolatingCameraState.roll = roll;
+
+        }
 
     }
 
