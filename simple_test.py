@@ -248,7 +248,7 @@ while True:
     fix_axis()
 
     fig.canvas.draw()
-    plt.pause(0.001)
+    plt.pause(0.01)
     #sys.stdin.buffer.flush()
     # sys.stdin.flush()
 
