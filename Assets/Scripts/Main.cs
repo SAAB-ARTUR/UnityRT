@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityTemplateProjects;
 
 public class Main : MonoBehaviour
 {
@@ -16,15 +17,14 @@ public class Main : MonoBehaviour
     [SerializeField] Camera sourceCamera = null;
     [SerializeField] GameObject worldManager = null;
     [SerializeField] GameObject btnFilePicker = null;
-    [SerializeField] GameObject bellhop = null;
+    [SerializeField] GameObject bellhop = null;    
 
     private SourceParams.Properties? oldSourceParams = null;
     private BellhopParams.Properties? oldBellhopParams = null;
     private int oldMaxSurfaceHits = 0;
     private int oldMaxBottomHits = 0;    
 
-    private RayTracingVisualization sourceCameraScript = null;
-    private RenderTexture _target;
+    //private RayTracingVisualization sourceCameraScript = null;    
 
     private bool doRayTracing = false;
     private bool lockRayTracing = false;
@@ -98,13 +98,7 @@ public class Main : MonoBehaviour
         {
             rtas.Release();
             rtas = null;
-        }
-
-        if (_target)
-        {
-            _target.Release();
-            _target = null;
-        }
+        }        
 
         /*if (surfaceInstanceData != null)
         {
@@ -232,24 +226,6 @@ public class Main : MonoBehaviour
         computeShader.SetVector("srcPosition", srcSphere.transform.position);        
     }
 
-    private void InitRenderTexture(SourceParams sourceParams, World world)
-    {
-        if (_target == null || _target.width != world.GetNrOfTargets() || _target.height != sourceParams.ntheta)
-        {
-            // Release render texture if we already have one
-            if (_target != null)
-            {
-                _target.Release();                
-            }
-
-            // Get a render target for Ray Tracing
-            _target = new RenderTexture(world.GetNrOfTargets(), sourceParams.ntheta, 0,
-                RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            _target.enableRandomWrite = true;
-            _target.Create();
-        }
-    }
-
     private void BuildWorld() {
         World world = worldManager.GetComponent<World>();
         world.AddSource(sourceCamera);
@@ -264,10 +240,10 @@ public class Main : MonoBehaviour
 
     private void OnEnable()
     {
-        if (sourceCamera != null)
+        /*if (sourceCamera != null)
         {
             sourceCameraScript = sourceCamera.GetComponent<RayTracingVisualization>();
-        }
+        }*/
 
         //rtas = new RayTracingAccelerationStructure();
     }
@@ -287,11 +263,22 @@ public class Main : MonoBehaviour
     int GetStartIndexBellhop(int idx, int idy)
     {        
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
+        
+        return (idy + idx * sourceParams.ntheta) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
+    }
+    
+    void Plot()
+    {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         World world = worldManager.GetComponent<World>();
-
-        //return (idy * world.GetNrOfTargets() + idx) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
-        return (idy + idx * sourceParams.ntheta) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
+        for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
+        {
+            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+            {
+                PlotBellhop(iphi, itheta);
+            }
+        }
     }
 
     void PlotBellhop(int idx, int idy)
@@ -358,8 +345,119 @@ public class Main : MonoBehaviour
         lines.Add(line);        
     }
 
-    void SSPFileCheck()
+    void DestryBellhopLines()
     {
+        foreach (LineRenderer line in lines) // delete lines from previous runs
+        {
+            Destroy(line.gameObject);
+        }
+        lines.Clear();
+    }
+
+
+    /// <summary>
+    /// maintain data structures that are related to the gpu, update them if necessary and return the status of the operations
+    /// </summary>
+    /// <returns>bool</returns>
+    bool MaintainBuffersArraysSSPAndWorld()
+    {
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        World world = worldManager.GetComponent<World>();
+        SimpleSourceController sourceController = sourceCamera.GetComponent<SimpleSourceController>();
+        bool BuffersAndArraysSuccess = true;
+
+        if (world.TargetHasChanged() || sourceController.HasMoved())
+        {
+            // either nr of targets has changed, positions of targets has changed or the source has moved, get the targets and recalculate their respective angles from the source            
+            sourceController.AckMovement();
+            oldNrOfTargets = world.GetNrOfTargets();
+            targetBuffer = new ComputeBuffer(oldNrOfTargets, world.GetDataSizeOfTarget());
+            targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());
+            computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
+        }
+
+        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.TargetHasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
+        {
+            world.AckTargetChange();
+            try
+            {
+                rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
+                rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta];
+            }
+            catch (OverflowException e)
+            {
+                BuffersAndArraysSuccess = false; // disable raytracing since buffers were not able to be created
+                Debug.Log(e);
+                Debug.Log("Too many rays, reduce ntheta, number of targets or number of bellhop integration steps!");
+
+            }
+            catch (Exception e)
+            {
+                BuffersAndArraysSuccess = false; // disable raytracing since arrays were not able to be created
+                Debug.Log(e);
+            }
+            rayPositionDataAvail = false;
+            oldSourceParams = sourceParams.ToStruct();
+            oldBellhopParams = bellhopParams.ToStruct();
+
+            if (RayPositionsBuffer != null)
+            {
+                RayPositionsBuffer.Release();
+                RayPositionsBuffer = null;
+            }
+
+            if (PerRayDataBuffer != null)
+            {
+                PerRayDataBuffer.Release();
+                PerRayDataBuffer = null;
+            }
+
+            // update values in shader
+            computeShader.SetFloat("theta", sourceParams.theta);
+            computeShader.SetInt("ntheta", sourceParams.ntheta);
+
+            computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
+            computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
+
+            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
+            dtheta = dtheta * MathF.PI / 180; // to radians
+            computeShader.SetFloat("dtheta", dtheta);
+            /*debugBuf = new ComputeBuffer(nrOfTargets * sourceParams.ntheta, 3 * sizeof(float));
+            debugger = new float3[nrOfTargets * sourceParams.ntheta];
+            computeShader.SetBuffer(0, "debugBuf", debugBuf);*/
+        }
+        if (bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
+        {
+            oldMaxSurfaceHits = bellhopParams.MAXNRSURFACEHITS;
+            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);
+        }
+        if (bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
+        {
+            oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
+            computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);
+        }
+
+        bool SSPReadSuccessfully = SSPFileCheck();
+
+        if (world.WorldHasChanged())
+        {
+            BuildWorld();
+            world.AckChangeInWorld();
+            rebuildRTAS = true;
+        }
+
+        return BuffersAndArraysSuccess && SSPReadSuccessfully;
+    }
+
+    /// <summary>
+    /// check if the user has changed the SSP-file using the settings panel
+    /// if so, read the new file and its content
+    /// </summary>
+    /// <returns>bool</returns>
+    bool SSPFileCheck()
+    {
+        bool success = true;
         if (_SSPFileReader.SSPFileHasChanged())
         {
             try
@@ -383,9 +481,10 @@ public class Main : MonoBehaviour
             {
                 Debug.Log(e);
                 Debug.Log("SSP not created successfully, raytracing won't be available until SSP is created successfully");
-                errorFree = false;
+                success = false;
             }
         }
+        return success;
     }
 
     void ComputeEigenRays()
@@ -476,114 +575,29 @@ public class Main : MonoBehaviour
         }
     }
 
+    // update is run every frame, it continously checks for changes in the settings available to the user, it also waits for the user to activate the raytracing
     void Update()
-    {        
+    {
         //
         // CHECK FOR UPDATES
         //
+
+        errorFree = MaintainBuffersArraysSSPAndWorld();               
+
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-        World world = worldManager.GetComponent<World>();
-        errorFree = true;
-
-        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.HasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
-        {
-            world.AckChange();
-            oldNrOfTargets = world.GetNrOfTargets();
-            targetBuffer = new ComputeBuffer(oldNrOfTargets, world.GetDataSizeOfTarget());
-            targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());
-            computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
-
-            try
-            {
-                rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
-                rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta];                
-            }
-            catch (OverflowException e)
-            {
-                errorFree = false; // disable raytracing since buffers were not able to be created
-                Debug.Log(e);
-                Debug.Log("Too many rays, reduce ntheta, number of targets or number of bellhop integration steps!");
-
-            }
-            catch (Exception e)
-            {
-                errorFree = false; // disable raytracing since arrays were not able to be created
-                Debug.Log(e);
-            }            
-            rayPositionDataAvail = false;            
-            oldSourceParams = sourceParams.ToStruct();
-            oldBellhopParams = bellhopParams.ToStruct();
-
-            if (RayPositionsBuffer != null)
-            {
-                RayPositionsBuffer.Release();
-                RayPositionsBuffer = null;
-            }
-
-            if (PerRayDataBuffer != null)
-            {
-                PerRayDataBuffer.Release();
-                PerRayDataBuffer = null;
-            }
-
-            // update values in shader
-            computeShader.SetFloat("theta", sourceParams.theta);
-            computeShader.SetInt("ntheta", sourceParams.ntheta);            
-
-            computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
-            computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);            
-
-            dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
-            dtheta = dtheta * MathF.PI / 180; // to radians
-            computeShader.SetFloat("dtheta", dtheta);
-            /*debugBuf = new ComputeBuffer(nrOfTargets * sourceParams.ntheta, 3 * sizeof(float));
-            debugger = new float3[nrOfTargets * sourceParams.ntheta];
-            computeShader.SetBuffer(0, "debugBuf", debugBuf);*/
-        }
-        if(bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
-        {
-            oldMaxSurfaceHits = bellhopParams.MAXNRSURFACEHITS;
-            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);            
-        }
-        if (bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
-        {
-            oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
-            computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);            
-        }
-        if (oldVisualiseRays != sourceParams.visualizeRays || oldVisualiseContributingRays != sourceParams.showContributingRaysOnly)
+        if (oldVisualiseRays != sourceParams.visualizeRays || oldVisualiseContributingRays != sourceParams.showContributingRaysOnly) // if the user toggles the visualization options after raytracing has been done
         {
             oldVisualiseRays = sourceParams.visualizeRays;
             oldVisualiseContributingRays = sourceParams.showContributingRaysOnly;
 
             if (rayPositionDataAvail && sourceParams.visualizeRays)
-            {                
-                foreach (LineRenderer line in lines)
-                {
-                    Destroy(line.gameObject);
-                }
-                lines.Clear();
-
-                for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
-                {                    
-                    for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
-                    {
-                        PlotBellhop(iphi, itheta);
-                    }
-                }
+            {
+                DestryBellhopLines();
+                Plot();
             }
         }
 
-        SSPFileCheck(); // check for change of SSP-file
-
-
-        if (world.StateChanged())
-        {
-            BuildWorld();
-            rebuildRTAS = true;            
-        }        
-
-        if (Input.GetKey(KeyCode.C)){
+        if (Input.GetKey(KeyCode.C)){ // user input
             doRayTracing = true;            
         }
         else
@@ -596,14 +610,10 @@ public class Main : MonoBehaviour
         // CHECK FOR UPDATES OVER //
         //
 
-        if ((!lockRayTracing && doRayTracing && errorFree) || sourceParams.sendRaysContinously) // do raytracing if the user has pressed key C. only do it once though. or do it continously
+        if (((!lockRayTracing && doRayTracing) || sourceParams.sendRaysContinously) && errorFree) // do raytracing if the user has pressed key C. only do it once though. or do it continously
         {            
             rayPositionDataAvail = false;
-            foreach (LineRenderer line in lines) // delete lines from previous runs
-            {
-                Destroy(line.gameObject);
-            }
-            lines.Clear();
+            DestryBellhopLines();
 
             lockRayTracing = true; // disable raytracing being done several times during one keypress            
 
@@ -617,13 +627,9 @@ public class Main : MonoBehaviour
                 rebuildRTAS = false;
             }            
 
-            SetShaderParameters();
-
-            InitRenderTexture(sourceParams, world);
+            SetShaderParameters();            
             
-            computeShader.SetTexture(0, "Result", _target);
-            
-            int threadGroupsX = Mathf.FloorToInt(world.GetNrOfTargets());
+            int threadGroupsX = Mathf.FloorToInt(worldManager.GetComponent<World>().GetNrOfTargets());
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
@@ -659,23 +665,13 @@ public class Main : MonoBehaviour
 
             if (sourceParams.visualizeRays)
             {
-                for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
-                {
-                    for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
-                    {
-                        PlotBellhop(iphi, itheta);
-                    }
-                }
+                Plot();
             }
         }
 
         if (!sourceParams.visualizeRays)
         {
-            foreach (LineRenderer line in lines)
-            {
-                Destroy(line.gameObject);
-            }
-            lines.Clear();
+            DestryBellhopLines();
         }
         contributingRays.Clear();
         contributingAngles.Clear();

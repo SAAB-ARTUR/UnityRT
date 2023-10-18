@@ -7,14 +7,23 @@ using UnityTemplateProjects;
 public class World : MonoBehaviour
 {
     [SerializeField] float sourceDepth = 0;
+    [SerializeField] GameObject srcSphere = null;
 
     public int range
     {
         get { return _range; }
         set
         {
-            if (value > 0) { _range = value; }
-            else { _range = 0; }
+            if (value > 0) 
+            { 
+                _range = value;
+                changeInWorld = true;
+            }
+            else 
+            { 
+                _range = 0;
+                changeInWorld = true;
+            }
         }
     }
 
@@ -25,20 +34,11 @@ public class World : MonoBehaviour
 
     private int nrOfWaterplanes = 0;
 
-    private class State 
-    {
-        public float depth;
-        public float range;
-        public int nrOfWaterplanes;
-        public Vector3 position;        
-    }
-
-    private State state0 = null;
-    private State state;
-
     private Camera sourceSphere;
     private GameObject surface;
     private GameObject bottom;
+
+    private bool changeInWorld = false;
 
     public struct Target
     {
@@ -72,46 +72,24 @@ public class World : MonoBehaviour
 
     private int nrOfTargets = 1;
 
-    // Start is called before the first frame update
-    void Start()
+    public bool WorldHasChanged()
     {
-        state = new State();
-        // Set initial state
-        state.depth = waterDepth;
-        state.range = range;
-        state.nrOfWaterplanes = nrOfWaterplanes;
-        state.position = Vector3.zero;
+        if (changeInWorld)
+        {
+            Debug.Log("change");
+        }
+        return changeInWorld;
     }
 
-    State getCurrentState() 
+    public void AckChangeInWorld()
     {
-        state = new State();
-        // Set initial state
-        state.depth = waterDepth;
-        state.range = range;
-        state.nrOfWaterplanes = nrOfWaterplanes;
-        state.position = this.transform.position;
-
-        return state;
+        changeInWorld = false;
     }
 
-    public bool StateChanged() {
+    public void AddSource(Camera c) {
+        sourceSphere = c;
 
-        if (state0 is null) {
-            return true;
-        }
-
-        if (state.depth != state0.depth || state.range != state0.range || state.nrOfWaterplanes != state0.nrOfWaterplanes || ! state.position.Equals(state0.position)) {            
-            return true;
-        }
-
-        return false;
-    }
-
-    public void AddSource(Camera test) {        
-        this.sourceSphere = test;
-
-        SimpleSourceController controller = test.GetComponent<SimpleSourceController>();    
+        SimpleSourceController controller = c.GetComponent<SimpleSourceController>();
         
         controller.upper_limit_x = range/2;
         controller.lower_limit_x = -range/2;
@@ -128,16 +106,16 @@ public class World : MonoBehaviour
 
         _surface.GetComponent<MeshFilter>().mesh = m1;
         
-        this.surface = _surface;
+        surface = _surface;
     }
-    public void AddBottom(GameObject bottom) 
+    public void AddBottom(GameObject _bottom) 
     {
         Vector3 center = Vector3.up * waterDepth;
         Mesh m1 = DoublePlaneMesh(center);
 
-        bottom.GetComponent<MeshFilter>().mesh = m1;
+        _bottom.GetComponent<MeshFilter>().mesh = m1;
         
-        this.bottom = bottom;
+        bottom = _bottom;
     }
 
     public void AddWaterplane(GameObject waterplane) 
@@ -246,12 +224,6 @@ public class World : MonoBehaviour
         return surfaceMesh;
     }
 
-    void Update()
-    {
-        state0 = state;
-        state = getCurrentState();
-    }
-
     public int GetNrOfWaterplanes()
     {
         return nrOfWaterplanes;
@@ -260,6 +232,7 @@ public class World : MonoBehaviour
     public void SetNrOfWaterplanes(int value)
     {
         nrOfWaterplanes = value;
+        changeInWorld = true;
     }
 
     public float GetWaterDepth()
@@ -270,6 +243,7 @@ public class World : MonoBehaviour
     public void SetWaterDepth(float depth)
     {
         waterDepth = depth;
+        changeInWorld = true;
     }
 
     public bool CreateTargets(List<int> targetCoords)
@@ -345,12 +319,12 @@ public class World : MonoBehaviour
         return target.transform.position;
     }
 
-    public bool HasChanged()
+    public bool TargetHasChanged()
     {
         return targetChange;
     }
 
-    public void AckChange()
+    public void AckTargetChange()
     {
         targetChange = false;
     }
