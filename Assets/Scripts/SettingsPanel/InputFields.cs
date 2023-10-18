@@ -47,7 +47,7 @@ public class InputFields : MonoBehaviour
         string str = ntheta.text;
         bool isNumber = int.TryParse(str, out int numericValue);
 
-        if (isNumber && numericValue > 0)
+        if (isNumber && numericValue > 0 && numericValue % 8 == 0)
         {
             SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
             sourceParams.ntheta = numericValue;

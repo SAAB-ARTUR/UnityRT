@@ -4,6 +4,8 @@ namespace UnityTemplateProjects
 {
     public class SimpleSourceController : MonoBehaviour
     {
+        private bool hasMoved = false; // no movement in the beginning
+        private bool movementStopped = true; // no movement in the beginning
 
         public float upper_limit_y = float.PositiveInfinity;
         public float lower_limit_y = float.NegativeInfinity;
@@ -81,7 +83,6 @@ namespace UnityTemplateProjects
                 z += rotatedTranslation.z;
 
                 ApplyBounds();
-                
             }
 
             public void LerpTowards(CameraState target, float positionLerpPct, float rotationLerpPct)
@@ -133,29 +134,48 @@ namespace UnityTemplateProjects
         Vector3 GetInputTranslationDirection()
         {
             Vector3 direction = new Vector3();
-            if (Input.GetKey(KeyCode.U))
+            if (Input.anyKey)
             {
-                direction += Vector3.forward;
+                if (Input.GetKey(KeyCode.U))
+                {
+                    direction += Vector3.forward;
+                    movementStopped = false;
+                    hasMoved = true;
+                }
+                if (Input.GetKey(KeyCode.J))
+                {
+                    direction += Vector3.back;
+                    movementStopped = false;
+                    hasMoved = true;
+                }
+                if (Input.GetKey(KeyCode.H))
+                {
+                    direction += Vector3.left;
+                    movementStopped = false;
+                    hasMoved = true;
+                }
+                if (Input.GetKey(KeyCode.K))
+                {
+                    direction += Vector3.right;
+                    movementStopped = false;
+                    hasMoved = true;
+                }
+                if (Input.GetKey(KeyCode.Y))
+                {
+                    direction += Vector3.up;
+                    movementStopped = false;
+                    hasMoved = true;
+                }
+                if (Input.GetKey(KeyCode.I))
+                {
+                    direction += Vector3.down;
+                    movementStopped = false;
+                    hasMoved = true;
+                }
             }
-            if (Input.GetKey(KeyCode.J))
+            else
             {
-                direction += Vector3.back;
-            }
-            if (Input.GetKey(KeyCode.H))
-            {
-                direction += Vector3.left;
-            }
-            if (Input.GetKey(KeyCode.K))
-            {
-                direction += Vector3.right;
-            }
-            if (Input.GetKey(KeyCode.Y))
-            {
-                direction += Vector3.up;
-            }
-            if (Input.GetKey(KeyCode.I))
-            {
-                direction += Vector3.down;
+                movementStopped = true;
             }
             return direction;
         }
@@ -237,8 +257,6 @@ namespace UnityTemplateProjects
                 a.x == b.x &&
                 a.y == b.y &&
                 a.z == b.z);
-       
-
         }
 
         public void JumpTo(Vector3 position) {
@@ -255,9 +273,20 @@ namespace UnityTemplateProjects
             //m_InterpolatingCameraState.LerpTowards(m_TargetCameraState, positionLerpPct, rotationLerpPct);
 
             //m_InterpolatingCameraState.UpdateTransform(transform);
+            hasMoved = true;
+            movementStopped = false;
 
-        } 
+        }
 
+        public bool HasMoved()
+        {
+            return hasMoved && movementStopped; // only register change in source position when the movement has stopped
+        }
+
+        public void AckMovement()
+        {
+            hasMoved = false;
+        }
     }
 
 }

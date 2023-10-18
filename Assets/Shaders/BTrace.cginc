@@ -37,8 +37,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     float original_distance = sqrt(pow(xr.x - xs.x, 2) + pow(xr.y - xs.y, 2));    
 
     float current_distance = original_distance;
-    float previous_distance = original_distance;
-    float3 x0_cart;
+    float previous_distance = original_distance;    
     float3 x_cart;
 
     RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);    
@@ -88,13 +87,11 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         q = stepOutput.q;
         tau = stepOutput.tau;
         len = stepOutput.len;
-
-        x0_cart = toCartesian(phi, x0);
-        x_cart = toCartesian(phi, x);
         
         // distance between ray and receiver        
         current_distance = sqrt(pow((x.x - xr.x), 2) + pow((x.y - xr.y), 2));        
 
+        x_cart = toCartesian(phi, x);
         RayPositionsBuffer[istep + offset] = x_cart;        
 
         istep++;

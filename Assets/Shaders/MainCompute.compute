@@ -5,8 +5,6 @@
 
 //RaytracingAccelerationStructure g_AccelStruct;
 
-RWTexture2D<float4> Result;
-
 struct PerRayData {
     float beta;
     uint ntop;
@@ -43,7 +41,6 @@ StructuredBuffer<uint> rayTargets;
 float4x4 _SourceCameraToWorld;
 float4x4 _CameraInverseProjection;
 
-//uint _MAXINTERACTIONS;
 uint _BELLHOPSIZE;
 float deltas;
 uint _MAXBOTTOMHITS;
