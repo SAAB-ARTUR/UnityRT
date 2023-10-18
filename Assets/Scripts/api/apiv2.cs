@@ -11,10 +11,16 @@ using SAAB.Artur;
 
 // using SAAB.Artur.Control;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityTemplateProjects;
 
 public class apiv2 : MonoBehaviour
 {
+
+    [SerializeField] Slider TargetX;
+    [SerializeField] Slider TargetY;
+    [SerializeField] Slider TargetZ;
+
 
     bool processreadyForData = true;
 
@@ -129,19 +135,15 @@ public class apiv2 : MonoBehaviour
 
     void Control(SAAB.Artur.Control.ControlMessage m) {
 
-        UnityEngine.Debug.Log("Got control message");
+       
 
-        SAAB.Artur.Control.Vec3? pr = m.Reciever?.Position;
-        UnityEngine.Debug.Log("Got control message2" + (m.Sender != null));
-        
+        /*
 
         if (m.Sender != null) {
-            UnityEngine.Debug.Log("Got control message2" + (m.Sender.Value.Position != null));
             if (m.Sender.Value.Position != null)
             {
 
                 SAAB.Artur.Control.Vec3 ps = m.Sender.Value.Position.Value;
-                UnityEngine.Debug.Log("Position x: " + ps.X);
 
                 main.sourceCamera.GetComponent<SimpleSourceController>().DirectJumpTo(new Vector3((float)ps.X, (float)ps.Z, (float)ps.Y));
 
@@ -149,6 +151,27 @@ public class apiv2 : MonoBehaviour
             }
 
         }
+        */
+        SAAB.Artur.Control.Vec3? ps = m.Sender?.Position; 
+
+        if (ps != null)
+        {
+
+            main.sourceCamera.GetComponent<SimpleSourceController>().DirectJumpTo(new Vector3((float)ps?.X, (float)ps?.Z, (float)ps?.Y));
+
+        }
+
+
+        SAAB.Artur.Control.Vec3? pr = m.Reciever?.Position;
+        if (pr != null)
+        {
+            UnityEngine.Debug.Log("--------------> Got a reciever position");
+            TargetX.value = (float)(pr?.X);
+            TargetY.value = (float)(pr?.Y);
+            TargetZ.value = (float)(pr?.Z);
+        }
+
+
 
         SAAB.Artur.Control.SphericalDir? lookAt = m.Sender?.LookAt;
         SAAB.Artur.Control.AngleSpan? angleSpan = m.Sender?.AngleSpan;

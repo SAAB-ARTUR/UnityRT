@@ -5229,6 +5229,7 @@ MonoBehaviour:
   world_manager: {fileID: 202712677}
   btnFilePicker: {fileID: 1776278225}
   bellhop: {fileID: 2049076833}
+  doRayTracing: 0
 --- !u!114 &963194230
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5294,6 +5295,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4c3916144d4ff04ea860b68cd548b0d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  TargetX: {fileID: 734024972}
+  TargetY: {fileID: 935638877}
+  TargetZ: {fileID: 1060661902}
 --- !u!1 &978954436
 GameObject:
   m_ObjectHideFlags: 0
