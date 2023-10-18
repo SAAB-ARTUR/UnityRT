@@ -17,15 +17,15 @@ struct PerRayData {
     float xn;
     float qi;    
     float theta;
-    float phi;
-    uint contributing;
-    float TL;
-    uint target;
+    float phi; // angle from source to target in the xz-plane
+    uint contributing; // if ray 'hits' a target
+    float TL; // transmission loss
+    uint target; // index of the target the ray is headed towards
 };
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> RayPositionsBuffer;
-RWStructuredBuffer<float3> debugBuf;
+//RWStructuredBuffer<float3> debugBuf; // used to debug data on the gpu, fill it with values and write them on the cpu
 RWStructuredBuffer<PerRayData> ContributingRayData;
 StructuredBuffer<float2> ContributingAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
@@ -43,7 +43,7 @@ StructuredBuffer<uint> rayTargets;
 float4x4 _SourceCameraToWorld;
 float4x4 _CameraInverseProjection;
 
-uint _MAXINTERACTIONS;
+//uint _MAXINTERACTIONS;
 uint _BELLHOPSIZE;
 float deltas;
 uint _MAXBOTTOMHITS;
@@ -106,17 +106,11 @@ RayHit CreateRayHit()
     return hit;
 }
 
-//-------------------------------------
-//- HIT CODE (frågan är om man ska skapa vanliga funktioner eller om man ska skapa nya kernels)
-#include "HitHandler.cginc"
+//#include "HitHandler.cginc" // was first meant to be used for an implementation based on the rt acceleration structure
 
 [numthreads(1,8,1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
-    // Get the dimensions of the RenderTexture
-    uint width, height;
-    Result.GetDimensions(width, height);
-
     float2 angles = CreateCylindricalRay(id);
 
     SSP soundSpeedProfile;
@@ -132,12 +126,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };    
 
-    PerRayData prd;
+    PerRayData prd;    
     
-    uint offset = (id.y * width + id.x) * _BELLHOPSIZE;
+    uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE;
     btrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
     
-    PerRayDataBuffer[id.y + id.x * height] = prd;
+    PerRayDataBuffer[id.y + id.x * ntheta] = prd;
 }
 
 #include "BTraceContributing.cginc"
@@ -145,7 +139,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 [numthreads(1, 1, 1)]
 void TraceContributingRays(uint3 id : SV_DispatchThreadID)
 {
-    // id is 1D for now, id.y is the only thing needed
+    // id is 1D, id.y is the only thing needed
     SSP soundSpeedProfile;
     soundSpeedProfile.type = 0;    
 
