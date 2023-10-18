@@ -17,10 +17,15 @@ using UnityTemplateProjects;
 public class apiv2 : MonoBehaviour
 {
 
+
+    // API works through controlling the ui. This is quick and dirty. Could be/should be changed in the future. 
     [SerializeField] Slider TargetX;
     [SerializeField] Slider TargetY;
     [SerializeField] Slider TargetZ;
 
+
+    [SerializeField] InputField ntheta;
+    [SerializeField] InputField theta;
 
     bool processreadyForData = true;
 
@@ -171,10 +176,16 @@ public class apiv2 : MonoBehaviour
             TargetZ.value = (float)(pr?.Z);
         }
 
+        SAAB.Artur.Control.AngleSpan ? angleSpan = m.Sender?.AngleSpan;
 
+        if (angleSpan != null) {
+
+            ntheta.text = angleSpan.Value.NTheta.ToString();
+            theta.text = angleSpan.Value.ThetaSpan.ToString();
+
+        }
 
         SAAB.Artur.Control.SphericalDir? lookAt = m.Sender?.LookAt;
-        SAAB.Artur.Control.AngleSpan? angleSpan = m.Sender?.AngleSpan;
 
 
         
