@@ -120,20 +120,13 @@ def trace_message():
 
     return bytes(binary_message)
 
-theta = 0
-def move_message():
+def move_sender_message(position):
 
     import Assets.Scripts.api.ControlSchema_generated as control_schema
 
     builder = flatbuffers.Builder(1024)
 
-    # control_schema.ControlMessageStart(builder)
-
-    global theta
-    current_pos = [10 * np.cos(theta), 10 * np.sin(theta), -25 + 10 * np.sin(theta)]
-    
-    theta += 0.1 
-    position = control_schema.CreateVec3(builder, current_pos[0], current_pos[1], current_pos[2])
+    position = control_schema.CreateVec3(builder, *position)
     
     control_schema.SenderStart(builder)
     control_schema.SenderAddPosition(builder, position)
@@ -149,15 +142,38 @@ def move_message():
     message = control_schema.MessageEnd(builder)
 
     builder.Finish(message)
-
-    binary_message: bytearray
-    binary_message = builder.Output()
-    assert isinstance(binary_message, bytearray)
-
-
-
+    binary_message: bytearray = builder.Output()
 
     return bytes(binary_message)
+
+def move_receiver_message(position):
+
+    import Assets.Scripts.api.ControlSchema_generated as control_schema
+
+    builder = flatbuffers.Builder(1024)
+
+    position = control_schema.CreateVec3(builder, *position)
+
+    control_schema.RecieverStart(builder)
+    control_schema.RecieverAddPosition(builder, position)
+    msg = control_schema.RecieverEnd(builder)
+
+    control_schema.ControlMessageStart(builder)
+    control_schema.ControlMessageAddReciever(builder, msg)
+    msg = control_schema.ControlMessageEnd(builder)
+
+    control_schema.MessageStart(builder)
+    control_schema.MessageAddMessageType(builder, control_schema.MessageType().ControlMessage)
+    control_schema.MessageAddMessage(builder, msg)
+    message = control_schema.MessageEnd(builder)
+
+    builder.Finish(message)
+    binary_message: bytearray = builder.Output()
+
+    return bytes(binary_message)
+
+    
+
 
 """
 msg = move_message()
@@ -193,10 +209,17 @@ def send(message: bytearray):
     sys.stdout.write(base64.b64encode(message).decode("ascii") + "\n")
     sys.stdout.flush()
 
+
+
+theta = 0
+
 while True:
     
     
-   
+    theta += 0.1
+
+    pos_sender = [10 * np.cos(theta), 10 * np.sin(theta), -25 + 10 * np.sin(theta)]   
+    pos_receiver = [10 * np.sin(theta), 0, -25 + 10 * np.sin(theta)]
 
     #blength = int.from_bytes(sys.stdin.buffer.read())
     blength = int.from_bytes(os.read(sys.stdin.fileno(), 4), sys.byteorder, signed = True)
@@ -228,7 +251,9 @@ while True:
     plt.pause(0.001)
     #sys.stdin.buffer.flush()
     # sys.stdin.flush()
-    send(move_message())
+
+    send(move_sender_message(pos_sender))
+    send(move_receiver_message(pos_receiver))
     send(trace_message())
     
     
