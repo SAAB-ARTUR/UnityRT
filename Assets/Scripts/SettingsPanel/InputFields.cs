@@ -94,7 +94,7 @@ public class InputFields : MonoBehaviour
     public void ExtraTargets()
     {              
         string str = targets.text;
-        List<int> targetCoords = new List<int>();        
+        List<float> targetCoords = new List<float>();        
         try
         {
             string[] targetsStr = str.Split(":");

@@ -17,15 +17,9 @@ using UnityTemplateProjects;
 public class apiv2 : MonoBehaviour
 {
 
-
-    // API works through controlling the ui. This is quick and dirty. Could be/should be changed in the future. 
-    [SerializeField] Slider TargetX;
-    [SerializeField] Slider TargetY;
-    [SerializeField] Slider TargetZ;
-
-
     [SerializeField] InputField ntheta;
     [SerializeField] InputField theta;
+    [SerializeField] GameObject world;
 
     bool processreadyForData = true;
 
@@ -171,9 +165,14 @@ public class apiv2 : MonoBehaviour
         if (pr != null)
         {
             UnityEngine.Debug.Log("--------------> Got a reciever position");
-            TargetX.value = (float)(pr?.X);
-            TargetY.value = (float)(pr?.Y);
-            TargetZ.value = (float)(pr?.Z);
+
+            List<float> targetList = new List<float>();
+            targetList.Add((float)pr?.X);
+            targetList.Add((float)pr?.Y); 
+            targetList.Add((float)pr?.Z);
+
+            world.GetComponent<World>().CreateTargets(targetList);
+
         }
 
         SAAB.Artur.Control.AngleSpan ? angleSpan = m.Sender?.AngleSpan;
@@ -312,8 +311,7 @@ public class apiv2 : MonoBehaviour
         int theta_width = sourceParams.theta; 
 
 
-        // Reciever position
-        Vector3 prec = main.targetSphere.transform.position;
+
         
 
 
@@ -332,6 +330,8 @@ public class apiv2 : MonoBehaviour
         Offset<Sender> s = Sender.EndSender(fbb);
 
         // Reciever
+        // For now, take the first target position and send. 
+        Vector3 prec = world.GetComponent<World>().GetMainTargetPosition();
         Offset<Vec3> posRecOffset = Vec3.CreateVec3(fbb, (double)prec.x, (double)prec.y, (double)prec.z);
         Reciever.StartReciever(fbb);
         Reciever.AddPosition(fbb, posRecOffset);

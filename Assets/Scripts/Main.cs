@@ -11,7 +11,6 @@ public class Main : MonoBehaviour
     public ComputeShader computeShader = null;
 
     public GameObject srcSphere = null;
-    public GameObject targetSphere = null;
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject seafloor = null;
     [SerializeField] GameObject waterplane = null;

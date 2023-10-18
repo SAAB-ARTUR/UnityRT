@@ -246,7 +246,7 @@ public class World : MonoBehaviour
         changeInWorld = true;
     }
 
-    public bool CreateTargets(List<int> targetCoords)
+    public bool CreateTargets(List<float> targetCoords)
     {         
         // try tp create the new targets, everything needs to be successful for a change to take place
         List<GameObject> tempTargets = new List<GameObject>();        
