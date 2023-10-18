@@ -287,9 +287,11 @@ public class Main : MonoBehaviour
     int GetStartIndexBellhop(int idx, int idy)
     {        
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         World world = worldManager.GetComponent<World>();
 
-        return (idy * world.GetNrOfTargets() + idx) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
+        //return (idy * world.GetNrOfTargets() + idx) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
+        return (idy + idx * sourceParams.ntheta) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
     }
 
     void PlotBellhop(int idx, int idy)
@@ -354,6 +356,36 @@ public class Main : MonoBehaviour
         line.SetPositions(positions.ToArray());
 
         lines.Add(line);        
+    }
+
+    void SSPFileCheck()
+    {
+        if (_SSPFileReader.SSPFileHasChanged())
+        {
+            try
+            {
+                _SSPFileReader.AckSSPFileHasChanged();
+                SSP = _SSPFileReader.GetSSPData();
+
+                if (SSPBuffer != null)
+                {
+                    SSPBuffer.Release();
+                }
+
+                SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float) * 4); // SSP_data struct consists of 4 floats
+                SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
+                SetComputeBuffer("_SSPBuffer", SSPBuffer);
+                World world = worldManager.GetComponent<World>();
+                world.SetNrOfWaterplanes(SSP.Count - 2);
+                world.SetWaterDepth(SSP.Last().depth);
+            }
+            catch (Exception e)
+            {
+                Debug.Log(e);
+                Debug.Log("SSP not created successfully, raytracing won't be available until SSP is created successfully");
+                errorFree = false;
+            }
+        }
     }
 
     void ComputeEigenRays()
@@ -542,32 +574,9 @@ public class Main : MonoBehaviour
             }
         }
 
-        if (_SSPFileReader.SSPFileHasChanged())
-        {
-            try
-            {
-                _SSPFileReader.AckSSPFileHasChanged();
-                SSP = _SSPFileReader.GetSSPData();
+        SSPFileCheck(); // check for change of SSP-file
 
-                if (SSPBuffer != null)
-                {
-                    SSPBuffer.Release();
-                }
 
-                SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float) * 4); // SSP_data struct consists of 4 floats
-                SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
-                SetComputeBuffer("_SSPBuffer", SSPBuffer);
-                world.SetNrOfWaterplanes(SSP.Count - 2);
-                world.SetWaterDepth(SSP.Last().depth);                
-            }
-            catch(Exception e)
-            {
-                Debug.Log(e);
-                Debug.Log("SSP not created successfully, raytracing won't be available until SSP is created successfully");
-                errorFree = false;
-            }
-        }        
-        
         if (world.StateChanged())
         {
             BuildWorld();
