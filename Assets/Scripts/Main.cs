@@ -85,15 +85,36 @@ public class Main : MonoBehaviour
     private ComputeBuffer RayTargetsBuffer;
     private List<uint> rayTargets = new List<uint>();
 
-    /*private ComputeBuffer debugBuf;
-    private float3[] debugger;*/
+    private ComputeBuffer debugBuf;
+    private float3[] debugger;
 
     private ComputeBuffer FreqDampBuffer;
     private float2[] freqsdamps;
 
     private ComputeBuffer targetBuffer;    
     private int oldNrOfTargets = 0;
-    
+
+    private ComputeBuffer alphaData;
+    private float[] alphas = new float[128] { (float)-0.523598775598299, (float)-0.515353125588877, (float)-0.507107475579455, (float)-0.498861825570033, (float)-0.490616175560611, (float)-0.482370525551189, (float)-0.474124875541767,
+                                            (float)-0.465879225532345, (float)-0.457633575522923, (float)-0.449387925513501, (float)-0.441142275504079, (float)-0.432896625494657, (float)-0.424650975485235, (float)-0.416405325475813,
+                                            (float)-0.408159675466391, (float)-0.399914025456968, (float)-0.391668375447546, (float)-0.383422725438124, (float)-0.375177075428702, (float)-0.366931425419280, (float)-0.358685775409858,
+                                            (float)-0.350440125400436, (float)-0.342194475391014, (float)-0.333948825381592, (float)-0.325703175372170, (float)-0.317457525362748, (float)-0.309211875353326, (float)-0.300966225343904,
+                                            (float)-0.292720575334482, (float)-0.284474925325060, (float)-0.276229275315638, (float)-0.267983625306216, (float)-0.259737975296794, (float)-0.251492325287372, (float)-0.243246675277950,
+                                            (float)-0.235001025268528, (float)-0.226755375259106, (float)-0.218509725249684, (float)-0.210264075240262, (float)-0.202018425230840, (float)-0.193772775221418, (float)-0.185527125211996,
+                                            (float)-0.177281475202574, (float)-0.169035825193152, (float)-0.160790175183730, (float)-0.152544525174308, (float)-0.144298875164886, (float)-0.136053225155463, (float)-0.127807575146041,
+                                            (float)-0.119561925136619, (float)-0.111316275127197, (float)-0.103070625117775, (float)-0.0948249751083534, (float)-0.0865793250989313, (float)-0.0783336750895093, (float)-0.0700880250800873,
+                                            (float)-0.0618423750706652, (float)-0.0535967250612432, (float)-0.0453510750518212, (float)-0.0371054250423991, (float)-0.0288597750329771, (float)-0.0206141250235551, (float)-0.0123684750141330,
+                                            (float)-0.00412282500471102, (float)0.00412282500471102, (float)0.0123684750141330, (float)0.0206141250235551, (float)0.0288597750329771, (float)0.0371054250423991, (float)0.0453510750518212,
+                                            (float)0.0535967250612432, (float)0.0618423750706652, (float)0.0700880250800873, (float)0.0783336750895093, (float)0.0865793250989313, (float)0.0948249751083534, (float)0.103070625117775,
+                                            (float)0.111316275127197, (float)0.119561925136619, (float)0.127807575146041, (float)0.136053225155463, (float)0.144298875164886, (float)0.152544525174308, (float)0.160790175183730, (float)0.169035825193152,
+                                            (float)0.177281475202574, (float)0.185527125211996, (float)0.193772775221418, (float)0.202018425230840, (float)0.210264075240262, (float)0.218509725249684, (float)0.226755375259106, (float)0.235001025268528,
+                                            (float)0.243246675277950, (float)0.251492325287372, (float)0.259737975296794, (float)0.267983625306216, (float)0.276229275315638, (float)0.284474925325060, (float)0.292720575334482, (float)0.300966225343904,
+                                            (float)0.309211875353326, (float)0.317457525362748, (float)0.325703175372170, (float)0.333948825381592, (float)0.342194475391014, (float)0.350440125400436, (float)0.358685775409858, (float)0.366931425419280,
+                                            (float)0.375177075428702, (float)0.383422725438124, (float)0.391668375447546, (float)0.399914025456968, (float)0.408159675466391, (float)0.416405325475813, (float)0.424650975485235, (float)0.432896625494657,
+                                            (float)0.441142275504079, (float)0.449387925513501, (float)0.457633575522923, (float)0.465879225532345, (float)0.474124875541767, (float)0.482370525551189, (float)0.490616175560611, (float)0.498861825570033,
+                                            (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };
+
+
     private void ReleaseResources()
     {
         if (rtas != null)
@@ -131,8 +152,8 @@ public class Main : MonoBehaviour
         PerRayDataBuffer = null;
         FreqDampBuffer?.Release();
         FreqDampBuffer = null;
-        //debugBuf?.Release();
-        //debugBuf = null;
+        debugBuf?.Release();
+        debugBuf = null;
     }
 
     void OnDestroy()
@@ -262,6 +283,10 @@ public class Main : MonoBehaviour
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
 
         api = GetComponent<apiv2>();
+
+        alphaData = new ComputeBuffer(128, sizeof(float));
+        alphaData.SetData(alphas);
+        SetComputeBuffer("thetaData", alphaData);
     }
 
     int GetStartIndexBellhop(int idx, int idy)
@@ -436,9 +461,9 @@ public class Main : MonoBehaviour
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dtheta", dtheta);
-            /*debugBuf = new ComputeBuffer(nrOfTargets * sourceParams.ntheta, 3 * sizeof(float));
-            debugger = new float3[nrOfTargets * sourceParams.ntheta];
-            computeShader.SetBuffer(0, "debugBuf", debugBuf);*/
+            debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));
+            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta];            
+            SetComputeBuffer("debugBuf", debugBuf);
         }
         if (bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -652,6 +677,15 @@ public class Main : MonoBehaviour
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
+
+            debugBuf.GetData(debugger);
+            Debug.Log("------------------------------------------------------------------------------");
+            for (int i = 0; i < debugger.Length; i++)
+            {
+                Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            }
+            Debug.Log("------------------------------------------------------------------------------");
+
 
             // keep contributing rays only            
             /*for (int i = 0; i < rayData.Length; i++)

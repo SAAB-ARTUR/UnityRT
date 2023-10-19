@@ -1152,8 +1152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9dcd90d4b09e47a408d8e5bb3df2bca7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sourceDepth: 55.01
-  srcSphere: {fileID: 0}
+  sourceDepth: 55
   _range: 300
   target: {fileID: 2001379511}
 --- !u!4 &202712679

@@ -18,6 +18,8 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, flo
         ilay++;
     }
 
+    //debugBuf[id.y + id.x * ntheta] = float3(_SSPBuffer[ilay].depth, ilay, 123);
+
     // initial conditions
     float c = _SSPBuffer[ilay].velocity;
     float r = xs.x;
@@ -28,6 +30,8 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, flo
     float len = 0;
     uint ntop = 0;
     uint nbot = 0;
+
+    debugBuf[id.y + id.x * ntheta] = float3(ksi, tz, c);
 
     // avoid tz == 0, if possible
     uint nlay;
@@ -127,7 +131,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, flo
                 ntop++;
                 tz = -tz;
             }
-            if (ilay > nlay) {
+            if (ilay > nlay - 1) { // TODO: av nån anledning blir det knäppt när man har bottenstuds
                 nbot++;
                 tz = -tz;
             }

@@ -23,10 +23,11 @@ struct PerRayData {
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> RayPositionsBuffer;
-//RWStructuredBuffer<float3> debugBuf; // used to debug data on the gpu, fill it with values and write them on the cpu
+RWStructuredBuffer<float3> debugBuf; // used to debug data on the gpu, fill it with values and write them on the cpu
 RWStructuredBuffer<PerRayData> ContributingRayData;
 StructuredBuffer<float2> ContributingAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
+StructuredBuffer<float> thetaData;
 
 struct Target {
     float xpos;
@@ -169,6 +170,9 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
     float theta = angles.x;
     float phi = angles.y;
 
+    theta = thetaData[id.y];
+    phi = 0;
+
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
     float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
@@ -179,5 +183,6 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
     PerRayData prd;
 
     uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target
+    //debugBuf[id.y + id.x * ntheta] = float3(xr, theta);
     HovemTrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
 }
