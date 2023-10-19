@@ -7,7 +7,7 @@ using UnityTemplateProjects;
 public class World : MonoBehaviour
 {
     [SerializeField] float sourceDepth = 0;
-    [SerializeField] GameObject srcSphere = null;
+    //[SerializeField] GameObject srcSphere = null;
 
     public int range
     {

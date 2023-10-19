@@ -216,7 +216,7 @@ public class Main : MonoBehaviour
     {
         if (buffer != null)
         {        
-            computeShader.SetBuffer(0, name, buffer);
+            computeShader.SetBuffer(2, name, buffer);
         }
     }
 
@@ -386,8 +386,8 @@ public class Main : MonoBehaviour
             sourceController.AckMovement();
             oldNrOfTargets = world.GetNrOfTargets();
             targetBuffer = new ComputeBuffer(oldNrOfTargets, world.GetDataSizeOfTarget());
-            targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());
-            computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
+            targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());            
+            SetComputeBuffer("targetBuffer", targetBuffer);
         }
 
         if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.TargetHasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
@@ -615,7 +615,7 @@ public class Main : MonoBehaviour
         }
         else
         {
-            //doRayTracing = false;
+            doRayTracing = false;
             lockRayTracing = false;
         }
 
@@ -646,7 +646,7 @@ public class Main : MonoBehaviour
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
-            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+            computeShader.Dispatch(2, threadGroupsX, threadGroupsY, 1);
 
             // read results from buffers into arrays
             RayPositionsBuffer.GetData(rayPositions);
@@ -654,13 +654,13 @@ public class Main : MonoBehaviour
             PerRayDataBuffer.GetData(rayData);
 
             // keep contributing rays only            
-            for (int i = 0; i < rayData.Length; i++)
+            /*for (int i = 0; i < rayData.Length; i++)
             {
                 if (rayData[i].contributing == 1)
                 {
                     contributingRays.Add(rayData[i]);
                 }                
-            }
+            }*/
 
 
             // Communicate the rays with the api
@@ -685,12 +685,12 @@ public class Main : MonoBehaviour
             }
 
             // check if a pair of contributing rays can be combined into an eigenray
-            ComputeEigenRays();
+            /*ComputeEigenRays();
 
             if (contributingAngles.Count > 0)
             {
                 TraceContributingRays();               
-            }
+            }*/
 
             DateTime time2 = DateTime.Now;
 

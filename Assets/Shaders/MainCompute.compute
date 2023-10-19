@@ -1,7 +1,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
 //#include "UnityRayQuery.cginc"
 //#pragma require inlineraytracing
-#pragma kernel CSMain
+#pragma kernel BellhopMain
 
 //RaytracingAccelerationStructure g_AccelStruct;
 
@@ -106,7 +106,7 @@ RayHit CreateRayHit()
 //#include "HitHandler.cginc" // was first meant to be used for an implementation based on the rt acceleration structure
 
 [numthreads(1,8,1)]
-void CSMain(uint3 id : SV_DispatchThreadID)
+void BellhopMain(uint3 id : SV_DispatchThreadID)
 {
     float2 angles = CreateCylindricalRay(id);
 
@@ -154,4 +154,30 @@ void TraceContributingRays(uint3 id : SV_DispatchThreadID)
     btrace_contributing(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
 
     ContributingRayData[id.y] = prd;
+}
+
+#include "HovemTrace.cginc"
+#pragma kernel HovemMain
+[numthreads(1, 8, 1)]
+void HovemMain(uint3 id : SV_DispatchThreadID) 
+{
+    float2 angles = CreateCylindricalRay(id);
+
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
+
+    float theta = angles.x;
+    float phi = angles.y;
+
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+
+    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
+
+    PerRayData prd;
+
+    uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target
+    HovemTrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
 }

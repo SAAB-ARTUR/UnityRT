@@ -104,7 +104,7 @@ public class InputFields : MonoBehaviour
                 foreach(string coord in coords)
                 {
                     string s = string.Empty;
-                    int val = 0;
+                    float val = 0;
                     for (int i = 0; i < coord.Length; i++)
                     {                        
                         if (Char.IsDigit(coord[i]) || coord[i].Equals('-'))
@@ -114,7 +114,7 @@ public class InputFields : MonoBehaviour
                     }
                     if(s.Length > 0)
                     {
-                        bool parsed = int.TryParse(s, out val);
+                        bool parsed = float.TryParse(s, out val);
                         if (parsed)
                         {
                             targetCoords.Add(val);
