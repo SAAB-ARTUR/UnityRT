@@ -29,6 +29,8 @@ StructuredBuffer<float2> ContributingAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
 StructuredBuffer<float> thetaData;
 
+RWStructuredBuffer<PerRayData> HovemEigenRays;
+
 struct Target {
     float xpos;
     float ypos;
@@ -184,5 +186,120 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
 
     uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target
     //debugBuf[id.y + id.x * ntheta] = float3(xr, theta);
-    HovemTrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
+    HovemTrace(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
+
+    PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop
 }
+
+#include "HovemTraceContributing.cginc"
+#pragma kernel HovemTraceContributingRays
+[numthreads(1, 1, 1)]
+void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID) 
+{
+    // Buffer HovemEigenRays contains N rays, this function will be called and create N/2 threads, rays are paired where ray 1 and 2 are paired to create an eigenray. Rays 3 and 4 are another pair.
+    // Each thread will trace an eigenray and its data will replace either index i or i-1 in the buffer where i starts at 1
+    // both rays in the pair (more specifically the eigenray and the other ray, the on that isn't replaced, are used to calculate transmission loss)
+
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
+
+    uint rayIdx = 1 + (2 * id.y);
+
+    float theta1 = ContributingAnglesData[rayIdx].x;
+    float theta2 = ContributingAnglesData[rayIdx - 1].x;
+    float theta = (theta1 + theta2) / 2;
+
+    float phi = ContributingAnglesData[id.y].y;
+
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+
+    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
+
+    PerRayData prd;
+
+    HovemTraceContributing(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
+
+    // fill buffer
+    uint eigIdx = 0;
+    if (prd.xn * HovemEigenRays[rayIdx].xn > 0) {
+        HovemEigenRays[rayIdx] = prd;
+        eigIdx = rayIdx;
+    }
+    else {
+        HovemEigenRays[rayIdx - 1] = prd;
+        eigIdx = rayIdx - 1;
+    }
+
+    // calculate transmission loss for the eigenray pairs
+
+    float xn1 = HovemEigenRays[rayIdx - 1].xn;
+    float xn2 = HovemEigenRays[rayIdx].xn;
+    float w1 = xn2 / (xn2 - xn1);
+    float w2 = 1 - w1;
+
+    float _theta = w1 * HovemEigenRays[rayIdx - 1].theta + w2 * HovemEigenRays[rayIdx].theta;
+    float curve = w1 * HovemEigenRays[rayIdx - 1].curve + w2 * HovemEigenRays[rayIdx].curve;
+    float delay = w1 * HovemEigenRays[rayIdx - 1].delay + w2 * HovemEigenRays[rayIdx].delay;
+
+    float ntop = HovemEigenRays[rayIdx].ntop;
+    float nbot = HovemEigenRays[rayIdx].nbot;
+
+    // sound speed: source, receiver
+    float cs = ssp(xs.y, soundSpeedProfile, 0).c;
+    float cr = ssp(xr.y, soundSpeedProfile, 0).c;
+
+    //bottom conditions
+    float c1 = ssp(depth, soundSpeedProfile, 0).c;
+    float c2 = 1600;
+    float rho1 = 1000;
+    float rho2 = 1000 * 1.8;
+    // bottom reflection loss, Urick, section 5.8
+    float Rbot = 1;
+
+    float cos1 = c1 * cos(_theta) / cs; // TODO: definiera c1, cs, etc
+    float cos2 = c2 * cos(_theta) / cs;
+    if (cos1 <= 1 && cos2 <= 1) {
+        float Y1 = sqrt(1 - cos1 * cos1) / rho1 / c1;
+        float Y2 = sqrt(1 - cos2 * cos2) / rho2 / c2;
+        Rbot = (Y1 - Y2) / (Y1 + Y2);
+    }
+
+    // geometrical spreading loss
+    float Area_s = 2 * PI * cos(_theta) * (HovemEigenRays[rayIdx].theta - HovemEigenRays[rayIdx - 1].theta);
+    float Area_r = 2 * PI * xr.x * abs(xn2 - xn1);
+    float Amp0 = sqrt(Area_s / Area_r);
+
+    // caustic phase shift
+    float ncaust = 0;
+    if (xn1 < xn2 && ntop % 2 == 0){
+        ncaust = 1;
+    }
+
+    // RMS amplitude
+    float Arms = 0;
+
+    // loop over frequencies
+    for (uint i = 0; i < freqsdamps; i++) {
+        float npi = ntop + ncaust / 2;
+        while (npi > 1) {
+            npi -= 2;
+        }
+
+        float phase = npi * PI; // TODO: detta ska egentligen vara en array eller buffer, med plats för varje ray och frekvens
+        float Amp = Amp0 * pow(Rbot, nbot) * exp(-FreqsAndDampData[i].y * curve); // samma här
+        // RMS amplitude
+        Arms += pow(Amp, 2);
+    }
+
+    // transmission loss
+    float Is = 1 / rho1 / cs;
+    float Ir = (Arms / freqsdamps) / rho1 / cr;
+    float TL = 10 * log10(Is / Ir);
+
+    HovemEigenRays[eigIdx].TL = TL;
+    HovemEigenRays[eigIdx].ncaust = ncaust;
+}
+

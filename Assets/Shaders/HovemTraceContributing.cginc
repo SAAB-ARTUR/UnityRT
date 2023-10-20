@@ -4,19 +4,15 @@
     float depth = rz.y;
 
     return float3(radius * cos(phi) + srcPosition.x, depth, radius * sin(phi) + srcPosition.z);
-}*/ 
+}*/
 
-void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float depth, uint maxtop,
-    uint maxbot, uint offset, float phi, inout PerRayData prd, uint3 id)
+void HovemTraceContributing(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float depth, uint maxtop, uint maxbot, float phi, inout PerRayData prd)
 {
-
     // find current layer
     uint ilay = 0;
     while (_SSPBuffer[ilay].depth > xs.y) {
         ilay++;
-    }
-
-    //debugBuf[id.y + id.x * ntheta] = float3(_SSPBuffer[ilay].depth, ilay, 123);
+    }    
 
     // initial conditions
     float c = _SSPBuffer[ilay].velocity;
@@ -29,8 +25,6 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
     uint ntop = 0;
     uint nbot = 0;
 
-    
-
     // avoid tz == 0, if possible
     uint nlay;
     uint stride;
@@ -38,7 +32,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
     if (ilay == 0) {
         tz = -abs(tz) - 1e-32;
     }
-    else if (ilay > nlay-1) {
+    else if (ilay > nlay - 1) {
         tz = abs(tz) + 1e-32;
     }
     else if (tz == 0) {
@@ -51,13 +45,11 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
 
     float c0, r0, z0, tz0, tau0, len0, ilay0, dz;
 
-    float xxs = 1;
-
-    // fyll första positionen i buffern
-    RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);
+    float xxs = 1;    
+    
     uint istep = 1;
 
-    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE) 
+    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
     {
         // save data from previous step
         c0 = c;
@@ -137,18 +129,9 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
 
         // distance left to receiver
         xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z);
-
-        // save ray coordinates 
-        RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z));
+                
         istep++;
-    }
-
-    // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
-    for (uint i = istep; i < _BELLHOPSIZE; i++) {
-        RayPositionsBuffer[i + offset] = float3(0, 10, 0);
-    }
-
-    debugBuf[id.y + id.x * ntheta] = float3(ilay, ntop, nbot);
+    }   
 
     // calculate ray tangent for segment
     float tr = r - r0;
@@ -168,13 +151,13 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
 
     // set data for the traced ray
     prd.theta = theta;
-    prd.phi = phi; 
+    prd.phi = phi;
     prd.delay = delay;
     prd.curve = curve;
     prd.ntop = ntop;
     prd.nbot = nbot;
     prd.xn = xn;
-    prd.target = id.x;
+    prd.target = 0; // not important anymore
     prd.TL = 0; // calculated later
     prd.ncaust = 0; // not for hovem
     prd.beta = 0; // not for hovem

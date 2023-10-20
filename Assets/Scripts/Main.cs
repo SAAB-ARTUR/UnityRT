@@ -678,13 +678,46 @@ public class Main : MonoBehaviour
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
 
-            debugBuf.GetData(debugger);
+            /*debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
             for (int i = 0; i < debugger.Length; i++)
             {
                 Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }
-            Debug.Log("------------------------------------------------------------------------------");
+            Debug.Log("------------------------------------------------------------------------------");*/
+
+            // HOVEM STUFF
+
+            // find eigenray pairs
+            for (int i = 1; i < rayData.Length; i++)
+            {
+                if (rayData[i-1].contributing == 0) // contributing == eigenray for now in the hovem case
+                {
+                    if (rayData[i].ntop == rayData[i - 1].ntop && rayData[i].nbot == rayData[i - 1].nbot && rayData[i].target == rayData[i - 1].target)
+                    {
+                        if (rayData[i].xn * rayData[i-1].xn <= 0)
+                        {
+                            rayData[i].contributing = 1; 
+                            rayData[i-1].contributing = 1;
+                            // add to list
+                            contributingRays.Add(rayData[i - 1]);
+                            contributingRays.Add(rayData[i]);
+                            float theta = (rayData[i].theta + rayData[i - 1].theta) / 2;
+                            float phi = rayData[i].phi;
+                            contributingAngles.Add(new float2(theta, phi));
+                        }
+                    }
+                }
+            }
+
+            // trace the contributing rays again
+            if (contributingRays.Count > 0)
+            {
+                // TODO: trace the hovem eigen rays
+            }
+
+
+            // END OF HOVEM STUFF, TODO: MANAGE HOVEM AND BELLHOP SELECTION
 
 
             // keep contributing rays only            
