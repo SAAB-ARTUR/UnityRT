@@ -31,7 +31,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, flo
     uint ntop = 0;
     uint nbot = 0;
 
-    debugBuf[id.y + id.x * ntheta] = float3(ksi, tz, c);
+    
 
     // avoid tz == 0, if possible
     uint nlay;
@@ -131,7 +131,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, flo
                 ntop++;
                 tz = -tz;
             }
-            if (ilay > nlay - 1) { // TODO: av nån anledning blir det knäppt när man har bottenstuds
+            if (ilay >= nlay - 1) { // TODO: av nån anledning blir det knäppt när man har bottenstuds
                 nbot++;
                 tz = -tz;
             }
@@ -149,6 +149,8 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, flo
     for (uint i = istep; i < _BELLHOPSIZE; i++) {
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);
     }
+
+    debugBuf[id.y + id.x * ntheta] = float3(ilay, ntop, nbot);
 
     // calculate ray tangent for segment
     float tr = r - r0;
