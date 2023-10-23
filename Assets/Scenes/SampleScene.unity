@@ -3792,7 +3792,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Hovem
+  m_Text: Bellhop
 --- !u!222 &863479921
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -6144,9 +6144,9 @@ MonoBehaviour:
   m_Value: 0
   m_Options:
     m_Options:
-    - m_Text: Hovem
-      m_Image: {fileID: 0}
     - m_Text: Bellhop
+      m_Image: {fileID: 0}
+    - m_Text: Hovem
       m_Image: {fileID: 0}
   m_OnValueChanged:
     m_PersistentCalls:

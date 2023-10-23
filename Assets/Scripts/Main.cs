@@ -52,7 +52,10 @@ public class Main : MonoBehaviour
     private bool rayPositionDataAvail = false;
 
     private bool oldVisualiseRays = false;
-    private bool oldVisualiseContributingRays = false;    
+    private bool oldVisualiseContributingRays = false;
+
+    private const int BellhopTraceContributingRaysKernelIdx = 1;
+    private const int HovemTraceContributingRaysKernelIdx = 3;
 
     struct PerRayData
     {
@@ -416,7 +419,9 @@ public class Main : MonoBehaviour
         SimpleSourceController sourceController = sourceCamera.GetComponent<SimpleSourceController>();
         bool BuffersAndArraysSuccess = true;
 
-        if (world.TargetHasChanged() || sourceController.HasMoved())
+        bool SSPReadSuccessfully = SSPFileCheck();
+
+        if (world.TargetHasChanged() || sourceController.HasMoved() || bellhopParams.HasChanged(oldBellhopParams))
         {
             // either nr of targets has changed, positions of targets has changed or the source has moved, get the targets and recalculate their respective angles from the source            
             sourceController.AckMovement();
@@ -424,11 +429,9 @@ public class Main : MonoBehaviour
             targetBuffer = new ComputeBuffer(oldNrOfTargets, world.GetDataSizeOfTarget());
             targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());            
             SetComputeBuffer("targetBuffer", targetBuffer, bellhopParams.RTMODEL);
-        }
-
+        }        
         if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.TargetHasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
-        {
-            Debug.Log("model changed");
+        {            
             world.AckTargetChange();
             try
             {
@@ -486,9 +489,7 @@ public class Main : MonoBehaviour
         {
             oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
             computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);
-        }
-
-        bool SSPReadSuccessfully = SSPFileCheck();
+        }        
 
         if (world.WorldHasChanged())
         {
@@ -508,6 +509,7 @@ public class Main : MonoBehaviour
     bool SSPFileCheck()
     {
         bool success = true;
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
         if (_SSPFileReader.SSPFileHasChanged())
         {
             try
@@ -521,8 +523,7 @@ public class Main : MonoBehaviour
                 }
 
                 SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float) * 4); // SSP_data struct consists of 4 floats
-                SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
-                BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+                SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);                
                 SetComputeBuffer("_SSPBuffer", SSPBuffer, bellhopParams.RTMODEL);
                 World world = worldManager.GetComponent<World>();
                 world.SetNrOfWaterplanes(SSP.Count - 2);
@@ -534,6 +535,10 @@ public class Main : MonoBehaviour
                 Debug.Log("SSP not created successfully, raytracing won't be available until SSP is created successfully");
                 success = false;
             }
+        }
+        else if (bellhopParams.HasChanged(oldBellhopParams))
+        {
+            SetComputeBuffer("_SSPBuffer", SSPBuffer, bellhopParams.RTMODEL);
         }
         return success;
     }
@@ -578,24 +583,24 @@ public class Main : MonoBehaviour
     {
         debugBuf = new ComputeBuffer(contributingAngles.Count, 3 * sizeof(float));
         debugger = new float3[contributingAngles.Count];
-        computeShader.SetBuffer(1, "debugBuf", debugBuf);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "debugBuf", debugBuf);
 
         PerContributingRayData = new PerRayData[contributingAngles.Count];
 
         ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
 
         ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
-        computeShader.SetBuffer(1, "ContributingAnglesData", ContributingAnglesBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "ContributingAnglesData", ContributingAnglesBuffer);
 
         // init return data buffer
         PerContributingRayDataBuffer = new ComputeBuffer(contributingAngles.Count, perraydataByteSize);
-        computeShader.SetBuffer(1, "ContributingRayData", PerContributingRayDataBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "ContributingRayData", PerContributingRayDataBuffer);
 
-        computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "_SSPBuffer", SSPBuffer);
 
         RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
         RayTargetsBuffer.SetData(rayTargets.ToArray());
-        computeShader.SetBuffer(1, "rayTargets", RayTargetsBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "rayTargets", RayTargetsBuffer);
 
         freqsdamps = new float2[1];
         freqsdamps[0].x = 150000;
@@ -603,7 +608,7 @@ public class Main : MonoBehaviour
 
         FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
         FreqDampBuffer.SetData(freqsdamps);
-        computeShader.SetBuffer(3, "FreqsAndDampData", FreqDampBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "FreqsAndDampData", FreqDampBuffer);
         computeShader.SetInt("freqsdamps", freqsdamps.Length);
 
         computeShader.SetBuffer(1, "targetBuffer", targetBuffer);
@@ -612,7 +617,7 @@ public class Main : MonoBehaviour
         int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
 
         // send eigenrays
-        computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
+        computeShader.Dispatch(BellhopTraceContributingRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
 
         PerContributingRayDataBuffer.GetData(PerContributingRayData);
 
@@ -633,24 +638,24 @@ public class Main : MonoBehaviour
     {
         debugBuf = new ComputeBuffer(contributingAngles.Count, 3 * sizeof(float));
         debugger = new float3[contributingAngles.Count];
-        computeShader.SetBuffer(3, "debugBuf", debugBuf);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "debugBuf", debugBuf);
 
         PerContributingRayData = new PerRayData[contributingRays.Count];
 
         ContributingAnglesBuffer = new ComputeBuffer(contributingRays.Count, sizeof(float) * 2);
 
         ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
-        computeShader.SetBuffer(3, "ContributingAnglesData", ContributingAnglesBuffer);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "ContributingAnglesData", ContributingAnglesBuffer);
 
         // init return data buffer
         PerContributingRayDataBuffer = new ComputeBuffer(contributingRays.Count, perraydataByteSize);
-        computeShader.SetBuffer(3, "ContributingRayData", PerContributingRayDataBuffer);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "ContributingRayData", PerContributingRayDataBuffer);
 
-        computeShader.SetBuffer(3, "_SSPBuffer", SSPBuffer);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "_SSPBuffer", SSPBuffer);
 
         RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
         RayTargetsBuffer.SetData(rayTargets.ToArray());
-        computeShader.SetBuffer(3, "rayTargets", RayTargetsBuffer);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "rayTargets", RayTargetsBuffer);
 
         freqsdamps = new float2[1];
         freqsdamps[0].x = 150000;
@@ -658,7 +663,7 @@ public class Main : MonoBehaviour
 
         FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
         FreqDampBuffer.SetData(freqsdamps);
-        computeShader.SetBuffer(3, "FreqsAndDampData", FreqDampBuffer);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "FreqsAndDampData", FreqDampBuffer);
         computeShader.SetInt("freqsdamps", freqsdamps.Length);
 
         computeShader.SetBuffer(3, "targetBuffer", targetBuffer);
@@ -667,21 +672,24 @@ public class Main : MonoBehaviour
         int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
 
         // send eigenrays
-        computeShader.Dispatch(3, threadGroupsX, threadGroupsY, 1);
+        computeShader.Dispatch(HovemTraceContributingRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
 
         PerContributingRayDataBuffer.GetData(PerContributingRayData);
 
-        Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
+        Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta");
         Debug.Log(PerContributingRayData.Length);        
         for (int i = 0; i < PerContributingRayData.Length; i++)
         {            
-            float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
-            float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
+            if (PerContributingRayData[i].curve > 0) // skip the empty rays
+            {
+                float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
+                float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
 
-            string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
-                            PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
-                            PerContributingRayData[i].beta.ToString("F6");// + " " + isEigenRay[i];
-            Debug.Log(data);
+                string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
+                                PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
+                                PerContributingRayData[i].beta.ToString("F6");
+                Debug.Log(data);
+            }            
         }
     }
 
@@ -747,10 +755,12 @@ public class Main : MonoBehaviour
             //send rays
             if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
             {
+                Debug.Log("Bellhop");
                 computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
             }
             else if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Hovem)
             {
+                Debug.Log("Hovem");
                 computeShader.Dispatch(2, threadGroupsX, threadGroupsY, 1);
             }            
 
@@ -769,26 +779,28 @@ public class Main : MonoBehaviour
             
             if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
             {
+                Debug.Log("Bellhop");
                 // keep contributing rays only            
-                /*for (int i = 0; i < rayData.Length; i++)
+                for (int i = 0; i < rayData.Length; i++)
                 {
                     if (rayData[i].contributing == 1)
                     {
                         contributingRays.Add(rayData[i]);
-                    }                
-                }*/
+                    }
+                }
 
                 // check if a pair of contributing rays can be combined into an eigenray
-                /*ComputeEigenRays();
+                ComputeEigenRays();
 
                 if (contributingAngles.Count > 0)
                 {
                     BellhopTraceContributingRays();               
-                }*/
+                }
 
             }
             else if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Hovem)
             {
+                Debug.Log("Hovem");
                 // find eigenray pairs
                 for (int i = 1; i < rayData.Length; i++)
                 {

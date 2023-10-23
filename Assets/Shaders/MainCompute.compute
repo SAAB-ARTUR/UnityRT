@@ -222,13 +222,16 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
 
     // fill buffer
     uint eigIdx = 0;
+    uint idx2 = 0; // index of the other ray, going to be used to clear buffer on those positions
     if (prd.xn * ContributingRayData[rayIdx].xn > 0) {
         ContributingRayData[rayIdx] = prd;
         eigIdx = rayIdx;
+        idx2 = rayIdx - 1;
     }
     else {
         ContributingRayData[rayIdx - 1] = prd;
         eigIdx = rayIdx - 1;
+        idx2 = rayIdx;
     }
 
     // calculate transmission loss for the eigenray pairs
@@ -299,5 +302,21 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
 
     ContributingRayData[eigIdx].TL = TL;
     ContributingRayData[eigIdx].ncaust = ncaust;
+
+    PerRayData emptyRay;
+    emptyRay.theta = 0;
+    emptyRay.phi = 0;
+    emptyRay.delay = 0;
+    emptyRay.curve = 0;
+    emptyRay.ntop = 0;
+    emptyRay.nbot = 0;
+    emptyRay.xn = 0;
+    emptyRay.target = 0;
+    emptyRay.TL = 0;
+    emptyRay.ncaust = 0;
+    emptyRay.beta = 0;
+    emptyRay.qi = 0;
+    emptyRay.contributing = 0;
+    ContributingRayData[idx2] = emptyRay;
 }
 

@@ -42,7 +42,9 @@ public class InputFields : MonoBehaviour
         nrOfIntegrationSteps.text = bellhopParams.BELLHOPINTEGRATIONSTEPS.ToString();
         integrationStepSize.text = bellhopParams.BELLHOPSTEPSIZE.ToString();
         maxNrOfSurfaceHits.text = "0";
-        maxNrOfBottomHits.text = "0";        
+        maxNrOfBottomHits.text = "0";
+        modeSelector.value = (int)bellhopParams.RTMODEL;
+
         callbackCommand.text = "This will do nothing for now.";
 
                 // Setup interface to API 
@@ -215,5 +217,6 @@ public class InputFields : MonoBehaviour
     {
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
         bellhopParams.RTMODEL = (BellhopParams.RT_Model)modeSelector.value;
+        Debug.Log("change in model");
     }
 }
