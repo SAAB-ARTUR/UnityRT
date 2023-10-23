@@ -148,7 +148,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);
     }
 
-    debugBuf[id.y + id.x * ntheta] = float3(ilay, ntop, nbot);
+    //debugBuf[id.y + id.x * ntheta] = float3(ilay, ntop, nbot);
 
     // calculate ray tangent for segment
     float tr = r - r0;

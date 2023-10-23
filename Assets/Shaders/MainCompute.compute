@@ -182,13 +182,14 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
 
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
 
-    PerRayData prd;
+    PerRayData prd;    
 
     uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target
     //debugBuf[id.y + id.x * ntheta] = float3(xr, theta);
     HovemTrace(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
-
+    
     PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop
+    debugBuf[id.y] = float3(1234, theta, id.y);
 }
 
 #include "HovemTraceContributing.cginc"
@@ -203,11 +204,9 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     SSP soundSpeedProfile;
     soundSpeedProfile.type = 0;
 
-    uint rayIdx = 1 + (2 * id.y);
-
-    float theta1 = ContributingAnglesData[rayIdx].x;
-    float theta2 = ContributingAnglesData[rayIdx - 1].x;
-    float theta = (theta1 + theta2) / 2;
+    uint rayIdx = 1 + (2 * id.y);    
+    
+    float theta = ContributingAnglesData[id.y].x;
 
     float phi = ContributingAnglesData[id.y].y;
 
@@ -217,35 +216,34 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
 
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
-
-    PerRayData prd;
-
+    debugBuf[id.y] = float3(phi, theta, id.y);
+    PerRayData prd;    
     HovemTraceContributing(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
 
     // fill buffer
     uint eigIdx = 0;
-    if (prd.xn * HovemEigenRays[rayIdx].xn > 0) {
-        HovemEigenRays[rayIdx] = prd;
+    if (prd.xn * ContributingRayData[rayIdx].xn > 0) {
+        ContributingRayData[rayIdx] = prd;
         eigIdx = rayIdx;
     }
     else {
-        HovemEigenRays[rayIdx - 1] = prd;
+        ContributingRayData[rayIdx - 1] = prd;
         eigIdx = rayIdx - 1;
     }
 
     // calculate transmission loss for the eigenray pairs
 
-    float xn1 = HovemEigenRays[rayIdx - 1].xn;
-    float xn2 = HovemEigenRays[rayIdx].xn;
+    float xn1 = ContributingRayData[rayIdx - 1].xn;
+    float xn2 = ContributingRayData[rayIdx].xn;
     float w1 = xn2 / (xn2 - xn1);
     float w2 = 1 - w1;
 
-    float _theta = w1 * HovemEigenRays[rayIdx - 1].theta + w2 * HovemEigenRays[rayIdx].theta;
-    float curve = w1 * HovemEigenRays[rayIdx - 1].curve + w2 * HovemEigenRays[rayIdx].curve;
-    float delay = w1 * HovemEigenRays[rayIdx - 1].delay + w2 * HovemEigenRays[rayIdx].delay;
+    float _theta = w1 * ContributingRayData[rayIdx - 1].theta + w2 * ContributingRayData[rayIdx].theta;
+    float curve = w1 * ContributingRayData[rayIdx - 1].curve + w2 * ContributingRayData[rayIdx].curve;
+    float delay = w1 * ContributingRayData[rayIdx - 1].delay + w2 * ContributingRayData[rayIdx].delay;
 
-    float ntop = HovemEigenRays[rayIdx].ntop;
-    float nbot = HovemEigenRays[rayIdx].nbot;
+    float ntop = ContributingRayData[rayIdx].ntop;
+    float nbot = ContributingRayData[rayIdx].nbot;
 
     // sound speed: source, receiver
     float cs = ssp(xs.y, soundSpeedProfile, 0).c;
@@ -268,13 +266,13 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     }
 
     // geometrical spreading loss
-    float Area_s = 2 * PI * cos(_theta) * (HovemEigenRays[rayIdx].theta - HovemEigenRays[rayIdx - 1].theta);
+    float Area_s = 2 * PI * cos(_theta) * (ContributingRayData[rayIdx].theta - ContributingRayData[rayIdx - 1].theta);
     float Area_r = 2 * PI * xr.x * abs(xn2 - xn1);
     float Amp0 = sqrt(Area_s / Area_r);
 
     // caustic phase shift
     float ncaust = 0;
-    if (xn1 < xn2 && ntop % 2 == 0){
+    if (xn1 < xn2 && ntop % 2 == 0) {
         ncaust = 1;
     }
 
@@ -299,7 +297,7 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     float Ir = (Arms / freqsdamps) / rho1 / cr;
     float TL = 10 * log10(Is / Ir);
 
-    HovemEigenRays[eigIdx].TL = TL;
-    HovemEigenRays[eigIdx].ncaust = ncaust;
+    ContributingRayData[eigIdx].TL = TL;
+    ContributingRayData[eigIdx].ncaust = ncaust;
 }
 

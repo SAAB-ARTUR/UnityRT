@@ -563,22 +563,26 @@ public class Main : MonoBehaviour
 
     void TraceContributingRays()
     {
+        debugBuf = new ComputeBuffer(contributingAngles.Count, 3 * sizeof(float));
+        debugger = new float3[contributingAngles.Count];
+        computeShader.SetBuffer(3, "debugBuf", debugBuf);
+
         PerContributingRayData = new PerRayData[contributingAngles.Count];
 
         ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
 
         ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
-        computeShader.SetBuffer(1, "ContributingAnglesData", ContributingAnglesBuffer);
+        computeShader.SetBuffer(3, "ContributingAnglesData", ContributingAnglesBuffer);
 
         // init return data buffer
         PerContributingRayDataBuffer = new ComputeBuffer(contributingAngles.Count, perraydataByteSize);
-        computeShader.SetBuffer(1, "ContributingRayData", PerContributingRayDataBuffer);
+        computeShader.SetBuffer(3, "ContributingRayData", PerContributingRayDataBuffer);
 
-        computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
+        computeShader.SetBuffer(3, "_SSPBuffer", SSPBuffer);
 
         RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
         RayTargetsBuffer.SetData(rayTargets.ToArray());
-        computeShader.SetBuffer(1, "rayTargets", RayTargetsBuffer);
+        computeShader.SetBuffer(3, "rayTargets", RayTargetsBuffer);
 
         freqsdamps = new float2[1];
         freqsdamps[0].x = 150000;
@@ -586,29 +590,85 @@ public class Main : MonoBehaviour
 
         FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
         FreqDampBuffer.SetData(freqsdamps);
-        computeShader.SetBuffer(1, "FreqsAndDampData", FreqDampBuffer);
+        computeShader.SetBuffer(3, "FreqsAndDampData", FreqDampBuffer);
         computeShader.SetInt("freqsdamps", freqsdamps.Length);
 
-        computeShader.SetBuffer(1, "targetBuffer", targetBuffer);
+        computeShader.SetBuffer(3, "targetBuffer", targetBuffer);
 
         int threadGroupsX = Mathf.FloorToInt(1);
         int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
 
         // send eigenrays
-        computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
+        computeShader.Dispatch(3, threadGroupsX, threadGroupsY, 1);
 
         PerContributingRayDataBuffer.GetData(PerContributingRayData);
 
         Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
-
+        Debug.Log(PerContributingRayData.Length);        
         for (int i = 0; i < PerContributingRayData.Length; i++)
-        {
+        {            
             float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
             float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
 
             string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
                             PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
-                            PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
+                            PerContributingRayData[i].beta.ToString("F6");// + " " + isEigenRay[i];
+            Debug.Log(data);
+        }
+    }
+
+    void HovemTraceContributingRays()
+    {
+        debugBuf = new ComputeBuffer(contributingAngles.Count, 3 * sizeof(float));
+        debugger = new float3[contributingAngles.Count];
+        computeShader.SetBuffer(3, "debugBuf", debugBuf);
+
+        PerContributingRayData = new PerRayData[contributingRays.Count];
+
+        ContributingAnglesBuffer = new ComputeBuffer(contributingRays.Count, sizeof(float) * 2);
+
+        ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
+        computeShader.SetBuffer(3, "ContributingAnglesData", ContributingAnglesBuffer);
+
+        // init return data buffer
+        PerContributingRayDataBuffer = new ComputeBuffer(contributingRays.Count, perraydataByteSize);
+        computeShader.SetBuffer(3, "ContributingRayData", PerContributingRayDataBuffer);
+
+        computeShader.SetBuffer(3, "_SSPBuffer", SSPBuffer);
+
+        RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
+        RayTargetsBuffer.SetData(rayTargets.ToArray());
+        computeShader.SetBuffer(3, "rayTargets", RayTargetsBuffer);
+
+        freqsdamps = new float2[1];
+        freqsdamps[0].x = 150000;
+        freqsdamps[0].y = 0.015f / 8.6858896f;
+
+        FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
+        FreqDampBuffer.SetData(freqsdamps);
+        computeShader.SetBuffer(3, "FreqsAndDampData", FreqDampBuffer);
+        computeShader.SetInt("freqsdamps", freqsdamps.Length);
+
+        computeShader.SetBuffer(3, "targetBuffer", targetBuffer);
+
+        int threadGroupsX = Mathf.FloorToInt(1);
+        int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
+
+        // send eigenrays
+        computeShader.Dispatch(3, threadGroupsX, threadGroupsY, 1);
+
+        PerContributingRayDataBuffer.GetData(PerContributingRayData);
+
+        Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
+        Debug.Log(PerContributingRayData.Length);        
+        for (int i = 0; i < PerContributingRayData.Length; i++)
+        {            
+            float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
+            float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
+
+            string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
+                            PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
+                            PerContributingRayData[i].beta.ToString("F6");// + " " + isEigenRay[i];
             Debug.Log(data);
         }
     }
@@ -672,19 +732,20 @@ public class Main : MonoBehaviour
 
             //send rays
             computeShader.Dispatch(2, threadGroupsX, threadGroupsY, 1);
+            Debug.Log("First hovem rt done");
 
             // read results from buffers into arrays
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
 
-            /*debugBuf.GetData(debugger);
+            debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
             for (int i = 0; i < debugger.Length; i++)
             {
                 Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }
-            Debug.Log("------------------------------------------------------------------------------");*/
+            Debug.Log("------------------------------------------------------------------------------");
 
             // HOVEM STUFF
 
@@ -705,15 +766,26 @@ public class Main : MonoBehaviour
                             float theta = (rayData[i].theta + rayData[i - 1].theta) / 2;
                             float phi = rayData[i].phi;
                             contributingAngles.Add(new float2(theta, phi));
+                            Debug.Log(theta);
                         }
                     }
                 }
             }
 
+            Debug.Log("eigen search done");
+
             // trace the contributing rays again
             if (contributingRays.Count > 0)
             {
                 // TODO: trace the hovem eigen rays
+                HovemTraceContributingRays();
+                debugBuf.GetData(debugger);
+                Debug.Log("------------------------------------------------------------------------------");
+                for (int i = 0; i < debugger.Length; i++)
+                {
+                    Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+                }
+                Debug.Log("------------------------------------------------------------------------------");
             }
 
 
