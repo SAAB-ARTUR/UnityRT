@@ -397,7 +397,7 @@ public class Main : MonoBehaviour
         lines.Add(line);        
     }
 
-    void DestryBellhopLines()
+    void DestroyLines()
     {
         foreach (LineRenderer line in lines) // delete lines from previous runs
         {
@@ -543,7 +543,7 @@ public class Main : MonoBehaviour
         return success;
     }
 
-    void ComputeEigenRays()
+    void BellhopComputeEigenRays()
     {
         for (int i = 0; i < contributingRays.Count - 1; i++) // TODO: här blir det problem eftersom sista strålen kan skippas
         {
@@ -634,6 +634,31 @@ public class Main : MonoBehaviour
         }
     }
 
+    void HovemComputeEigenRays()
+    {
+        // find eigenray pairs
+        for (int i = 1; i < rayData.Length; i++)
+        {
+            if (rayData[i - 1].contributing == 0) // contributing == eigenray for now in the hovem case
+            {
+                if (rayData[i].ntop == rayData[i - 1].ntop && rayData[i].nbot == rayData[i - 1].nbot && rayData[i].target == rayData[i - 1].target)
+                {
+                    if (rayData[i].xn * rayData[i - 1].xn <= 0)
+                    {
+                        rayData[i].contributing = 1;
+                        rayData[i - 1].contributing = 1;
+                        // add to list
+                        contributingRays.Add(rayData[i - 1]);
+                        contributingRays.Add(rayData[i]);
+                        float theta = (rayData[i].theta + rayData[i - 1].theta) / 2;
+                        float phi = rayData[i].phi;
+                        contributingAngles.Add(new float2(theta, phi));
+                    }
+                }
+            }
+        }
+    }
+
     void HovemTraceContributingRays()
     {
         debugBuf = new ComputeBuffer(contributingAngles.Count, 3 * sizeof(float));
@@ -666,7 +691,7 @@ public class Main : MonoBehaviour
         computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "FreqsAndDampData", FreqDampBuffer);
         computeShader.SetInt("freqsdamps", freqsdamps.Length);
 
-        computeShader.SetBuffer(3, "targetBuffer", targetBuffer);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "targetBuffer", targetBuffer);
 
         int threadGroupsX = Mathf.FloorToInt(1);
         int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
@@ -676,7 +701,7 @@ public class Main : MonoBehaviour
 
         PerContributingRayDataBuffer.GetData(PerContributingRayData);
 
-        Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta");
+        Debug.Log("    theta     phi     T   B   C         TL          dist         delay");
         Debug.Log(PerContributingRayData.Length);        
         for (int i = 0; i < PerContributingRayData.Length; i++)
         {            
@@ -686,8 +711,7 @@ public class Main : MonoBehaviour
                 float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
 
                 string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
-                                PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
-                                PerContributingRayData[i].beta.ToString("F6");
+                                PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6");
                 Debug.Log(data);
             }            
         }
@@ -710,7 +734,7 @@ public class Main : MonoBehaviour
 
             if (rayPositionDataAvail && sourceParams.visualizeRays)
             {
-                DestryBellhopLines();
+                DestroyLines();
                 Plot();
             }
         }
@@ -733,7 +757,7 @@ public class Main : MonoBehaviour
             BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
 
             rayPositionDataAvail = false;
-            DestryBellhopLines();
+            DestroyLines();
 
             lockRayTracing = true; // disable raytracing being done several times during one keypress            
 
@@ -755,12 +779,10 @@ public class Main : MonoBehaviour
             //send rays
             if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
             {
-                Debug.Log("Bellhop");
                 computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
             }
             else if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Hovem)
-            {
-                Debug.Log("Hovem");
+            {                
                 computeShader.Dispatch(2, threadGroupsX, threadGroupsY, 1);
             }            
 
@@ -769,17 +791,16 @@ public class Main : MonoBehaviour
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
 
-            debugBuf.GetData(debugger);
-            Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 0; i < debugger.Length; i++)
-            {
-                Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-            }
-            Debug.Log("------------------------------------------------------------------------------");            
+            //debugBuf.GetData(debugger);
+            //Debug.Log("------------------------------------------------------------------------------");
+            //for (int i = 0; i < debugger.Length; i++)
+            //{
+            //    Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            //}
+            //Debug.Log("------------------------------------------------------------------------------");            
             
             if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
-            {
-                Debug.Log("Bellhop");
+            {                
                 // keep contributing rays only            
                 for (int i = 0; i < rayData.Length; i++)
                 {
@@ -790,7 +811,7 @@ public class Main : MonoBehaviour
                 }
 
                 // check if a pair of contributing rays can be combined into an eigenray
-                ComputeEigenRays();
+                BellhopComputeEigenRays();
 
                 if (contributingAngles.Count > 0)
                 {
@@ -800,44 +821,12 @@ public class Main : MonoBehaviour
             }
             else if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Hovem)
             {
-                Debug.Log("Hovem");
-                // find eigenray pairs
-                for (int i = 1; i < rayData.Length; i++)
-                {
-                    if (rayData[i - 1].contributing == 0) // contributing == eigenray for now in the hovem case
-                    {
-                        if (rayData[i].ntop == rayData[i - 1].ntop && rayData[i].nbot == rayData[i - 1].nbot && rayData[i].target == rayData[i - 1].target)
-                        {
-                            if (rayData[i].xn * rayData[i - 1].xn <= 0)
-                            {
-                                rayData[i].contributing = 1;
-                                rayData[i - 1].contributing = 1;
-                                // add to list
-                                contributingRays.Add(rayData[i - 1]);
-                                contributingRays.Add(rayData[i]);
-                                float theta = (rayData[i].theta + rayData[i - 1].theta) / 2;
-                                float phi = rayData[i].phi;
-                                contributingAngles.Add(new float2(theta, phi));
-                                Debug.Log(theta);
-                            }
-                        }
-                    }
-                }
-
-                Debug.Log("eigen search done");
+                HovemComputeEigenRays();  
 
                 // trace the contributing rays again
                 if (contributingRays.Count > 0)
-                {
-                    // TODO: trace the hovem eigen rays
-                    HovemTraceContributingRays();
-                    debugBuf.GetData(debugger);
-                    Debug.Log("------------------------------------------------------------------------------");
-                    for (int i = 0; i < debugger.Length; i++)
-                    {
-                        Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-                    }
-                    Debug.Log("------------------------------------------------------------------------------");
+                {                    
+                    HovemTraceContributingRays();                                   
                 }
             }
 
@@ -876,7 +865,7 @@ public class Main : MonoBehaviour
 
         if (!sourceParams.visualizeRays)
         {
-            DestryBellhopLines();
+            DestroyLines();
         }
         contributingRays.Clear();
         contributingAngles.Clear();

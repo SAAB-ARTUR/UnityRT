@@ -184,8 +184,7 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
 
     PerRayData prd;    
 
-    uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target
-    //debugBuf[id.y + id.x * ntheta] = float3(xr, theta);
+    uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target    
     HovemTrace(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
     
     PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop
