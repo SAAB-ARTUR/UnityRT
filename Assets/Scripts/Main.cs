@@ -38,10 +38,10 @@ public class Main : MonoBehaviour
     private RayTracingAccelerationStructure rtas = null;
     private bool rebuildRTAS = false;
 
-    /*private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
+    private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
     private SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
     private WaterplaneInstanceData waterplaneInstanceData = null;
-    private TargetInstanceData targetInstanceData = null;*/    
+    //private TargetInstanceData targetInstanceData = null;   
 
     private SSPFileReader _SSPFileReader = null;
     private List<SSPFileReader.SSP_Data> SSP = null;
@@ -125,7 +125,7 @@ public class Main : MonoBehaviour
             rtas = null;
         }        
 
-        /*if (surfaceInstanceData != null)
+        if (surfaceInstanceData != null)
         {
             surfaceInstanceData.Dispose();
             surfaceInstanceData = null;
@@ -140,7 +140,7 @@ public class Main : MonoBehaviour
             seafloorInstanceData.Dispose();
             seafloorInstanceData = null;
         }
-        if (targetInstanceData != null)
+        /*if (targetInstanceData != null)
         {
             targetInstanceData.Dispose();
             targetInstanceData = null;
@@ -197,16 +197,15 @@ public class Main : MonoBehaviour
             rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta];
         }
 
-        /*if (surfaceInstanceData == null)
+        if (surfaceInstanceData == null)
         {            
             surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
         }        
         if (seafloorInstanceData == null)
         {            
             seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
-        }*/
-
-        /*World world = world_manager.GetComponent<World>();
+        }
+        
         int nrOfWaterplanes = world.GetNrOfWaterplanes();
         float depth = world.GetWaterDepth();
         if (nrOfWaterplanes > 0 && (waterplaneInstanceData == null || waterplaneInstanceData.layers != nrOfWaterplanes || waterplaneInstanceData.depth != depth))
@@ -225,7 +224,7 @@ public class Main : MonoBehaviour
             }
         }
 
-        if (targetInstanceData == null)
+        /*if (targetInstanceData == null)
         {
             if (targetInstanceData != null)
             {
@@ -923,55 +922,57 @@ public class Main : MonoBehaviour
 
     void BuildRTAS()
     {
-        //World world = world_manager.GetComponent<World>();
+        World world = worldManager.GetComponent<World>();
 
-        //rtas.ClearInstances();
+        rtas.ClearInstances();
 
-        //// add surface
-        //Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
-        //Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
-        //RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
-        //rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
+        // add surface
+        Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
+        Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
+        rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
 
-        //// add seafloor
-        //Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
-        //Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
-        //RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
-        //rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
+        // add seafloor
+        Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
+        Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
+        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
 
-        //// add waterplane(s)
-        //Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
-        //Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
-        //RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);        
-        //if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
-        //{
-        //    rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
-        //    Debug.Log(waterplaneInstanceData.matrices.Length);
-        //}        
+        // add waterplane(s)
+        Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
+        Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);
+        if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
+        {
+            rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
+            Debug.Log(waterplaneInstanceData.matrices.Length);
+        }
 
-        //// targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
-        //// are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
-        //// necessary on all predefined meshes
-        //Mesh targetMesh = targetSphere.GetComponent<MeshFilter>().mesh;
-        //Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
+        // targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
+        // are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
+        // necessary on all predefined meshes
+        /*GameObject target = world.GetTarget();
+        Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
+        
+        Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
 
-        //targetSphere.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
+        target.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
 
-        //Material targetMaterial = targetSphere.GetComponent<MeshRenderer>().material;
+        Material targetMaterial = target.GetComponent<MeshRenderer>().material;
 
-        //Mesh realTargetMesh = new Mesh();
-        //realTargetMesh.vertices = transformed_vertices;
-        //realTargetMesh.triangles = targetMesh.triangles;
-        //realTargetMesh.normals = targetMesh.normals;
-        //realTargetMesh.tangents = targetMesh.tangents;
+        Mesh realTargetMesh = new Mesh();
+        realTargetMesh.vertices = transformed_vertices;
+        realTargetMesh.triangles = targetMesh.triangles;
+        realTargetMesh.normals = targetMesh.normals;
+        realTargetMesh.tangents = targetMesh.tangents;
 
-        //RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
+        RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
 
-        //rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);
+        rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);*/
 
-        //rtas.Build();
-        //Debug.Log("RTAS built");
+        rtas.Build();
+        Debug.Log("RTAS built");
 
-        //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
+        computeShader.SetRayTracingAccelerationStructure(4, "g_AccelStruct", rtas);
     }
 }

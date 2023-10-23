@@ -1,9 +1,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
-//#include "UnityRayQuery.cginc"
-//#pragma require inlineraytracing
 #pragma kernel BellhopMain
 
-//RaytracingAccelerationStructure g_AccelStruct;
+RaytracingAccelerationStructure g_AccelStruct;
 
 struct PerRayData {
     float beta;
@@ -106,7 +104,7 @@ RayHit CreateRayHit()
     return hit;
 }
 
-//#include "HitHandler.cginc" // was first meant to be used for an implementation based on the rt acceleration structure
+#include "HitHandler.cginc"
 
 [numthreads(1,8,1)]
 void BellhopMain(uint3 id : SV_DispatchThreadID)
@@ -319,3 +317,90 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     ContributingRayData[idx2] = emptyRay;
 }
 
+
+#include "UnityRayQuery.cginc"
+#pragma require inlineraytracing
+#pragma kernel HovemWithRTAS
+[numthreads(1, 8, 1)]
+void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
+{
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
+
+    // create the ray 
+    Ray _ray = ...; // function should return origin and direction of ray
+
+    RayHit hit = CreateRayHit(); // empty hit 'struct/object'
+
+    RayDesc ray; // description of the ray to be used in tracerayinline
+    ray.Origin = _ray.origin;
+    ray.Direction = _ray.direction;
+    ray.TMin = 0;
+    ray.TMax = 1e20f;
+    
+    
+
+    const uint rayFlags = RAY_FLAG_NONE;
+    UnityRayQuery<rayFlags> rayQuery;
+
+    rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray); // send a first ray
+    rayQuery.Proceed();
+
+    if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
+        hit.position = _ray.origin + (_ray.direction * rayQuery.CommittedRayT());
+        hit.distance = rayQuery.CommittedRayT();
+        // TDOD: hantera träffarna på rätt sätt
+        if (rayQuery.CommittedInstanceID() == 1) { // surface            
+            SurfaceHit(_ray, hit);
+            hit.sendNewRay = SendNewRay(_ray);
+        }
+        else if (rayQuery.CommittedInstanceID() == 2) { // waterplane            
+            WaterplaneHit(_ray, hit);
+            hit.sendNewRay = SendNewRay(_ray);
+        }
+        else if (rayQuery.CommittedInstanceID() == 3) { // seafloor            
+            SeafloorHit(_ray, hit);
+            hit.sendNewRay = SendNewRay(_ray);
+        }        
+    }
+    else
+    { // no hit
+        
+        NoHit(_ray);
+        hit.sendNewRay = false;
+    }
+
+    while (hit.sendNewRay) 
+    { // spawn new from the hit position of the previous ray
+        RayDesc ray;
+        ray.Origin = hit.position;
+        ray.Direction = _ray.direction; // TODO: den här behöver uppdateras på nåt sätt
+        ray.TMin = 0;
+        ray.TMax = 1e20f;
+
+        rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray);
+        rayQuery.Proceed();
+        // TDOD: hantera träffarna på rätt sätt här med
+        if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
+            hit.position = _ray.origin + (_ray.direction * rayQuery.CommittedRayT());
+            hit.distance = rayQuery.CommittedRayT();
+
+            if (rayQuery.CommittedInstanceID() == 1) { // surface                
+                SurfaceHit(_ray, hit);
+                hit.sendNewRay = SendNewRay(_ray);
+            }
+            else if (rayQuery.CommittedInstanceID() == 2) { // waterplane                
+                WaterplaneHit(_ray, hit);
+            }
+            else if (rayQuery.CommittedInstanceID() == 3) { // seafloor                
+                SeafloorHit(_ray, hit);
+                hit.sendNewRay = SendNewRay(_ray);
+            }
+        }
+        else
+        {            
+            NoHit(_ray);
+            hit.sendNewRay = false;
+        }
+    }
+}

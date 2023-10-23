@@ -328,4 +328,9 @@ public class World : MonoBehaviour
     {
         targetChange = false;
     }
+
+    public GameObject GetTarget()
+    {
+        return target;
+    }
 }
