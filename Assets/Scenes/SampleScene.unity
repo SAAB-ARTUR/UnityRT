@@ -3792,7 +3792,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Bellhop
+  m_Text: Hovem
 --- !u!222 &863479921
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -6144,9 +6144,9 @@ MonoBehaviour:
   m_Value: 0
   m_Options:
     m_Options:
-    - m_Text: Bellhop
-      m_Image: {fileID: 0}
     - m_Text: Hovem
+      m_Image: {fileID: 0}
+    - m_Text: Bellhop
       m_Image: {fileID: 0}
   m_OnValueChanged:
     m_PersistentCalls:
@@ -8951,6 +8951,7 @@ MonoBehaviour:
   targets: {fileID: 1266202795}
   maxNrOfSurfaceHits: {fileID: 430234515}
   maxNrOfBottomHits: {fileID: 1651382321}
+  modeSelector: {fileID: 1432613620}
 --- !u!1 &2099791814
 GameObject:
   m_ObjectHideFlags: 0

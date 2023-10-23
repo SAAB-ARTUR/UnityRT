@@ -20,6 +20,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField targets = null;
     [SerializeField] InputField maxNrOfSurfaceHits = null;
     [SerializeField] InputField maxNrOfBottomHits = null;
+    [SerializeField] Dropdown modeSelector = null;    
 
     apiv2 api = null;
 
@@ -212,8 +213,7 @@ public class InputFields : MonoBehaviour
 
     public void ModelSelector()
     {
-
+        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        bellhopParams.RTMODEL = (BellhopParams.RT_Model)modeSelector.value;
     }
-
-
 }

@@ -11,7 +11,24 @@ public class BellhopParams : MonoBehaviour
     [SerializeField]
     private int maxNrSurfaceHits = 0;
     [SerializeField]
-    private int maxNrBottomHits = 0;    
+    private int maxNrBottomHits = 0;
+
+    public enum RT_Model
+    {
+        Bellhop,
+        Hovem
+    }
+
+    private RT_Model rtmodel = RT_Model.Hovem;
+
+    public RT_Model RTMODEL
+    {
+        get { return rtmodel; }
+        set
+        {
+            rtmodel = value;
+        }
+    }
 
     public int BELLHOPINTEGRATIONSTEPS
     {
@@ -57,6 +74,7 @@ public class BellhopParams : MonoBehaviour
     {
         public int nrOfBellhopIntegrationSteps;
         public float bellhopIntegrationStepSize;
+        public RT_Model rtmodel;
     }
 
     public Properties ToStruct()
@@ -64,6 +82,7 @@ public class BellhopParams : MonoBehaviour
         Properties p = new Properties();
         p.nrOfBellhopIntegrationSteps = nrOfBellhopIntegrationSteps;
         p.bellhopIntegrationStepSize = bellhopIntegrationStepSize;
+        p.rtmodel = rtmodel;
 
         return p;
     }
