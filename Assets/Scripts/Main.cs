@@ -319,7 +319,7 @@ public class Main : MonoBehaviour
         World world = worldManager.GetComponent<World>();
         for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
         {
-            for (int itheta = 40; itheta < /*sourceParams.ntheta*/60; itheta++)
+            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
             {
                 PlotLines(iphi, itheta, rayPositions);
             }
@@ -947,8 +947,7 @@ public class Main : MonoBehaviour
         RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);
         if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
         {
-            rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
-            Debug.Log(waterplaneInstanceData.matrices.Length);
+            rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);            
         }
 
         // targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices

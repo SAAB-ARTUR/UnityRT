@@ -467,14 +467,13 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         UnityRayQuery<rayFlags> rayQuery;
 
         rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray); // send the ray
-        rayQuery.Proceed();
-
-        
+        rayQuery.Proceed();        
 
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
             hit.position = hit.position + (ray.Direction * rayQuery.CommittedRayT());
             hit.distance = rayQuery.CommittedRayT();
-            RayPositionsBuffer[istep + offset] = hit.position; // save ray position
+            //RayPositionsBuffer[istep + offset] = hit.position; // save ray position
+            RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // save ray position
             //debugBuf[offset + istep] = float3(direction.x, direction.y, rayQuery.CommittedRayT());
             debugBuf[offset + istep] = float3(hit.position.x, hit.position.y, rayQuery.CommittedInstanceID());
 
@@ -495,11 +494,11 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                 //debugBuf[offset + istep] = float3(r, z, 384);
             }
             // distance left to receiver
-            xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
+            //xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
             //debugBuf[offset + istep] = float3(ntop, maxtop, rayQuery.CommittedInstanceID());
             istep++;
             
-            hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE);
+            //hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE);
         }
         else
         { // no hit
@@ -510,7 +509,9 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
             debugBuf[offset + istep] = float3(999, 999, 999);
             RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z));
             istep++;
-        }        
+        }
+        xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
+        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE);
     }
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
