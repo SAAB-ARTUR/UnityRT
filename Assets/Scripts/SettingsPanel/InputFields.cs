@@ -15,7 +15,7 @@ public class InputFields : MonoBehaviour
     [SerializeField] InputField range = null;
     [SerializeField] InputField nrOfIntegrationSteps = null;
     [SerializeField] InputField integrationStepSize = null;
-    [SerializeField] GameObject bellhop = null;
+    [SerializeField] GameObject RTModel = null;
     [SerializeField] InputField callbackCommand = null;     
     [SerializeField] InputField targets = null;
     [SerializeField] InputField maxNrOfSurfaceHits = null;
@@ -38,12 +38,12 @@ public class InputFields : MonoBehaviour
         targets.text = "{" + mainTargetPos.x.ToString() + ", " + mainTargetPos.y.ToString() + ", " + mainTargetPos.z.ToString() + "}";
         oldTargets = targets.text;
 
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-        nrOfIntegrationSteps.text = bellhopParams.BELLHOPINTEGRATIONSTEPS.ToString();
-        integrationStepSize.text = bellhopParams.BELLHOPSTEPSIZE.ToString();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+        nrOfIntegrationSteps.text = modelParams.INTEGRATIONSTEPS.ToString();
+        integrationStepSize.text = modelParams.BELLHOPSTEPSIZE.ToString();
         maxNrOfSurfaceHits.text = "0";
         maxNrOfBottomHits.text = "0";
-        modeSelector.value = (int)bellhopParams.RTMODEL;
+        modeSelector.value = (int)modelParams.RTMODEL;
 
         callbackCommand.text = "This will do nothing for now.";
 
@@ -166,8 +166,8 @@ public class InputFields : MonoBehaviour
 
         if (isNumber && numericValue > 0)
         {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-            bellhopParams.BELLHOPINTEGRATIONSTEPS = numericValue;
+            RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+            modelParams.INTEGRATIONSTEPS = numericValue;
         }
     }
 
@@ -178,8 +178,8 @@ public class InputFields : MonoBehaviour
 
         if (isNumber && numericValue > 0)
         {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-            bellhopParams.BELLHOPSTEPSIZE = numericValue;
+            RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+            modelParams.BELLHOPSTEPSIZE = numericValue;
         }
     }
 
@@ -190,8 +190,8 @@ public class InputFields : MonoBehaviour
 
         if (isNumber && numericValue >= 0)
         {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-            bellhopParams.MAXNRSURFACEHITS = numericValue;
+            RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+            modelParams.MAXNRSURFACEHITS = numericValue;
         }
     }
 
@@ -202,8 +202,8 @@ public class InputFields : MonoBehaviour
 
         if (isNumber && numericValue >= 0)
         {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-            bellhopParams.MAXNRBOTTOMHITS = numericValue;
+            RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+            modelParams.MAXNRBOTTOMHITS = numericValue;
         }
     }
 
@@ -215,7 +215,7 @@ public class InputFields : MonoBehaviour
 
     public void ModelSelector()
     {
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-        bellhopParams.RTMODEL = (BellhopParams.RT_Model)modeSelector.value;        
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+        modelParams.RTMODEL = (RTModelParams.RT_Model)modeSelector.value;        
     }
 }

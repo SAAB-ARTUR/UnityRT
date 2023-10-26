@@ -2,10 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BellhopParams : MonoBehaviour
+public class RTModelParams : MonoBehaviour
 {
     [SerializeField]
-    private int nrOfBellhopIntegrationSteps = 0;
+    private int nrOfIntegrationSteps = 0;
     [SerializeField]
     private float bellhopIntegrationStepSize = 0;
     [SerializeField]
@@ -30,13 +30,13 @@ public class BellhopParams : MonoBehaviour
         }
     }
 
-    public int BELLHOPINTEGRATIONSTEPS
+    public int INTEGRATIONSTEPS
     {
-        get { return nrOfBellhopIntegrationSteps; }
+        get { return nrOfIntegrationSteps; }
         set
         {
-            if (value > 0) { nrOfBellhopIntegrationSteps = value; }
-            else { nrOfBellhopIntegrationSteps = 1; }
+            if (value > 0) { nrOfIntegrationSteps = value; }
+            else { nrOfIntegrationSteps = 1; }
         }
     }
 
@@ -72,7 +72,7 @@ public class BellhopParams : MonoBehaviour
 
     public struct Properties
     {
-        public int nrOfBellhopIntegrationSteps;
+        public int nrOfIntegrationSteps;
         public float bellhopIntegrationStepSize;
         public RT_Model rtmodel;
     }
@@ -80,7 +80,7 @@ public class BellhopParams : MonoBehaviour
     public Properties ToStruct()
     {
         Properties p = new Properties();
-        p.nrOfBellhopIntegrationSteps = nrOfBellhopIntegrationSteps;
+        p.nrOfIntegrationSteps = nrOfIntegrationSteps;
         p.bellhopIntegrationStepSize = bellhopIntegrationStepSize;
         p.rtmodel = rtmodel;
 

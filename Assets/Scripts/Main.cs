@@ -17,12 +17,12 @@ public class Main : MonoBehaviour
     public Camera sourceCamera = null; 
     [SerializeField] GameObject worldManager = null;
     [SerializeField] GameObject btnFilePicker = null;
-    [SerializeField] GameObject bellhop = null;    
+    [SerializeField] GameObject RTModel = null;
 
     apiv2 api = null;
 
     private SourceParams.Properties? oldSourceParams = null;
-    private BellhopParams.Properties? oldBellhopParams = null;
+    private RTModelParams.Properties? oldRTModelParams = null;
     private int oldMaxSurfaceHits = 0;
     private int oldMaxBottomHits = 0;    
 
@@ -173,25 +173,25 @@ public class Main : MonoBehaviour
     private void CreateResources()
     {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         World world = worldManager.GetComponent<World>();        
 
         if (RayPositionsBuffer == null)
         {
-            RayPositionsBuffer = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));
-            SetComputeBuffer("RayPositionsBuffer", RayPositionsBuffer, bellhopParams.RTMODEL);
+            RayPositionsBuffer = new ComputeBuffer(modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));
+            SetComputeBuffer("RayPositionsBuffer", RayPositionsBuffer, modelParams.RTMODEL);
         }
 
         if (rayPositions == null)
         {
-            rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
+            rayPositions = new float3[modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
             rayPositionDataAvail = false;
         }
 
         if (PerRayDataBuffer == null)
         {
             PerRayDataBuffer = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta, perraydataByteSize);
-            SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer, bellhopParams.RTMODEL);
+            SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer, modelParams.RTMODEL);
         }
 
         if (rayData == null)
@@ -236,16 +236,16 @@ public class Main : MonoBehaviour
         }*/
     }
 
-    private void SetComputeBuffer(string name, ComputeBuffer buffer, BellhopParams.RT_Model rtmodel)
+    private void SetComputeBuffer(string name, ComputeBuffer buffer, RTModelParams.RT_Model rtmodel)
     {
         if (buffer != null)
         {
             switch (rtmodel)
             {
-                case BellhopParams.RT_Model.Bellhop:
+                case RTModelParams.RT_Model.Bellhop:
                     computeShader.SetBuffer(BellhopTraceRaysKernelIdx, name, buffer);
                     break;
-                case BellhopParams.RT_Model.Hovem:
+                case RTModelParams.RT_Model.Hovem:
                     computeShader.SetBuffer(HovemTraceRaysKernelIdx, name, buffer);
                     break;
                 default:
@@ -301,16 +301,16 @@ public class Main : MonoBehaviour
 
         alphaData = new ComputeBuffer(128, sizeof(float));
         alphaData.SetData(alphas);
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-        SetComputeBuffer("thetaData", alphaData, bellhopParams.RTMODEL);
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+        SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
     }
 
     int GetStartIndexBellhop(int idx, int idy)
-    {        
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+    {
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
         
-        return (idy + idx * sourceParams.ntheta) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
+        return (idy + idx * sourceParams.ntheta) * modelParams.INTEGRATIONSTEPS;
     }
     
     void Plot()
@@ -328,13 +328,13 @@ public class Main : MonoBehaviour
 
     List<Vector3> BellhopLine(int idx, int idy, float3[] bds) {
 
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
 
         int offset = GetStartIndexBellhop(idx, idy);
 
         List<Vector3> positions = new List<Vector3>();
 
-        for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
+        for (int i = 0; i < modelParams.INTEGRATIONSTEPS; i++)
         {            
             if (i == 0) // add the first position
             {
@@ -416,28 +416,28 @@ public class Main : MonoBehaviour
     bool MaintainBuffersArraysSSPAndWorld()
     {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         World world = worldManager.GetComponent<World>();
         SimpleSourceController sourceController = sourceCamera.GetComponent<SimpleSourceController>();
         bool BuffersAndArraysSuccess = true;
 
         bool SSPReadSuccessfully = SSPFileCheck();
 
-        if (world.TargetHasChanged() || sourceController.HasMoved() || bellhopParams.HasChanged(oldBellhopParams))
+        if (world.TargetHasChanged() || sourceController.HasMoved() || modelParams.HasChanged(oldRTModelParams))
         {
             // either nr of targets has changed, positions of targets has changed or the source has moved, get the targets and recalculate their respective angles from the source            
             sourceController.AckMovement();
             oldNrOfTargets = world.GetNrOfTargets();
             targetBuffer = new ComputeBuffer(oldNrOfTargets, world.GetDataSizeOfTarget());
             targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());            
-            SetComputeBuffer("targetBuffer", targetBuffer, bellhopParams.RTMODEL);
+            SetComputeBuffer("targetBuffer", targetBuffer, modelParams.RTMODEL);
         }        
-        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.TargetHasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
+        if (sourceParams.HasChanged(oldSourceParams) || modelParams.HasChanged(oldRTModelParams) || world.TargetHasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
         {            
             world.AckTargetChange();
             try
             {
-                rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
+                rayPositions = new float3[modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
                 rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta];
             }
             catch (OverflowException e)
@@ -454,7 +454,7 @@ public class Main : MonoBehaviour
             }
             rayPositionDataAvail = false;
             oldSourceParams = sourceParams.ToStruct();
-            oldBellhopParams = bellhopParams.ToStruct();
+            oldRTModelParams = modelParams.ToStruct();
 
             if (RayPositionsBuffer != null)
             {
@@ -472,25 +472,25 @@ public class Main : MonoBehaviour
             computeShader.SetFloat("theta", sourceParams.theta);
             computeShader.SetInt("ntheta", sourceParams.ntheta);
 
-            computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
-            computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
+            computeShader.SetInt("_BELLHOPSIZE", modelParams.INTEGRATIONSTEPS);
+            computeShader.SetFloat("deltas", modelParams.BELLHOPSTEPSIZE);
 
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dtheta", dtheta);
-            debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * bellhopParams.BELLHOPINTEGRATIONSTEPS, 3 * sizeof(float));
-            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta * bellhopParams.BELLHOPINTEGRATIONSTEPS];            
-            SetComputeBuffer("debugBuf", debugBuf, bellhopParams.RTMODEL);
+            debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS, 3 * sizeof(float));
+            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS];            
+            SetComputeBuffer("debugBuf", debugBuf, modelParams.RTMODEL);
         }
-        if (bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
+        if (modelParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
-            oldMaxSurfaceHits = bellhopParams.MAXNRSURFACEHITS;
-            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);
+            oldMaxSurfaceHits = modelParams.MAXNRSURFACEHITS;
+            computeShader.SetInt("_MAXSURFACEHITS", modelParams.MAXNRSURFACEHITS);
         }
-        if (bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
+        if (modelParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
         {
-            oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
-            computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);
+            oldMaxBottomHits = modelParams.MAXNRBOTTOMHITS;
+            computeShader.SetInt("_MAXBOTTOMHITS", modelParams.MAXNRBOTTOMHITS);
         }        
 
         if (world.WorldHasChanged())
@@ -511,7 +511,7 @@ public class Main : MonoBehaviour
     bool SSPFileCheck()
     {
         bool success = true;
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         if (_SSPFileReader.SSPFileHasChanged())
         {
             try
@@ -526,7 +526,7 @@ public class Main : MonoBehaviour
 
                 SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float) * 4); // SSP_data struct consists of 4 floats
                 SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);                
-                SetComputeBuffer("_SSPBuffer", SSPBuffer, bellhopParams.RTMODEL);
+                SetComputeBuffer("_SSPBuffer", SSPBuffer, modelParams.RTMODEL);
                 World world = worldManager.GetComponent<World>();
                 world.SetNrOfWaterplanes(SSP.Count - 2);
                 world.SetWaterDepth(SSP.Last().depth);
@@ -538,9 +538,9 @@ public class Main : MonoBehaviour
                 success = false;
             }
         }
-        else if (bellhopParams.HasChanged(oldBellhopParams))
+        else if (modelParams.HasChanged(oldRTModelParams))
         {
-            SetComputeBuffer("_SSPBuffer", SSPBuffer, bellhopParams.RTMODEL);
+            SetComputeBuffer("_SSPBuffer", SSPBuffer, modelParams.RTMODEL);
         }
         return success;
     }
@@ -756,7 +756,7 @@ public class Main : MonoBehaviour
 
         if (((!lockRayTracing && doRayTracing) || sourceParams.sendRaysContinously) && errorFree) // do raytracing if the user has pressed key C. only do it once though. or do it continously
         {
-            BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+            RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
 
             rayPositionDataAvail = false;
             DestroyLines();
@@ -779,11 +779,11 @@ public class Main : MonoBehaviour
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
-            if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
+            if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {
                 computeShader.Dispatch(BellhopTraceRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
             }
-            else if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Hovem)
+            else if (modelParams.RTMODEL == RTModelParams.RT_Model.Hovem)
             {                
                 computeShader.Dispatch(4, threadGroupsX, threadGroupsY, 1);
             }
@@ -795,13 +795,13 @@ public class Main : MonoBehaviour
 
             debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 40*bellhopParams.BELLHOPINTEGRATIONSTEPS; i < 41 * bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
+            for (int i = 40*modelParams.INTEGRATIONSTEPS; i < 41 * modelParams.INTEGRATIONSTEPS; i++)
             {
                 Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }
             Debug.Log("------------------------------------------------------------------------------");            
             
-            /*if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
+            /*if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {                
                 // keep contributing rays only            
                 for (int i = 0; i < rayData.Length; i++)
@@ -821,7 +821,7 @@ public class Main : MonoBehaviour
                 }
 
             }
-            else if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Hovem)
+            else if (modelParams.RTMODEL == RTModelParams.RT_Model.Hovem)
             {
                 HovemComputeEigenRays();  
 

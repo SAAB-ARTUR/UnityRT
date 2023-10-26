@@ -4477,7 +4477,7 @@ MonoBehaviour:
   sourceCamera: {fileID: 2086378707}
   worldManager: {fileID: 202712677}
   btnFilePicker: {fileID: 1776278225}
-  bellhop: {fileID: 2049076833}
+  RTModel: {fileID: 2049076833}
   doRayTracing: 0
 --- !u!114 &963194230
 MonoBehaviour:
@@ -8444,7 +8444,7 @@ GameObject:
   - component: {fileID: 2049076835}
   - component: {fileID: 2049076834}
   m_Layer: 0
-  m_Name: Bellhop
+  m_Name: RTModel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8462,7 +8462,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ffd04daf38cc974abdef282b26197f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nrOfBellhopIntegrationSteps: 200
+  nrOfIntegrationSteps: 200
   bellhopIntegrationStepSize: 5
   maxNrSurfaceHits: 0
   maxNrBottomHits: 0
@@ -8946,7 +8946,7 @@ MonoBehaviour:
   range: {fileID: 413816424}
   nrOfIntegrationSteps: {fileID: 761216301}
   integrationStepSize: {fileID: 17518815}
-  bellhop: {fileID: 2049076833}
+  RTModel: {fileID: 2049076833}
   callbackCommand: {fileID: 215135128}
   targets: {fileID: 1266202795}
   maxNrOfSurfaceHits: {fileID: 430234515}
