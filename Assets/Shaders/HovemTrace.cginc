@@ -52,8 +52,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
     float c0, r0, z0, tz0, tau0, len0, ilay0, dz;
 
     float xxs = 1;
-
-    // fyll första positionen i buffern
+    
     RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);
     uint istep = 1;
 

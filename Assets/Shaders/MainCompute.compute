@@ -133,9 +133,9 @@ void BellhopMain(uint3 id : SV_DispatchThreadID)
 }
 
 #include "BTraceContributing.cginc"
-#pragma kernel TraceContributingRays
+#pragma kernel BellhopTraceContributingRays
 [numthreads(1, 1, 1)]
-void TraceContributingRays(uint3 id : SV_DispatchThreadID)
+void BellhopTraceContributingRays(uint3 id : SV_DispatchThreadID)
 {
     // id is 1D, id.y is the only thing needed
     SSP soundSpeedProfile;
@@ -185,8 +185,7 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
     uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target    
     HovemTrace(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
     
-    PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop
-    debugBuf[id.y] = float3(1234, theta, id.y);
+    PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop    
 }
 
 #include "HovemTraceContributing.cginc"
@@ -257,7 +256,7 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     // bottom reflection loss, Urick, section 5.8
     float Rbot = 1;
 
-    float cos1 = c1 * cos(_theta) / cs; // TODO: definiera c1, cs, etc
+    float cos1 = c1 * cos(_theta) / cs;
     float cos2 = c2 * cos(_theta) / cs;
     if (cos1 <= 1 && cos2 <= 1) {
         float Y1 = sqrt(1 - cos1 * cos1) / rho1 / c1;
@@ -328,79 +327,211 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     soundSpeedProfile.type = 0;
 
     // create the ray 
-    Ray _ray = ...; // function should return origin and direction of ray
+    float2 angles = CreateCylindricalRay(id);
+    float theta = angles.x;
+    float phi = angles.y;
+    //Ray _ray = CreateHovemRTRay(srcPosition, id); // function should return origin and direction of ray
 
+    theta = thetaData[id.y];
+    phi = 0;
+    
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+
+    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
+
+    uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target
+    
+    RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);
+
+    // --- initial layer traversal for the ray ---    
+
+    // find current layer
+    uint ilay = 0;
+    while (_SSPBuffer[ilay].depth > xs.y) {
+        ilay++;
+    }
+
+    // inital conditions
+    float c = _SSPBuffer[ilay].velocity;
+    float r = xs.x;
+    float z = xs.y;
+    float ksi = cos(theta) / c;
+    float tz = -sin(theta);
+    //float ksi = sqrt(pow(_ray.direction.x, 2) + pow(_ray.direction.z, 2)) / c;
+    //float tz = _ray.direction.y;
+    float tau = 0;
+    float len = 0;
+    uint ntop = 0;
+    uint nbot = 0;
+    uint maxtop = _MAXSURFACEHITS;
+    uint maxbot = _MAXBOTTOMHITS;
+
+    float c0, r0, z0, tz0, tau0, len0, ilay0, dz, xxs;
     RayHit hit = CreateRayHit(); // empty hit 'struct/object'
+    hit.sendNewRay = true;
+    hit.position = srcPosition;
 
-    RayDesc ray; // description of the ray to be used in tracerayinline
-    ray.Origin = _ray.origin;
-    ray.Direction = _ray.direction;
-    ray.TMin = 0;
-    ray.TMax = 1e20f;
-    
-    
-
-    const uint rayFlags = RAY_FLAG_NONE;
-    UnityRayQuery<rayFlags> rayQuery;
-
-    rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray); // send a first ray
-    rayQuery.Proceed();
-
-    if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
-        hit.position = _ray.origin + (_ray.direction * rayQuery.CommittedRayT());
-        hit.distance = rayQuery.CommittedRayT();
-        // TDOD: hantera träffarna på rätt sätt
-        if (rayQuery.CommittedInstanceID() == 1) { // surface            
-            SurfaceHit(_ray, hit);
-            hit.sendNewRay = SendNewRay(_ray);
-        }
-        else if (rayQuery.CommittedInstanceID() == 2) { // waterplane            
-            WaterplaneHit(_ray, hit);
-            hit.sendNewRay = SendNewRay(_ray);
-        }
-        else if (rayQuery.CommittedInstanceID() == 3) { // seafloor            
-            SeafloorHit(_ray, hit);
-            hit.sendNewRay = SendNewRay(_ray);
-        }        
-    }
-    else
-    { // no hit
-        
-        NoHit(_ray);
-        hit.sendNewRay = false;
-    }
-
+    RayPositionsBuffer[0 + offset] = srcPosition; // save the origin of the ray
+    uint istep = 1;
+    debugBuf[offset] = srcPosition;
     while (hit.sendNewRay) 
-    { // spawn new from the hit position of the previous ray
-        RayDesc ray;
-        ray.Origin = hit.position;
-        ray.Direction = _ray.direction; // TODO: den här behöver uppdateras på nåt sätt
-        ray.TMin = 0;
+    {
+        // save data from previous step
+        c0 = c;
+        r0 = r;
+        z0 = z;
+        tz0 = tz;
+        tau0 = tau;
+        len0 = len;
+        ilay0 = ilay;
+        dz = 0;
+
+        // take a step
+        if (tz == 0) {
+            // horizontal step
+            r = xr.x;
+            tau = tau0 + (r - r0) / c;
+            len = len0 + (r - r0);
+        }
+        else {
+            // next layer
+            float cz;
+            if (tz < 0) {
+                cz = _SSPBuffer[ilay].derivative1;
+                ilay = ilay + 1;
+            }
+            else {
+                ilay = ilay - 1;
+                cz = _SSPBuffer[ilay].derivative1;
+            }
+
+            // curvature
+            float kappa = cz * ksi;
+
+            // sound speed
+            c = _SSPBuffer[ilay].velocity;
+            float tr = c * ksi;
+            
+            if (tr < 1) {
+                // continue in this direction
+                tz = sign(tz) * sqrt(1 - tr * tr);
+                z = _SSPBuffer[ilay].depth;
+            }
+            else {
+                // U-turn
+                c = c0;
+                tz = -tz;
+                ilay = ilay0;
+                dz = (1 / ksi - c) / cz;
+            }
+
+            // integrate r, tau and len
+            if (kappa != 0) {
+                // arc
+                r = r0 + (tz0 - tz) / kappa;
+                tau = tau0 + abs(log(c / c0 * (1 + tz0) / (1 + tz)) / cz);
+                float ds = sqrt(pow(r - r0, 2) + pow(z - z0, 2));
+                len = len0 + ds * (1 + pow(kappa * ds, 2) / 24);
+            }
+            else {
+                // line segment
+                float ds = (z - z0) / tz;
+                r = r0 + tr * ds;
+                tau = tau0 + ds / c;
+                len = len0 + ds;
+            }
+        }
+        // --- layer traversal done ---
+        
+
+        // step taken, create ray starting from the source in the direction of the step's final position and find what the ray has hit
+        float deltar = r - r0;
+        float deltaz = z - z0;
+        float xstep = deltar * cos(phi);
+        float zstep = deltar * sin(phi);
+
+        float3 direction = float3(xstep, deltaz, zstep);
+        direction = normalize(direction);
+        
+
+        RayDesc ray; // description of the ray to be used in tracerayinline
+        ray.Origin = hit.position; // send the ray from the previous hit.position, for the first ray this will be the source's position
+        ray.Direction = direction;
+        ray.TMin = 5e-5f;
         ray.TMax = 1e20f;
 
-        rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray);
-        rayQuery.Proceed();
-        // TDOD: hantera träffarna på rätt sätt här med
-        if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
-            hit.position = _ray.origin + (_ray.direction * rayQuery.CommittedRayT());
-            hit.distance = rayQuery.CommittedRayT();
+        const uint rayFlags = RAY_FLAG_NONE;
+        UnityRayQuery<rayFlags> rayQuery;
 
-            if (rayQuery.CommittedInstanceID() == 1) { // surface                
-                SurfaceHit(_ray, hit);
-                hit.sendNewRay = SendNewRay(_ray);
+        rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray); // send the ray
+        rayQuery.Proceed();
+
+        
+
+        if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
+            hit.position = hit.position + (ray.Direction * rayQuery.CommittedRayT());
+            hit.distance = rayQuery.CommittedRayT();
+            RayPositionsBuffer[istep + offset] = hit.position; // save ray position
+            //debugBuf[offset + istep] = float3(direction.x, direction.y, rayQuery.CommittedRayT());
+            debugBuf[offset + istep] = float3(hit.position.x, hit.position.y, rayQuery.CommittedInstanceID());
+
+            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver
+                //SurfaceHit(_ray, hit);
+                tz = -tz;
+                ntop++;
+                //debugBuf[offset + istep] = float3(r, z, 789);
             }
-            else if (rayQuery.CommittedInstanceID() == 2) { // waterplane                
-                WaterplaneHit(_ray, hit);
+            else if (rayQuery.CommittedInstanceID() == 2) { // 'normal' layer hit, take new step if we are getting closer to the receiver 
+                //WaterplaneHit(_ray, hit);        
+                //debugBuf[offset + istep] = float3(r, z, 654);
             }
-            else if (rayQuery.CommittedInstanceID() == 3) { // seafloor                
-                SeafloorHit(_ray, hit);
-                hit.sendNewRay = SendNewRay(_ray);
+            else if (rayQuery.CommittedInstanceID() == 3) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver
+                //SeafloorHit(_ray, hit);
+                tz = -tz;
+                nbot++;
+                //debugBuf[offset + istep] = float3(r, z, 384);
             }
+            // distance left to receiver
+            xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
+            //debugBuf[offset + istep] = float3(ntop, maxtop, rayQuery.CommittedInstanceID());
+            istep++;
+            
+            hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE);
         }
         else
-        {            
-            NoHit(_ray);
+        { // no hit
+            // complete the final step that missed and then stop the ray
+
+            //NoHit(_ray);
             hit.sendNewRay = false;
-        }
+            debugBuf[offset + istep] = float3(999, 999, 999);
+            RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z));
+            istep++;
+        }        
     }
+
+    // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
+    for (uint i = istep; i < _BELLHOPSIZE; i++) {
+        RayPositionsBuffer[i + offset] = float3(0, 10, 0);
+        debugBuf[i + offset] = float3(123, 456, 789);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+    
+    
 }

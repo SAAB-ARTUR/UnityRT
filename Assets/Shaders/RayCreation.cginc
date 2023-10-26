@@ -8,6 +8,36 @@ Ray CreateRay(float3 origin, float3 direction, int nrOfInteractions)
     return ray;
 }
 
+Ray CreateHovemRTRay(float3 origin, uint3 id)
+{
+    float srcY;
+    if (abs(srcDirection.y) < 1e-6) {
+        srcY = 0;
+    }
+    else {
+        srcY = srcDirection.y;
+    }    
+
+    // calculate angular direction of ray given the id of the thread
+    float theta_rad = theta * PI / 180;
+    float dtheta = theta_rad / (ntheta + 1); // resolution in theta
+    float theta = theta_rad / 2 - (id.y + 1) * dtheta;
+    float origin_theta = -asin(srcY);
+
+    // add source's view angle to the ray
+    theta += origin_theta;
+
+    float phi = targetBuffer[id.x].phi; // angle towards target id.x, should be in radians   
+
+    float x = phi * cos(phi);
+    float z = phi * sin(phi);
+    float y = cos(theta);
+
+    float3 direction = float3(x, y, z);
+    
+    return CreateRay(origin, direction, 0);
+}
+
 float2 CreateCylindricalRay(uint3 id)
 {
     float srcY;    

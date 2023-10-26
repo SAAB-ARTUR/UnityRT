@@ -74,10 +74,10 @@ public class World : MonoBehaviour
 
     public bool WorldHasChanged()
     {
-        if (changeInWorld)
+        /*if (changeInWorld)
         {
             Debug.Log("change");
-        }
+        }*/
         return changeInWorld;
     }
 

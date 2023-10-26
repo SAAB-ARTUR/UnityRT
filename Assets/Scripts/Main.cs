@@ -54,7 +54,9 @@ public class Main : MonoBehaviour
     private bool oldVisualiseRays = false;
     private bool oldVisualiseContributingRays = false;
 
+    private const int BellhopTraceRaysKernelIdx = 0;
     private const int BellhopTraceContributingRaysKernelIdx = 1;
+    private const int HovemTraceRaysKernelIdx = 4;
     private const int HovemTraceContributingRaysKernelIdx = 3;
 
     struct PerRayData
@@ -241,13 +243,13 @@ public class Main : MonoBehaviour
             switch (rtmodel)
             {
                 case BellhopParams.RT_Model.Bellhop:
-                    computeShader.SetBuffer(0, name, buffer);
+                    computeShader.SetBuffer(BellhopTraceRaysKernelIdx, name, buffer);
                     break;
                 case BellhopParams.RT_Model.Hovem:
-                    computeShader.SetBuffer(2, name, buffer);
+                    computeShader.SetBuffer(HovemTraceRaysKernelIdx, name, buffer);
                     break;
                 default:
-                    computeShader.SetBuffer(0, name, buffer);
+                    computeShader.SetBuffer(BellhopTraceRaysKernelIdx, name, buffer);
                     break;
             }            
         }
@@ -273,15 +275,15 @@ public class Main : MonoBehaviour
         computeShader.SetFloat("depth", world.GetWaterDepth());
     }
 
-    private void OnEnable()
+    /*private void OnEnable()
     {
-        /*if (sourceCamera != null)
+        if (sourceCamera != null)
         {
             sourceCameraScript = sourceCamera.GetComponent<RayTracingVisualization>();
-        }*/
+        }
 
         //rtas = new RayTracingAccelerationStructure();
-    }
+    }*/
 
     // Start is called before the first frame update
     void Start()
@@ -289,7 +291,8 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
 
-        BuildWorld();        
+        BuildWorld();
+        rtas = new RayTracingAccelerationStructure();
         rebuildRTAS = true;        
 
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
@@ -316,7 +319,7 @@ public class Main : MonoBehaviour
         World world = worldManager.GetComponent<World>();
         for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
         {
-            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+            for (int itheta = 40; itheta < /*sourceParams.ntheta*/60; itheta++)
             {
                 PlotLines(iphi, itheta, rayPositions);
             }
@@ -475,8 +478,8 @@ public class Main : MonoBehaviour
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dtheta", dtheta);
-            debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));
-            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta];            
+            debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * bellhopParams.BELLHOPINTEGRATIONSTEPS, 3 * sizeof(float));
+            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta * bellhopParams.BELLHOPINTEGRATIONSTEPS];            
             SetComputeBuffer("debugBuf", debugBuf, bellhopParams.RTMODEL);
         }
         if (bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
@@ -610,7 +613,7 @@ public class Main : MonoBehaviour
         computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "FreqsAndDampData", FreqDampBuffer);
         computeShader.SetInt("freqsdamps", freqsdamps.Length);
 
-        computeShader.SetBuffer(1, "targetBuffer", targetBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "targetBuffer", targetBuffer);
 
         int threadGroupsX = Mathf.FloorToInt(1);
         int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
@@ -778,27 +781,27 @@ public class Main : MonoBehaviour
             //send rays
             if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
             {
-                computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+                computeShader.Dispatch(BellhopTraceRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
             }
             else if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Hovem)
             {                
-                computeShader.Dispatch(2, threadGroupsX, threadGroupsY, 1);
-            }            
-
+                computeShader.Dispatch(4, threadGroupsX, threadGroupsY, 1);
+            }
+            
             // read results from buffers into arrays
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
-            PerRayDataBuffer.GetData(rayData);
+            //PerRayDataBuffer.GetData(rayData);
 
-            //debugBuf.GetData(debugger);
-            //Debug.Log("------------------------------------------------------------------------------");
-            //for (int i = 0; i < debugger.Length; i++)
-            //{
-            //    Debug.Log("x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-            //}
-            //Debug.Log("------------------------------------------------------------------------------");            
+            debugBuf.GetData(debugger);
+            Debug.Log("------------------------------------------------------------------------------");
+            for (int i = 40*bellhopParams.BELLHOPINTEGRATIONSTEPS; i < 41 * bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
+            {
+                Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            }
+            Debug.Log("------------------------------------------------------------------------------");            
             
-            if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
+            /*if (bellhopParams.RTMODEL == BellhopParams.RT_Model.Bellhop)
             {                
                 // keep contributing rays only            
                 for (int i = 0; i < rayData.Length; i++)
@@ -827,7 +830,7 @@ public class Main : MonoBehaviour
                 {                    
                     HovemTraceContributingRays();                                   
                 }
-            }
+            }*/
 
             // Communicate the rays with the api
             if (api.enabled)

@@ -216,7 +216,6 @@ public class InputFields : MonoBehaviour
     public void ModelSelector()
     {
         BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
-        bellhopParams.RTMODEL = (BellhopParams.RT_Model)modeSelector.value;
-        Debug.Log("change in model");
+        bellhopParams.RTMODEL = (BellhopParams.RT_Model)modeSelector.value;        
     }
 }
