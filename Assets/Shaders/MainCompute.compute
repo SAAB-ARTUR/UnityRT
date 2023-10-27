@@ -376,7 +376,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
 
     RayPositionsBuffer[0 + offset] = srcPosition; // save the origin of the ray
     uint istep = 1;
-    debugBuf[offset] = srcPosition;
+    //debugBuf[offset] = srcPosition;
     while (hit.sendNewRay) 
     {
         // save data from previous step
@@ -444,23 +444,23 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                 len = len0 + ds;
             }
         }
-        // --- layer traversal done ---
-        
+        // --- layer traversal done ---     
 
-        // step taken, create ray starting from the source in the direction of the step's final position and find what the ray has hit
+        RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // save the result of the step in the position buffer
+
+        // step taken, create ray starting from the previous position in the direction of the step's final position
         float deltar = r - r0;
         float deltaz = z - z0;
         float xstep = deltar * cos(phi);
         float zstep = deltar * sin(phi);
 
         float3 direction = float3(xstep, deltaz, zstep);
-        direction = normalize(direction);
-        
+        direction = normalize(direction);        
 
         RayDesc ray; // description of the ray to be used in tracerayinline
-        ray.Origin = toCartesian(phi, float2(r0, z0)); // send the ray from the previous hit.position, for the first ray this will be the source's position
+        ray.Origin = toCartesian(phi, float2(r0, z0)); // send the ray from the previous position
         ray.Direction = direction;
-        ray.TMin = 5e-6f;
+        ray.TMin = 0;
         ray.TMax = 1e20f;
 
         const uint rayFlags = RAY_FLAG_NONE;
@@ -472,39 +472,30 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
             hit.position = toCartesian(phi, float2(r0, z0)) + (ray.Direction * rayQuery.CommittedRayT());
             hit.distance = rayQuery.CommittedRayT();            
-            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, rayQuery.CommittedInstanceID());
+            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, rayQuery.CommittedInstanceID());
 
-            RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
+            
             // ray interactions with surface and seafloor are the interesting cases
             if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver                
-                if ((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0)) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
-
-                }
-                else {
-                    RayPositionsBuffer[istep + offset] = hit.position; // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
-                    tz = -tz;                    
+                if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
+                    RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
+                    tz = -tz;
                     ntop++;
-                }
-
-                         
+                }        
             }
             else if (rayQuery.CommittedInstanceID() == 2) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver                
-                if ((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0)) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
-
-                }
-                else {
-                    RayPositionsBuffer[istep + offset] = hit.position; // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
+                if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
+                    RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
                     tz = -tz;
                     nbot++;
-                }
-                
+                }                
             }
         }
-        else
+        /*else
         { // no hit, when the ray misses something it is not certain that a ray should be terminated, (example if a ray turns in a layer, the ray would be sent horizontally and miss)
-            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
-            RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
-        }
+            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
+            //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
+        }*/
         
         istep++;
         // distance left to the receiver
@@ -515,6 +506,6 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _BELLHOPSIZE; i++) {
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);
-        debugBuf[i + offset] = float3(123, 456, 789);
+        //debugBuf[i + offset] = float3(123, 456, 789);
     }    
 }

@@ -806,13 +806,13 @@ public class Main : MonoBehaviour
             rayPositionDataAvail = true;
             //PerRayDataBuffer.GetData(rayData);
 
-            debugBuf.GetData(debugger);
+            /*debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
             for (int i = 49*modelParams.INTEGRATIONSTEPS; i < 50 * modelParams.INTEGRATIONSTEPS; i++)
             {
                 Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }
-            Debug.Log("------------------------------------------------------------------------------");            
+            Debug.Log("------------------------------------------------------------------------------");*/
             
             /*if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {                
@@ -952,16 +952,7 @@ public class Main : MonoBehaviour
         Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
         Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
         RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
-        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 2);
-
-        // add waterplane(s)
-        /*Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
-        Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
-        RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);
-        if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
-        {
-            rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 3);
-        }*/
+        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 2);        
 
         // targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
         // are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
