@@ -1,4 +1,5 @@
 import sys
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -9,12 +10,13 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 fig = plt.figure()
 
 ax = fig.add_subplot(projection = "3d")
-
-
 senders, = ax.plot3D([], [], [], linewidth = 0, marker = ".")
 recievers, = ax.plot3D([], [], [], linewidth = 0, marker = ".")
 rays = Line3DCollection(np.empty((0, 3)))
 ax.add_collection(rays)
+
+figresp, axresp = plt.subplots()
+lineresp, = axresp.plot([], [])
 
 plt.show(block = False)
 
@@ -59,6 +61,13 @@ def plot_rays(rays, world: schema.World):
             rays.set_segments(raydata)
             rays.do_3d_projection()
             #print(raydata[0][1])
+
+def plot_resp(y):
+
+    axresp.clear()
+    axresp.plot(y)
+    #lineresp.set_data(np.arange(len(y)), y)
+
 
 def fix_axis():
 
@@ -211,10 +220,60 @@ def send(message: bytearray):
 
 
 
+# Signal processing to get the response
+def result2Time(Amp, phase, delay, freqs) -> np.ndarray:
+
+    # Define the signal that is carried by the rays
+
+    Fs = 2e4;       # Sampling rate
+    T  = 0.0005;      # Period
+    Ns = int(Fs*T); # Number of samples
+    
+    print("Ns", Ns)
+    
+    f = np.arange(0, Ns)
+
+    # Ricker pulse
+    tt = np.arange(0, Ns)/Fs - T/4
+    fc = 1000
+    xx = (np.pi*fc*tt)**2
+    xx = (1 - 2*xx) * np.exp(-xx)
+    X = np.fft.fft(xx)
+
+
+    tmin = np.min(delay)
+
+    # Calculate the receiver signal
+    # Preallocate Y
+    Y = np.zeros(Ns).astype(complex)
+    for jj in range(1, int(Ns/2)):
+
+        Pk = 0
+        omega = 2 * np.pi * f[jj]
+
+        for ii in range(len(delay)):
+            print("ii", ii)
+            Pk = Pk + Amp[ii,jj] * np.exp(1j * (phase[ii,jj] - omega*(delay[ii]-tmin)))
+        Y[jj] = Pk * X[jj]
+        Y[-jj] = np.conj(Pk) * X[-jj]
+    
+    yy = np.real(np.fft.ifft(Y))
+
+    return yy
+        
+
+def extractRay(world) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    empty = np.empty((10, 10))
+    return (empty, empty, empty[:, 0], empty)
+
+
 theta = 0
 
-while True:
+ran = False
+while (not ran):
     
+    ran = not ran
     
     theta += 0.1
 
@@ -240,14 +299,14 @@ while True:
     world = schema.World.GetRootAs(buf)
     plot_senders(senders, world)
     plot_reciever(recievers, world)
-
-    
     plot_rays(rays, world)
+    plot_resp(result2Time(*extractRay(world)))
 
 
     fix_axis()
 
     fig.canvas.draw()
+    figresp.canvas.draw()
     plt.pause(0.01)
     #sys.stdin.buffer.flush()
     # sys.stdin.flush()
@@ -255,8 +314,6 @@ while True:
     send(move_sender_message(pos_sender))
     send(move_receiver_message(pos_receiver))
     send(trace_message())
-    
-    
     send(response_handled_message())
     
     #os.write(sys.stdout.fileno(), response_handled_message()).
@@ -283,4 +340,6 @@ while True:
 
     plt.pause(0.001)
     """
+plt.show()
+
     
