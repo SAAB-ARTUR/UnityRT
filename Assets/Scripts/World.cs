@@ -6,8 +6,12 @@ using UnityTemplateProjects;
 
 public class World : MonoBehaviour
 {
+    [SerializeField] Material lineMaterial = null;
     [SerializeField] float sourceDepth = 0;
+    public Vector3 pyramidTop = Vector3.zero;
     //[SerializeField] GameObject srcSphere = null;
+    private LineRenderer line = null;
+    private List<LineRenderer> pyramidlines = new List<LineRenderer>();
 
     public int range
     {
@@ -110,12 +114,35 @@ public class World : MonoBehaviour
     }
     public void AddBottom(GameObject _bottom) 
     {
+        foreach (LineRenderer line in pyramidlines) // delete lines from previous runs
+        {
+            Destroy(line.gameObject);
+        }
+        pyramidlines.Clear();
         Vector3 center = Vector3.up * waterDepth;
-        Mesh m1 = DoublePlaneMesh(center);
+        //Mesh m1 = DoublePlaneMesh(center);
+        Mesh m1 = BottomPyramid(center, pyramidTop);
 
         _bottom.GetComponent<MeshFilter>().mesh = m1;
         
         bottom = _bottom;
+
+        for (int i = 2; i < m1.triangles.Length; i += 3)
+        {
+            line = new GameObject("Line").AddComponent<LineRenderer>();
+            line.startWidth = 0.03f;
+            line.endWidth = 0.03f;
+            line.useWorldSpace = true;
+
+            Vector3[] positions = new Vector3[4] { m1.vertices[m1.triangles[i]], m1.vertices[m1.triangles[i - 1]], m1.vertices[m1.triangles[i - 2]], m1.vertices[m1.triangles[i]] };
+            line.positionCount = 4;
+            line.SetPositions(positions);
+
+            line.material = lineMaterial;
+            line.material.color = Color.black;
+
+            pyramidlines.Add(line);
+        }
     }
 
     public void AddWaterplane(GameObject waterplane) 
@@ -149,51 +176,41 @@ public class World : MonoBehaviour
 
     private Mesh DoublePlaneMesh(Vector3 center)
     {
-        Mesh surfaceMesh = new Mesh()
+        Mesh mesh = new Mesh()
         {
             name = "Plane Mesh"
         };
 
         Vector3[] square = new Vector3[] {
-            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range), // Upper plane
-            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range) // lower plane
+            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range),             
         };
         Vector3 center_local = mean(square);
         square = square.Select(x => { return x - center_local + center; }).ToArray();
 
-        surfaceMesh.vertices = square;
+        mesh.vertices = square;
 
-        surfaceMesh.normals = new Vector3[] {
+        mesh.normals = new Vector3[] {
             Vector3.back, Vector3.back, Vector3.back, Vector3.back,
-
-            Vector3.forward, 
-            Vector3.forward, 
-            Vector3.forward, 
-            Vector3.forward,
         };
 
-        surfaceMesh.tangents = new Vector4[] {
+        mesh.tangents = new Vector4[] {
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f)
         };
         
-        surfaceMesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3,
-            4, 5, 6, 5, 7, 6,
+        mesh.triangles = new int[] {
+            0, 2, 1, 1, 2, 3, // upper plane
+            0, 1, 2, 1, 3, 2, // lower plane
         };
 
-        return surfaceMesh;
+        return mesh;
     }
 
     private Mesh SinglePlaneMesh(Vector3 center)
     {
-        Mesh surfaceMesh = new Mesh()
+        Mesh mesh = new Mesh()
         {
             name = "Plane Mesh"
         };
@@ -204,24 +221,58 @@ public class World : MonoBehaviour
         Vector3 center_local = mean(square);
         square = square.Select(x => { return x - center_local + center; }).ToArray();
 
-        surfaceMesh.vertices = square;
+        mesh.vertices = square;
 
-        surfaceMesh.normals = new Vector3[] {
+        mesh.normals = new Vector3[] {
             Vector3.back, Vector3.back, Vector3.back, Vector3.back,
         };
 
-        surfaceMesh.tangents = new Vector4[] {
+        mesh.tangents = new Vector4[] {
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
             new Vector4(1f, 0f, 0f, -1f),
         };
 
-        surfaceMesh.triangles = new int[] {
+        mesh.triangles = new int[] {
             0, 2, 1, 1, 2, 3,
         };
 
-        return surfaceMesh;
+        return mesh;
+    }
+
+    private Mesh BottomPyramid(Vector3 center, Vector3 topPoint)
+    {
+        Mesh mesh = new Mesh();
+        Vector3[] pyramid = new Vector3[] // create vertices for 4 triangles and combine them into a pyramid
+        {
+            new Vector3(-range/2, waterDepth, -range/2), new Vector3(-range/2, waterDepth, range/2), new Vector3(range/2, waterDepth, range/2), new Vector3(range/2, waterDepth, -range/2),
+            topPoint// top position
+        };
+
+        mesh.vertices = pyramid;
+
+        mesh.normals = new Vector3[] {
+            Vector3.back, Vector3.back, Vector3.back, Vector3.back, Vector3.back
+        };
+
+        mesh.tangents = new Vector4[] {
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+            new Vector4(1f, 0f, 0f, -1f),
+        };
+
+        mesh.triangles = new int[] {
+            0, 1, 4, // pyramid
+            1, 2, 4, 
+            3, 4, 2,
+            0, 4, 3,
+            0, 2, 1, 0, 3, 2, // seafloor 
+        };
+
+        return mesh;
     }
 
     public int GetNrOfWaterplanes()
