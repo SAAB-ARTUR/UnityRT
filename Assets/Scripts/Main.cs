@@ -56,8 +56,9 @@ public class Main : MonoBehaviour
 
     private const int BellhopTraceRaysKernelIdx = 0;
     private const int BellhopTraceContributingRaysKernelIdx = 1;
-    private const int HovemTraceRaysKernelIdx = 4;
+    private const int HovemTraceRaysKernelIdx = 2;
     private const int HovemTraceContributingRaysKernelIdx = 3;
+    private const int HovemRTASTraceRaysKernelIdx = 4;
 
     struct PerRayData
     {
@@ -247,6 +248,9 @@ public class Main : MonoBehaviour
                     break;
                 case RTModelParams.RT_Model.Hovem:
                     computeShader.SetBuffer(HovemTraceRaysKernelIdx, name, buffer);
+                    break;
+                case RTModelParams.RT_Model.HovemRTAS:
+                    computeShader.SetBuffer(HovemRTASTraceRaysKernelIdx, name, buffer);
                     break;
                 default:
                     computeShader.SetBuffer(BellhopTraceRaysKernelIdx, name, buffer);
@@ -499,7 +503,7 @@ public class Main : MonoBehaviour
             world.AckChangeInWorld();
             rebuildRTAS = true;
         }
-
+        SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
         return BuffersAndArraysSuccess && SSPReadSuccessfully;
     }
 
@@ -765,13 +769,7 @@ public class Main : MonoBehaviour
 
             DateTime time1 = DateTime.Now; // measure time to do raytracing
 
-            CreateResources();
-
-            if (rebuildRTAS)
-            {
-                BuildRTAS();
-                rebuildRTAS = false;
-            }
+            CreateResources();            
 
             SetShaderParameters();            
             
@@ -785,9 +783,18 @@ public class Main : MonoBehaviour
             }
             else if (modelParams.RTMODEL == RTModelParams.RT_Model.Hovem)
             {                
-                computeShader.Dispatch(4, threadGroupsX, threadGroupsY, 1);
+                computeShader.Dispatch(HovemTraceRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
             }
-            
+            else if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS)
+            {
+                if (rebuildRTAS)
+                {
+                    BuildRTAS();
+                    rebuildRTAS = false;
+                }
+                computeShader.Dispatch(HovemRTASTraceRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
+            }
+
             // read results from buffers into arrays
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;

@@ -16,7 +16,8 @@ public class RTModelParams : MonoBehaviour
     public enum RT_Model
     {
         Bellhop,
-        Hovem
+        Hovem,
+        HovemRTAS,
     }
 
     private RT_Model rtmodel = RT_Model.Hovem;
