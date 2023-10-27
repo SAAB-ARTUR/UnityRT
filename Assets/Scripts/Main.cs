@@ -118,7 +118,7 @@ public class Main : MonoBehaviour
                                             (float)0.309211875353326, (float)0.317457525362748, (float)0.325703175372170, (float)0.333948825381592, (float)0.342194475391014, (float)0.350440125400436, (float)0.358685775409858, (float)0.366931425419280,
                                             (float)0.375177075428702, (float)0.383422725438124, (float)0.391668375447546, (float)0.399914025456968, (float)0.408159675466391, (float)0.416405325475813, (float)0.424650975485235, (float)0.432896625494657,
                                             (float)0.441142275504079, (float)0.449387925513501, (float)0.457633575522923, (float)0.465879225532345, (float)0.474124875541767, (float)0.482370525551189, (float)0.490616175560611, (float)0.498861825570033,
-                                            (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };
+                                            (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };    
 
     private Vector3 oldPyramidTop = Vector3.zero;
 
@@ -328,7 +328,7 @@ public class Main : MonoBehaviour
         World world = worldManager.GetComponent<World>();
         for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
         {
-            for (int itheta = 0/*49*/; itheta < sourceParams.ntheta/*50*/; itheta++)
+            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
             {
                 PlotLines(iphi, itheta, rayPositions);
             }

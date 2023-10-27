@@ -476,9 +476,8 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
 
             RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
             // ray interactions with surface and seafloor are the interesting cases
-            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver
-                //SurfaceHit(_ray, hit);
-                if (z < hit.position.y) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
+            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver                
+                if ((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0)) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
 
                 }
                 else {
@@ -489,12 +488,8 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
 
                          
             }
-            /*else if (rayQuery.CommittedInstanceID() == 3) { // 'normal' layer hit, take new step if we are getting closer to the receiver 
-                
-            }*/
-            else if (rayQuery.CommittedInstanceID() == 2) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver
-                //SeafloorHit(_ray, hit);
-                if (z > hit.position.y) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
+            else if (rayQuery.CommittedInstanceID() == 2) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver                
+                if ((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0)) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
 
                 }
                 else {
