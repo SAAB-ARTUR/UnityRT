@@ -245,6 +245,20 @@ def transferFn(Amp, phase, delay, freqs) -> np.ndarray:
 
     return Y
         
+from dataclasses import dataclass
+@dataclass
+class Ray:
+
+    contributing: bool
+    theta: float
+    delay: float
+    curve: float
+    ntop: int
+    nbot: int
+    ncaust: int
+    beta: float
+    qi: float
+
 
 def extractRay(world: schema.World, freqs) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
 
@@ -272,30 +286,47 @@ def extractRay(world: schema.World, freqs) -> tuple[np.ndarray, np.ndarray, np.n
         cr = world.Cr()
         cs = world.Cs()
 
+        rays = [
+            Ray(
+                contributing=rays(rayii).Contributing(),
+                    theta = rays(rayii).Theta(),
+                    delay = rays(rayii).Delay(),
+                    curve = rays(rayii).Curve(),
+                    ntop = rays(rayii).Ntop(), 
+                    nbot = rays(rayii).Nbot(),
+                    ncaust = rays(rayii).Ncaust(),
+                    beta = rays(rayii).Beta(), 
+                    qi = rays(rayii).Qi()
+
+            )
+            for rayii in range(nrays)
+        ]
+
 
         for rayii in range(nrays):
             
-            ray = rays(rayii)
+            ray = rays[rayii]
             Arms = 0.0
-            Amp0 = np.sqrt( np.cos(ray.Theta()) * cr / abs(ray.Qi()) /  dist )
+            Amp0 = np.sqrt( np.cos(ray.theta) * cr / abs(ray.qi) /  dist )
             
 
-            contributing[rayii] = ray.Contributing()
-            delay[rayii] = ray.Delay()
+            contributing[rayii] = ray.contributing
+            delay[rayii] = ray.delay
 
             # TODO: Add bottom reflections
             Rfa = 1
             phi = 0
 
             for jj in range(nfreq):
-                Amp[rayii,jj] = Amp0 * Rfa**ray.Nbot() * np.exp( -damp[jj] * ray.Curve() )
-                phi = np.pi * ray.Ntop() + phi * ray.Nbot() + np.pi/2 * ray.Ncaust()
+                Amp[rayii,jj] = Amp0 * Rfa**ray.nbot * np.exp( -damp[jj] * ray.curve )
+                phi = np.pi * ray.ntop + phi * ray.nbot + np.pi/2 * ray.ncaust
                 phase[rayii,jj] = ((phi + np.pi) % (2*np.pi)) - np.pi
                 
                 # RMS amplitude
                 Arms = Arms + Amp[rayii,jj]**2
 
-                Amp[rayii,jj] = (1 - ray.Beta()) * Amp[rayii,jj]
+                Amp[rayii,jj] = (1 - ray.beta) * Amp[rayii,jj]
+
         if np.all(contributing == False): 
             return None    
         return (Amp[contributing, :], phase[contributing, :], delay[contributing])
