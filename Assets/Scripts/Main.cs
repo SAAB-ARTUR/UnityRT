@@ -840,13 +840,13 @@ public class Main : MonoBehaviour
                 {                    
                     HovemTraceContributingRays();
 
-                    //debugBuf.GetData(debugger);
-                    //Debug.Log("------------------------------------------------------------------------------");
-                    //for (int i = 0; i < debugger.Length; i++)
-                    //{
-                    //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-                    //}
-                    //Debug.Log("------------------------------------------------------------------------------");
+                    debugBuf.GetData(debugger);
+                    Debug.Log("------------------------------------------------------------------------------");
+                    for (int i = 0; i < debugger.Length; i++)
+                    {
+                        Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+                    }
+                    Debug.Log("------------------------------------------------------------------------------");
                 }
             }
 

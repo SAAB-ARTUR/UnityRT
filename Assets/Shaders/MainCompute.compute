@@ -170,8 +170,8 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
     float theta = angles.x;
     float phi = angles.y;
 
-    theta = thetaData[id.y];
-    phi = 0;    
+    //theta = thetaData[id.y];
+    //phi = 0;    
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
     float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
@@ -263,9 +263,10 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     }
 
     // geometrical spreading loss
-    float Area_s = 2 * PI * cos(_theta) * (ContributingRayData[rayIdx].theta - ContributingRayData[rayIdx - 1].theta);
+    float Area_s = 2 * PI * cos(_theta) * abs(ContributingRayData[rayIdx].theta - ContributingRayData[rayIdx - 1].theta);
     float Area_r = 2 * PI * xr.x * abs(xn2 - xn1);
     float Amp0 = sqrt(Area_s / Area_r);
+    debugBuf[id.y + id.x * ntheta] = float3(Amp0, Area_s, Area_r);
 
     // caustic phase shift
     float ncaust = 0;
@@ -287,13 +288,14 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
         float Amp = Amp0 * pow(Rbot, nbot) * exp(-FreqsAndDampData[i].y * curve); // samma här
         // RMS amplitude
         Arms += pow(Amp, 2);
+        
     }
 
     // transmission loss
     float Is = 1 / rho1 / cs;
     float Ir = (Arms / freqsdamps) / rho1 / cr;
     float TL = 10 * log10(Is / Ir);
-
+    
     ContributingRayData[eigIdx].TL = TL;
     ContributingRayData[eigIdx].ncaust = ncaust;
 
