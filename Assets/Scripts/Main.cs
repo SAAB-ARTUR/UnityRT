@@ -272,9 +272,10 @@ public class Main : MonoBehaviour
     private void BuildWorld() {
         
         World world = worldManager.GetComponent<World>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         world.AddSource(sourceCamera);
         world.AddSurface(surface);
-        world.AddBottom(seafloor);
+        world.AddBottom(seafloor, modelParams.RTMODEL);
         if (world.GetNrOfWaterplanes() > 0)
         {
             world.AddWaterplane(waterplane);
@@ -456,7 +457,7 @@ public class Main : MonoBehaviour
             }
             rayPositionDataAvail = false;
             oldSourceParams = sourceParams.ToStruct();
-            oldRTModelParams = modelParams.ToStruct();
+            
 
             if (RayPositionsBuffer != null)
             {
@@ -495,8 +496,9 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_MAXBOTTOMHITS", modelParams.MAXNRBOTTOMHITS);
         }        
 
-        if (world.WorldHasChanged() || oldPyramidTop != world.pyramidTop)
+        if (world.WorldHasChanged() || oldPyramidTop != world.pyramidTop || modelParams.HasChanged(oldRTModelParams))
         {
+            oldRTModelParams = modelParams.ToStruct();
             oldPyramidTop = world.pyramidTop;
             BuildWorld();
             world.AckChangeInWorld();

@@ -101,6 +101,7 @@ public class World : MonoBehaviour
         controller.lower_limit_y = waterDepth;
         controller.upper_limit_z = range/2;
         controller.lower_limit_z = -range/2;
+        
         controller.JumpTo(Vector3.down * sourceDepth);
     }
 
@@ -112,7 +113,7 @@ public class World : MonoBehaviour
         
         surface = _surface;
     }
-    public void AddBottom(GameObject _bottom) 
+    public void AddBottom(GameObject _bottom, RTModelParams.RT_Model rtmodel) 
     {
         foreach (LineRenderer line in pyramidlines) // delete lines from previous runs
         {
@@ -120,29 +121,36 @@ public class World : MonoBehaviour
         }
         pyramidlines.Clear();
         Vector3 center = Vector3.up * waterDepth;
-        //Mesh m1 = DoublePlaneMesh(center);
-        Mesh m1 = BottomPyramid(center, pyramidTop);
+
+        Mesh m1;
+        if (rtmodel == RTModelParams.RT_Model.HovemRTAS)
+        {
+            m1 = BottomPyramid(center, pyramidTop);
+            for (int i = 2; i < m1.triangles.Length; i += 3)
+            {
+                line = new GameObject("Line").AddComponent<LineRenderer>();
+                line.startWidth = 0.03f;
+                line.endWidth = 0.03f;
+                line.useWorldSpace = true;
+
+                Vector3[] positions = new Vector3[4] { m1.vertices[m1.triangles[i]], m1.vertices[m1.triangles[i - 1]], m1.vertices[m1.triangles[i - 2]], m1.vertices[m1.triangles[i]] };
+                line.positionCount = 4;
+                line.SetPositions(positions);
+
+                line.material = lineMaterial;
+                line.material.color = Color.black;
+
+                pyramidlines.Add(line);
+            }
+        }
+        else
+        {
+            m1 = DoublePlaneMesh(center);
+        }       
 
         _bottom.GetComponent<MeshFilter>().mesh = m1;
         
-        bottom = _bottom;
-
-        for (int i = 2; i < m1.triangles.Length; i += 3)
-        {
-            line = new GameObject("Line").AddComponent<LineRenderer>();
-            line.startWidth = 0.03f;
-            line.endWidth = 0.03f;
-            line.useWorldSpace = true;
-
-            Vector3[] positions = new Vector3[4] { m1.vertices[m1.triangles[i]], m1.vertices[m1.triangles[i - 1]], m1.vertices[m1.triangles[i - 2]], m1.vertices[m1.triangles[i]] };
-            line.positionCount = 4;
-            line.SetPositions(positions);
-
-            line.material = lineMaterial;
-            line.material.color = Color.black;
-
-            pyramidlines.Add(line);
-        }
+        bottom = _bottom;        
     }
 
     public void AddWaterplane(GameObject waterplane) 
