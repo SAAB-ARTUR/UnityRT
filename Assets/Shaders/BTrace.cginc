@@ -43,7 +43,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);    
     uint istep = 1;
     
-    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
+    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE) // each ray gets _BELLHOPSIZE nr of steps to reach the target
     {
         // Apply caustic phase change
         if (q <= 0 && q0 > 0 || q >= 0 && q0 < 0)
@@ -150,7 +150,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     prd.qi = qi;
     prd.theta = theta;
     prd.phi = phi;
-    prd.TL = 0;
+    prd.TL = 0; // calculated later
     prd.target = id.x;
 
     if (beta < 1) {

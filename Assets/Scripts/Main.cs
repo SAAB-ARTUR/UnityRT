@@ -17,12 +17,12 @@ public class Main : MonoBehaviour
     public Camera sourceCamera = null; 
     [SerializeField] GameObject worldManager = null;
     [SerializeField] GameObject btnFilePicker = null;
-    [SerializeField] GameObject bellhop = null;    
+    [SerializeField] GameObject RTModel = null;
 
     apiv2 api = null;
 
     private SourceParams.Properties? oldSourceParams = null;
-    private BellhopParams.Properties? oldBellhopParams = null;
+    private RTModelParams.Properties? oldRTModelParams = null;
     private int oldMaxSurfaceHits = 0;
     private int oldMaxBottomHits = 0;    
 
@@ -33,15 +33,15 @@ public class Main : MonoBehaviour
     private bool errorFree = true;
 
     private LineRenderer line = null;
-    private List<LineRenderer> lines = new List<LineRenderer>();
+    private List<LineRenderer> lines = new List<LineRenderer>();    
 
     private RayTracingAccelerationStructure rtas = null;
     private bool rebuildRTAS = false;
 
-    /*private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
+    private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
     private SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
     private WaterplaneInstanceData waterplaneInstanceData = null;
-    private TargetInstanceData targetInstanceData = null;*/    
+    //private TargetInstanceData targetInstanceData = null;   
 
     private SSPFileReader _SSPFileReader = null;
     private List<SSPFileReader.SSP_Data> SSP = null;
@@ -53,6 +53,12 @@ public class Main : MonoBehaviour
 
     private bool oldVisualiseRays = false;
     private bool oldVisualiseContributingRays = false;
+
+    private const int BellhopTraceRaysKernelIdx = 0;
+    private const int BellhopTraceContributingRaysKernelIdx = 1;
+    private const int HovemTraceRaysKernelIdx = 2;
+    private const int HovemTraceContributingRaysKernelIdx = 3;
+    private const int HovemRTASTraceRaysKernelIdx = 4;
 
     struct PerRayData
     {
@@ -85,15 +91,37 @@ public class Main : MonoBehaviour
     private ComputeBuffer RayTargetsBuffer;
     private List<uint> rayTargets = new List<uint>();
 
-    /*private ComputeBuffer debugBuf;
-    private float3[] debugger;*/
+    private ComputeBuffer debugBuf;
+    private float3[] debugger;
 
     private ComputeBuffer FreqDampBuffer;
     private float2[] freqsdamps;
 
     private ComputeBuffer targetBuffer;    
     private int oldNrOfTargets = 0;
-    
+
+    private ComputeBuffer alphaData;
+    private float[] alphas = new float[128] { (float)-0.523598775598299, (float)-0.515353125588877, (float)-0.507107475579455, (float)-0.498861825570033, (float)-0.490616175560611, (float)-0.482370525551189, (float)-0.474124875541767,
+                                            (float)-0.465879225532345, (float)-0.457633575522923, (float)-0.449387925513501, (float)-0.441142275504079, (float)-0.432896625494657, (float)-0.424650975485235, (float)-0.416405325475813,
+                                            (float)-0.408159675466391, (float)-0.399914025456968, (float)-0.391668375447546, (float)-0.383422725438124, (float)-0.375177075428702, (float)-0.366931425419280, (float)-0.358685775409858,
+                                            (float)-0.350440125400436, (float)-0.342194475391014, (float)-0.333948825381592, (float)-0.325703175372170, (float)-0.317457525362748, (float)-0.309211875353326, (float)-0.300966225343904,
+                                            (float)-0.292720575334482, (float)-0.284474925325060, (float)-0.276229275315638, (float)-0.267983625306216, (float)-0.259737975296794, (float)-0.251492325287372, (float)-0.243246675277950,
+                                            (float)-0.235001025268528, (float)-0.226755375259106, (float)-0.218509725249684, (float)-0.210264075240262, (float)-0.202018425230840, (float)-0.193772775221418, (float)-0.185527125211996,
+                                            (float)-0.177281475202574, (float)-0.169035825193152, (float)-0.160790175183730, (float)-0.152544525174308, (float)-0.144298875164886, (float)-0.136053225155463, (float)-0.127807575146041,
+                                            (float)-0.119561925136619, (float)-0.111316275127197, (float)-0.103070625117775, (float)-0.0948249751083534, (float)-0.0865793250989313, (float)-0.0783336750895093, (float)-0.0700880250800873,
+                                            (float)-0.0618423750706652, (float)-0.0535967250612432, (float)-0.0453510750518212, (float)-0.0371054250423991, (float)-0.0288597750329771, (float)-0.0206141250235551, (float)-0.0123684750141330,
+                                            (float)-0.00412282500471102, (float)0.00412282500471102, (float)0.0123684750141330, (float)0.0206141250235551, (float)0.0288597750329771, (float)0.0371054250423991, (float)0.0453510750518212,
+                                            (float)0.0535967250612432, (float)0.0618423750706652, (float)0.0700880250800873, (float)0.0783336750895093, (float)0.0865793250989313, (float)0.0948249751083534, (float)0.103070625117775,
+                                            (float)0.111316275127197, (float)0.119561925136619, (float)0.127807575146041, (float)0.136053225155463, (float)0.144298875164886, (float)0.152544525174308, (float)0.160790175183730, (float)0.169035825193152,
+                                            (float)0.177281475202574, (float)0.185527125211996, (float)0.193772775221418, (float)0.202018425230840, (float)0.210264075240262, (float)0.218509725249684, (float)0.226755375259106, (float)0.235001025268528,
+                                            (float)0.243246675277950, (float)0.251492325287372, (float)0.259737975296794, (float)0.267983625306216, (float)0.276229275315638, (float)0.284474925325060, (float)0.292720575334482, (float)0.300966225343904,
+                                            (float)0.309211875353326, (float)0.317457525362748, (float)0.325703175372170, (float)0.333948825381592, (float)0.342194475391014, (float)0.350440125400436, (float)0.358685775409858, (float)0.366931425419280,
+                                            (float)0.375177075428702, (float)0.383422725438124, (float)0.391668375447546, (float)0.399914025456968, (float)0.408159675466391, (float)0.416405325475813, (float)0.424650975485235, (float)0.432896625494657,
+                                            (float)0.441142275504079, (float)0.449387925513501, (float)0.457633575522923, (float)0.465879225532345, (float)0.474124875541767, (float)0.482370525551189, (float)0.490616175560611, (float)0.498861825570033,
+                                            (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };    
+
+    private Vector3 oldPyramidTop = Vector3.zero;
+
     private void ReleaseResources()
     {
         if (rtas != null)
@@ -102,7 +130,7 @@ public class Main : MonoBehaviour
             rtas = null;
         }        
 
-        /*if (surfaceInstanceData != null)
+        if (surfaceInstanceData != null)
         {
             surfaceInstanceData.Dispose();
             surfaceInstanceData = null;
@@ -117,7 +145,7 @@ public class Main : MonoBehaviour
             seafloorInstanceData.Dispose();
             seafloorInstanceData = null;
         }
-        if (targetInstanceData != null)
+        /*if (targetInstanceData != null)
         {
             targetInstanceData.Dispose();
             targetInstanceData = null;
@@ -131,8 +159,8 @@ public class Main : MonoBehaviour
         PerRayDataBuffer = null;
         FreqDampBuffer?.Release();
         FreqDampBuffer = null;
-        //debugBuf?.Release();
-        //debugBuf = null;
+        debugBuf?.Release();
+        debugBuf = null;
     }
 
     void OnDestroy()
@@ -148,25 +176,25 @@ public class Main : MonoBehaviour
     private void CreateResources()
     {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         World world = worldManager.GetComponent<World>();        
 
         if (RayPositionsBuffer == null)
         {
-            RayPositionsBuffer = new ComputeBuffer(bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));
-            SetComputeBuffer("RayPositionsBuffer", RayPositionsBuffer);
+            RayPositionsBuffer = new ComputeBuffer(modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));
+            SetComputeBuffer("RayPositionsBuffer", RayPositionsBuffer, modelParams.RTMODEL);
         }
 
         if (rayPositions == null)
         {
-            rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
+            rayPositions = new float3[modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
             rayPositionDataAvail = false;
         }
 
         if (PerRayDataBuffer == null)
         {
             PerRayDataBuffer = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta, perraydataByteSize);
-            SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer);
+            SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer, modelParams.RTMODEL);
         }
 
         if (rayData == null)
@@ -174,16 +202,15 @@ public class Main : MonoBehaviour
             rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta];
         }
 
-        /*if (surfaceInstanceData == null)
+        if (surfaceInstanceData == null)
         {            
             surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
         }        
         if (seafloorInstanceData == null)
         {            
             seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
-        }*/
-
-        /*World world = world_manager.GetComponent<World>();
+        }
+        
         int nrOfWaterplanes = world.GetNrOfWaterplanes();
         float depth = world.GetWaterDepth();
         if (nrOfWaterplanes > 0 && (waterplaneInstanceData == null || waterplaneInstanceData.layers != nrOfWaterplanes || waterplaneInstanceData.depth != depth))
@@ -202,7 +229,7 @@ public class Main : MonoBehaviour
             }
         }
 
-        if (targetInstanceData == null)
+        /*if (targetInstanceData == null)
         {
             if (targetInstanceData != null)
             {
@@ -212,11 +239,25 @@ public class Main : MonoBehaviour
         }*/
     }
 
-    private void SetComputeBuffer(string name, ComputeBuffer buffer)
+    private void SetComputeBuffer(string name, ComputeBuffer buffer, RTModelParams.RT_Model rtmodel)
     {
         if (buffer != null)
-        {        
-            computeShader.SetBuffer(0, name, buffer);
+        {
+            switch (rtmodel)
+            {
+                case RTModelParams.RT_Model.Bellhop:
+                    computeShader.SetBuffer(BellhopTraceRaysKernelIdx, name, buffer);
+                    break;
+                case RTModelParams.RT_Model.Hovem:
+                    computeShader.SetBuffer(HovemTraceRaysKernelIdx, name, buffer);
+                    break;
+                case RTModelParams.RT_Model.HovemRTAS:
+                    computeShader.SetBuffer(HovemRTASTraceRaysKernelIdx, name, buffer);
+                    break;
+                default:
+                    computeShader.SetBuffer(BellhopTraceRaysKernelIdx, name, buffer);
+                    break;
+            }            
         }
     }
 
@@ -229,26 +270,30 @@ public class Main : MonoBehaviour
     }
 
     private void BuildWorld() {
+        
         World world = worldManager.GetComponent<World>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         world.AddSource(sourceCamera);
         world.AddSurface(surface);
-        world.AddBottom(seafloor);
+        world.AddBottom(seafloor, modelParams.RTMODEL);
         if (world.GetNrOfWaterplanes() > 0)
         {
             world.AddWaterplane(waterplane);
         }
         computeShader.SetFloat("depth", world.GetWaterDepth());
+        
+        
     }
 
-    private void OnEnable()
+    /*private void OnEnable()
     {
-        /*if (sourceCamera != null)
+        if (sourceCamera != null)
         {
             sourceCameraScript = sourceCamera.GetComponent<RayTracingVisualization>();
-        }*/
+        }
 
         //rtas = new RayTracingAccelerationStructure();
-    }
+    }*/
 
     // Start is called before the first frame update
     void Start()
@@ -256,20 +301,26 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
 
-        BuildWorld();        
+        BuildWorld();
+        rtas = new RayTracingAccelerationStructure();
         rebuildRTAS = true;        
 
         _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
 
         api = GetComponent<apiv2>();
+
+        alphaData = new ComputeBuffer(128, sizeof(float));
+        alphaData.SetData(alphas);
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+        SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
     }
 
-    int GetStartIndexBellhop(int idx, int idy)
-    {        
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+    int GetRayStartIndex(int idx, int idy)
+    {
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
         
-        return (idy + idx * sourceParams.ntheta) * bellhopParams.BELLHOPINTEGRATIONSTEPS;
+        return (idy + idx * sourceParams.ntheta) * modelParams.INTEGRATIONSTEPS;
     }
     
     void Plot()
@@ -280,20 +331,20 @@ public class Main : MonoBehaviour
         {
             for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
             {
-                PlotBellhop(iphi, itheta, rayPositions);
+                PlotLines(iphi, itheta, rayPositions);
             }
         }
     }
 
-    List<Vector3> BellhopLine(int idx, int idy, float3[] bds) {
+    List<Vector3> RayLine(int idx, int idy, float3[] bds) {
 
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
 
-        int offset = GetStartIndexBellhop(idx, idy);
+        int offset = GetRayStartIndex(idx, idy);
 
         List<Vector3> positions = new List<Vector3>();
 
-        for (int i = 0; i < bellhopParams.BELLHOPINTEGRATIONSTEPS; i++)
+        for (int i = 0; i < modelParams.INTEGRATIONSTEPS; i++)
         {            
             if (i == 0) // add the first position
             {
@@ -327,15 +378,8 @@ public class Main : MonoBehaviour
 
     }
 
-    void PlotBellhop(int idx, int idy, float3[] bds)
+    void PlotLines(int idx, int idy, float3[] bds)
     {
-        // det kan eventuellt vara så att alla errors angående "invalid aabb" kan ha med att linjer ritas mellan alla punkter för en ray och vissa
-        // punkter ligger väldigt nära varandra, kan vara värt att undersöka att ta bort punkter som ligger för nära föregående och se om det löser
-        // problemet, för visualiseringens skulle borde det inte påverka något negativt eftersom de små små linjerna ändå inte går att se, plus att
-        // det blir färre linjer vilket borde minska minnesanvädningen
-        // Testade att bara lägga till punkter som har ett större avstånd mellan sig, blir fortfarande enormt många fel av oklar anledning, läst på om
-        // felet "object is too large or too far away from the origin" och det var någon som sa att man inte ska ha object mer än 5000 enheter från origo,
-        // men våra rays rör sig i detta fall max 300 enheter bort så det känns jätteskumt det som händer
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         
         int rayIdx = idy + sourceParams.ntheta * idx;
@@ -345,7 +389,7 @@ public class Main : MonoBehaviour
             return;
         }
 
-        List<Vector3> positions = BellhopLine(idx, idy, bds);   
+        List<Vector3> positions = RayLine(idx, idy, bds);   
 
         line = new GameObject("Line").AddComponent<LineRenderer>();
         line.startWidth = 0.03f;
@@ -358,7 +402,7 @@ public class Main : MonoBehaviour
         lines.Add(line);        
     }
 
-    void DestryBellhopLines()
+    void DestroyLines()
     {
         foreach (LineRenderer line in lines) // delete lines from previous runs
         {
@@ -375,27 +419,28 @@ public class Main : MonoBehaviour
     bool MaintainBuffersArraysSSPAndWorld()
     {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        BellhopParams bellhopParams = bellhop.GetComponent<BellhopParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         World world = worldManager.GetComponent<World>();
         SimpleSourceController sourceController = sourceCamera.GetComponent<SimpleSourceController>();
         bool BuffersAndArraysSuccess = true;
 
-        if (world.TargetHasChanged() || sourceController.HasMoved())
+        bool SSPReadSuccessfully = SSPFileCheck();
+
+        if (world.TargetHasChanged() || sourceController.HasMoved() || modelParams.HasChanged(oldRTModelParams))
         {
             // either nr of targets has changed, positions of targets has changed or the source has moved, get the targets and recalculate their respective angles from the source            
             sourceController.AckMovement();
             oldNrOfTargets = world.GetNrOfTargets();
             targetBuffer = new ComputeBuffer(oldNrOfTargets, world.GetDataSizeOfTarget());
-            targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());
-            computeShader.SetBuffer(0, "targetBuffer", targetBuffer);
-        }
-
-        if (sourceParams.HasChanged(oldSourceParams) || bellhopParams.HasChanged(oldBellhopParams) || world.TargetHasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
-        {
+            targetBuffer.SetData(world.GetTargets(srcSphere.transform.position.x, srcSphere.transform.position.z).ToArray());            
+            SetComputeBuffer("targetBuffer", targetBuffer, modelParams.RTMODEL);
+        }        
+        if (sourceParams.HasChanged(oldSourceParams) || modelParams.HasChanged(oldRTModelParams) || world.TargetHasChanged()) // this could probably be written a bit nicer, some unecessary updates are done when a field is changed, but many of these are connected in some way
+        {            
             world.AckTargetChange();
             try
             {
-                rayPositions = new float3[bellhopParams.BELLHOPINTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
+                rayPositions = new float3[modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
                 rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta];
             }
             catch (OverflowException e)
@@ -412,7 +457,7 @@ public class Main : MonoBehaviour
             }
             rayPositionDataAvail = false;
             oldSourceParams = sourceParams.ToStruct();
-            oldBellhopParams = bellhopParams.ToStruct();
+            
 
             if (RayPositionsBuffer != null)
             {
@@ -430,36 +475,36 @@ public class Main : MonoBehaviour
             computeShader.SetFloat("theta", sourceParams.theta);
             computeShader.SetInt("ntheta", sourceParams.ntheta);
 
-            computeShader.SetInt("_BELLHOPSIZE", bellhopParams.BELLHOPINTEGRATIONSTEPS);
-            computeShader.SetFloat("deltas", bellhopParams.BELLHOPSTEPSIZE);
+            computeShader.SetInt("_BELLHOPSIZE", modelParams.INTEGRATIONSTEPS);
+            computeShader.SetFloat("deltas", modelParams.BELLHOPSTEPSIZE);
 
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dtheta", dtheta);
-            /*debugBuf = new ComputeBuffer(nrOfTargets * sourceParams.ntheta, 3 * sizeof(float));
-            debugger = new float3[nrOfTargets * sourceParams.ntheta];
-            computeShader.SetBuffer(0, "debugBuf", debugBuf);*/
+            debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS, 3 * sizeof(float));
+            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta/* * modelParams.INTEGRATIONSTEPS*/];            
+            SetComputeBuffer("debugBuf", debugBuf, modelParams.RTMODEL);
         }
-        if (bellhopParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
+        if (modelParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
-            oldMaxSurfaceHits = bellhopParams.MAXNRSURFACEHITS;
-            computeShader.SetInt("_MAXSURFACEHITS", bellhopParams.MAXNRSURFACEHITS);
+            oldMaxSurfaceHits = modelParams.MAXNRSURFACEHITS;
+            computeShader.SetInt("_MAXSURFACEHITS", modelParams.MAXNRSURFACEHITS);
         }
-        if (bellhopParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
+        if (modelParams.MAXNRBOTTOMHITS != oldMaxBottomHits)
         {
-            oldMaxBottomHits = bellhopParams.MAXNRBOTTOMHITS;
-            computeShader.SetInt("_MAXBOTTOMHITS", bellhopParams.MAXNRBOTTOMHITS);
-        }
+            oldMaxBottomHits = modelParams.MAXNRBOTTOMHITS;
+            computeShader.SetInt("_MAXBOTTOMHITS", modelParams.MAXNRBOTTOMHITS);
+        }        
 
-        bool SSPReadSuccessfully = SSPFileCheck();
-
-        if (world.WorldHasChanged())
+        if (world.WorldHasChanged() || oldPyramidTop != world.pyramidTop || modelParams.HasChanged(oldRTModelParams))
         {
+            oldRTModelParams = modelParams.ToStruct();
+            oldPyramidTop = world.pyramidTop;
             BuildWorld();
             world.AckChangeInWorld();
-            rebuildRTAS = true;
+            rebuildRTAS = true;           
         }
-
+        SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
         return BuffersAndArraysSuccess && SSPReadSuccessfully;
     }
 
@@ -471,6 +516,7 @@ public class Main : MonoBehaviour
     bool SSPFileCheck()
     {
         bool success = true;
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         if (_SSPFileReader.SSPFileHasChanged())
         {
             try
@@ -484,8 +530,8 @@ public class Main : MonoBehaviour
                 }
 
                 SSPBuffer = new ComputeBuffer(SSP.Count, sizeof(float) * 4); // SSP_data struct consists of 4 floats
-                SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);
-                SetComputeBuffer("_SSPBuffer", SSPBuffer);
+                SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);                
+                SetComputeBuffer("_SSPBuffer", SSPBuffer, modelParams.RTMODEL);
                 World world = worldManager.GetComponent<World>();
                 world.SetNrOfWaterplanes(SSP.Count - 2);
                 world.SetWaterDepth(SSP.Last().depth);
@@ -497,10 +543,14 @@ public class Main : MonoBehaviour
                 success = false;
             }
         }
+        else if (modelParams.HasChanged(oldRTModelParams))
+        {
+            SetComputeBuffer("_SSPBuffer", SSPBuffer, modelParams.RTMODEL);
+        }
         return success;
     }
 
-    void ComputeEigenRays()
+    void BellhopComputeEigenRays()
     {
         for (int i = 0; i < contributingRays.Count - 1; i++) // TODO: här blir det problem eftersom sista strålen kan skippas
         {
@@ -536,24 +586,28 @@ public class Main : MonoBehaviour
         }
     }
 
-    void TraceContributingRays()
+    void BellhopTraceContributingRays()
     {
+        debugBuf = new ComputeBuffer(contributingAngles.Count, 3 * sizeof(float));
+        debugger = new float3[contributingAngles.Count];
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "debugBuf", debugBuf);
+
         PerContributingRayData = new PerRayData[contributingAngles.Count];
 
         ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
 
         ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
-        computeShader.SetBuffer(1, "ContributingAnglesData", ContributingAnglesBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "ContributingAnglesData", ContributingAnglesBuffer);
 
         // init return data buffer
         PerContributingRayDataBuffer = new ComputeBuffer(contributingAngles.Count, perraydataByteSize);
-        computeShader.SetBuffer(1, "ContributingRayData", PerContributingRayDataBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "ContributingRayData", PerContributingRayDataBuffer);
 
-        computeShader.SetBuffer(1, "_SSPBuffer", SSPBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "_SSPBuffer", SSPBuffer);
 
         RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
         RayTargetsBuffer.SetData(rayTargets.ToArray());
-        computeShader.SetBuffer(1, "rayTargets", RayTargetsBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "rayTargets", RayTargetsBuffer);
 
         freqsdamps = new float2[1];
         freqsdamps[0].x = 150000;
@@ -561,23 +615,22 @@ public class Main : MonoBehaviour
 
         FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
         FreqDampBuffer.SetData(freqsdamps);
-        computeShader.SetBuffer(1, "FreqsAndDampData", FreqDampBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "FreqsAndDampData", FreqDampBuffer);
         computeShader.SetInt("freqsdamps", freqsdamps.Length);
 
-        computeShader.SetBuffer(1, "targetBuffer", targetBuffer);
+        computeShader.SetBuffer(BellhopTraceContributingRaysKernelIdx, "targetBuffer", targetBuffer);
 
         int threadGroupsX = Mathf.FloorToInt(1);
         int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
 
         // send eigenrays
-        computeShader.Dispatch(1, threadGroupsX, threadGroupsY, 1);
+        computeShader.Dispatch(BellhopTraceContributingRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
 
         PerContributingRayDataBuffer.GetData(PerContributingRayData);
 
-        Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");
-
+        Debug.Log("    theta     phi     T   B   C         TL          dist         delay     beta     eig");           
         for (int i = 0; i < PerContributingRayData.Length; i++)
-        {
+        {            
             float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
             float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
 
@@ -585,6 +638,92 @@ public class Main : MonoBehaviour
                             PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6") + " " +
                             PerContributingRayData[i].beta.ToString("F6") + " " + isEigenRay[i];
             Debug.Log(data);
+        }
+    }
+
+    void HovemComputeEigenRays()
+    {        
+        // find eigenray pairs
+        for (int i = 1; i < rayData.Length; i++)
+        {
+            if (rayData[i - 1].contributing == 0) // contributing == eigenray for now in the hovem case
+            {
+                if (rayData[i].ntop == rayData[i - 1].ntop && rayData[i].nbot == rayData[i - 1].nbot && rayData[i].target == rayData[i - 1].target)
+                {     
+                    if (rayData[i].xn * rayData[i - 1].xn <= 0)
+                    {
+                        rayData[i].contributing = 1;
+                        rayData[i - 1].contributing = 1;
+                        // add to list
+                        contributingRays.Add(rayData[i - 1]);
+                        contributingRays.Add(rayData[i]);
+                        Debug.Log("theta: " + rayData[i].theta + ", " + rayData[i - 1].theta);
+                        float theta = (rayData[i].theta + rayData[i - 1].theta) / 2;
+                        float phi = rayData[i].phi;
+                        Debug.Log("thetafinal: " + theta);
+                        contributingAngles.Add(new float2(theta, phi));
+                    }
+                }
+            }
+        }
+    }
+
+    void HovemTraceContributingRays()
+    {
+        debugBuf = new ComputeBuffer(contributingAngles.Count, 3 * sizeof(float));
+        debugger = new float3[contributingAngles.Count];
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "debugBuf", debugBuf);
+
+        PerContributingRayData = new PerRayData[contributingRays.Count];
+
+        ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
+
+        ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "ContributingAnglesData", ContributingAnglesBuffer);
+
+        // init return data buffer
+        PerContributingRayDataBuffer = new ComputeBuffer(contributingRays.Count, perraydataByteSize);
+        PerContributingRayDataBuffer.SetData(contributingRays);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "ContributingRayData", PerContributingRayDataBuffer);
+
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "_SSPBuffer", SSPBuffer);
+
+        RayTargetsBuffer = new ComputeBuffer(contributingRays.Count, sizeof(uint));
+        RayTargetsBuffer.SetData(rayTargets.ToArray());
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "rayTargets", RayTargetsBuffer);
+
+        freqsdamps = new float2[1];
+        freqsdamps[0].x = 150000;
+        freqsdamps[0].y = 0.015f / 8.6858896f;
+
+        FreqDampBuffer = new ComputeBuffer(freqsdamps.Length, sizeof(float) * 2);
+        FreqDampBuffer.SetData(freqsdamps);
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "FreqsAndDampData", FreqDampBuffer);
+        computeShader.SetInt("freqsdamps", freqsdamps.Length);
+
+        computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "targetBuffer", targetBuffer);
+
+        int threadGroupsX = Mathf.FloorToInt(1);
+        int threadGroupsY = Mathf.FloorToInt(contributingAngles.Count);
+
+        // send eigenrays
+        computeShader.Dispatch(HovemTraceContributingRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
+
+        PerContributingRayDataBuffer.GetData(PerContributingRayData);
+
+        Debug.Log("    theta     phi     T   B   C         TL          dist         delay");
+        Debug.Log(PerContributingRayData.Length);        
+        for (int i = 0; i < PerContributingRayData.Length; i++)
+        {            
+            if (PerContributingRayData[i].curve > 0) // skip the empty rays
+            {
+                float theta_deg = PerContributingRayData[i].theta * 180 / MathF.PI;
+                float phi_deg = PerContributingRayData[i].phi * 180 / MathF.PI;
+
+                string data = theta_deg.ToString("F6") + " " + phi_deg.ToString("F6") + " " + PerContributingRayData[i].ntop + " " + PerContributingRayData[i].nbot + " " + PerContributingRayData[i].ncaust + " " +
+                                PerContributingRayData[i].TL.ToString("F6") + " " + PerContributingRayData[i].curve.ToString("F6") + " " + PerContributingRayData[i].delay.ToString("F6");
+                Debug.Log(data);
+            }            
         }
     }
 
@@ -597,7 +736,7 @@ public class Main : MonoBehaviour
 
         errorFree = MaintainBuffersArraysSSPAndWorld();               
 
-        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
         if (oldVisualiseRays != sourceParams.visualizeRays || oldVisualiseContributingRays != sourceParams.showContributingRaysOnly) // if the user toggles the visualization options after raytracing has been done
         {
             oldVisualiseRays = sourceParams.visualizeRays;
@@ -605,7 +744,7 @@ public class Main : MonoBehaviour
 
             if (rayPositionDataAvail && sourceParams.visualizeRays)
             {
-                DestryBellhopLines();
+                DestroyLines();
                 Plot();
             }
         }
@@ -615,7 +754,7 @@ public class Main : MonoBehaviour
         }
         else
         {
-            //doRayTracing = false;
+            doRayTracing = false;
             lockRayTracing = false;
         }
 
@@ -624,21 +763,17 @@ public class Main : MonoBehaviour
         //
 
         if (((!lockRayTracing && doRayTracing) || sourceParams.sendRaysContinously) && errorFree) // do raytracing if the user has pressed key C. only do it once though. or do it continously
-        {            
+        {
+            RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+
             rayPositionDataAvail = false;
-            DestryBellhopLines();
+            DestroyLines();
 
             lockRayTracing = true; // disable raytracing being done several times during one keypress            
 
             DateTime time1 = DateTime.Now; // measure time to do raytracing
 
-            CreateResources();
-
-            if (rebuildRTAS)
-            {
-                BuildRTAS();
-                rebuildRTAS = false;
-            }
+            CreateResources();            
 
             SetShaderParameters();            
             
@@ -646,22 +781,76 @@ public class Main : MonoBehaviour
             int threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);           
 
             //send rays
-            computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+            if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
+            {
+                computeShader.Dispatch(BellhopTraceRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
+            }
+            else if (modelParams.RTMODEL == RTModelParams.RT_Model.Hovem)
+            {                
+                computeShader.Dispatch(HovemTraceRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
+            }
+            else if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS)
+            {
+                if (rebuildRTAS)
+                {
+                    BuildRTAS();
+                    rebuildRTAS = false;
+                }
+                computeShader.Dispatch(HovemRTASTraceRaysKernelIdx, threadGroupsX, threadGroupsY, 1);
+            }
 
             // read results from buffers into arrays
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
 
-            // keep contributing rays only            
-            for (int i = 0; i < rayData.Length; i++)
-            {
-                if (rayData[i].contributing == 1)
+            //debugBuf.GetData(debugger);
+            //Debug.Log("------------------------------------------------------------------------------");
+            //for (int i = 0; i < debugger.Length; i++)
+            //{
+            //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            //}
+            //Debug.Log("------------------------------------------------------------------------------");
+            
+            if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
+            {                
+                // keep contributing rays only            
+                for (int i = 0; i < rayData.Length; i++)
                 {
-                    contributingRays.Add(rayData[i]);
-                }                
-            }
+                    if (rayData[i].contributing == 1)
+                    {
+                        contributingRays.Add(rayData[i]);
+                    }
+                }
 
+                // check if a pair of contributing rays can be combined into an eigenray
+                BellhopComputeEigenRays();
+
+                if (contributingAngles.Count > 0)
+                {
+                    BellhopTraceContributingRays();               
+                }
+
+            }
+            else if (modelParams.RTMODEL == RTModelParams.RT_Model.Hovem)
+            {
+                Debug.Log("compute hovem eigen");
+                HovemComputeEigenRays();
+
+                // trace the contributing rays again
+                if (contributingRays.Count > 0)
+                {                    
+                    HovemTraceContributingRays();
+
+                    debugBuf.GetData(debugger);
+                    Debug.Log("------------------------------------------------------------------------------");
+                    for (int i = 0; i < debugger.Length; i++)
+                    {
+                        Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+                    }
+                    Debug.Log("------------------------------------------------------------------------------");
+                }
+            }
 
             // Communicate the rays with the api
             if (api.enabled)
@@ -675,22 +864,14 @@ public class Main : MonoBehaviour
                     for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
                     {
 
-                        rays.Add(BellhopLine(iphi, itheta, rayPositions));
+                        rays.Add(RayLine(iphi, itheta, rayPositions));
 
                     }
                 }
 
                 api.Rays(rays);
                 // Debug.Log(rays[0][0].ToString());
-            }
-
-            // check if a pair of contributing rays can be combined into an eigenray
-            ComputeEigenRays();
-
-            if (contributingAngles.Count > 0)
-            {
-                TraceContributingRays();               
-            }
+            }           
 
             DateTime time2 = DateTime.Now;
 
@@ -706,7 +887,7 @@ public class Main : MonoBehaviour
 
         if (!sourceParams.visualizeRays)
         {
-            DestryBellhopLines();
+            DestroyLines();
         }
         contributingRays.Clear();
         contributingAngles.Clear();
@@ -751,7 +932,7 @@ public class Main : MonoBehaviour
                 for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
                 {
 
-                    rays.Add(BellhopLine(iphi, itheta, rayPositions));
+                    rays.Add(RayLine(iphi, itheta, rayPositions));
 
                 }
             }
@@ -764,55 +945,47 @@ public class Main : MonoBehaviour
 
     void BuildRTAS()
     {
-        //World world = world_manager.GetComponent<World>();
+        World world = worldManager.GetComponent<World>();
 
-        //rtas.ClearInstances();
+        rtas.ClearInstances();
 
-        //// add surface
-        //Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
-        //Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
-        //RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
-        //rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
+        // add surface
+        Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
+        Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
+        rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
 
-        //// add seafloor
-        //Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
-        //Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
-        //RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
-        //rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 3);
+        // add seafloor
+        Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
+        Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
+        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 2);        
 
-        //// add waterplane(s)
-        //Mesh waterplaneMesh = waterplane.GetComponent<MeshFilter>().mesh;
-        //Material waterplaneMaterial = waterplane.GetComponent<MeshRenderer>().material;
-        //RayTracingMeshInstanceConfig waterplaneConfig = new RayTracingMeshInstanceConfig(waterplaneMesh, 0, waterplaneMaterial);        
-        //if (waterplaneInstanceData != null && world.GetNrOfWaterplanes() > 0)
-        //{
-        //    rtas.AddInstances(waterplaneConfig, waterplaneInstanceData.matrices, id: 2);
-        //    Debug.Log(waterplaneInstanceData.matrices.Length);
-        //}        
+        // targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
+        // are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
+        // necessary on all predefined meshes
+        /*GameObject target = world.GetTarget();
+        Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
+        
+        Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
 
-        //// targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
-        //// are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
-        //// necessary on all predefined meshes
-        //Mesh targetMesh = targetSphere.GetComponent<MeshFilter>().mesh;
-        //Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
+        target.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
 
-        //targetSphere.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
+        Material targetMaterial = target.GetComponent<MeshRenderer>().material;
 
-        //Material targetMaterial = targetSphere.GetComponent<MeshRenderer>().material;
+        Mesh realTargetMesh = new Mesh();
+        realTargetMesh.vertices = transformed_vertices;
+        realTargetMesh.triangles = targetMesh.triangles;
+        realTargetMesh.normals = targetMesh.normals;
+        realTargetMesh.tangents = targetMesh.tangents;
 
-        //Mesh realTargetMesh = new Mesh();
-        //realTargetMesh.vertices = transformed_vertices;
-        //realTargetMesh.triangles = targetMesh.triangles;
-        //realTargetMesh.normals = targetMesh.normals;
-        //realTargetMesh.tangents = targetMesh.tangents;
+        RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
 
-        //RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
+        rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);*/
 
-        //rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);
+        rtas.Build();
+        Debug.Log("RTAS built");
 
-        //rtas.Build();
-        //Debug.Log("RTAS built");
-
-        //computeShader.SetRayTracingAccelerationStructure(0, "g_AccelStruct", rtas);
+        computeShader.SetRayTracingAccelerationStructure(4, "g_AccelStruct", rtas);
     }
 }

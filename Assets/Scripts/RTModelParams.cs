@@ -2,24 +2,42 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BellhopParams : MonoBehaviour
+public class RTModelParams : MonoBehaviour
 {
     [SerializeField]
-    private int nrOfBellhopIntegrationSteps = 0;
+    private int nrOfIntegrationSteps = 0;
     [SerializeField]
     private float bellhopIntegrationStepSize = 0;
     [SerializeField]
     private int maxNrSurfaceHits = 0;
     [SerializeField]
-    private int maxNrBottomHits = 0;    
+    private int maxNrBottomHits = 0;
 
-    public int BELLHOPINTEGRATIONSTEPS
+    public enum RT_Model
     {
-        get { return nrOfBellhopIntegrationSteps; }
+        Bellhop,
+        Hovem,
+        HovemRTAS,
+    }
+
+    private RT_Model rtmodel = RT_Model.Hovem;
+
+    public RT_Model RTMODEL
+    {
+        get { return rtmodel; }
         set
         {
-            if (value > 0) { nrOfBellhopIntegrationSteps = value; }
-            else { nrOfBellhopIntegrationSteps = 1; }
+            rtmodel = value;
+        }
+    }
+
+    public int INTEGRATIONSTEPS
+    {
+        get { return nrOfIntegrationSteps; }
+        set
+        {
+            if (value > 0) { nrOfIntegrationSteps = value; }
+            else { nrOfIntegrationSteps = 1; }
         }
     }
 
@@ -55,15 +73,17 @@ public class BellhopParams : MonoBehaviour
 
     public struct Properties
     {
-        public int nrOfBellhopIntegrationSteps;
+        public int nrOfIntegrationSteps;
         public float bellhopIntegrationStepSize;
+        public RT_Model rtmodel;
     }
 
     public Properties ToStruct()
     {
         Properties p = new Properties();
-        p.nrOfBellhopIntegrationSteps = nrOfBellhopIntegrationSteps;
+        p.nrOfIntegrationSteps = nrOfIntegrationSteps;
         p.bellhopIntegrationStepSize = bellhopIntegrationStepSize;
+        p.rtmodel = rtmodel;
 
         return p;
     }

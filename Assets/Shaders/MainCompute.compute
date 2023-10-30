@@ -1,9 +1,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
-//#include "UnityRayQuery.cginc"
-//#pragma require inlineraytracing
-#pragma kernel CSMain
+#pragma kernel BellhopMain
 
-//RaytracingAccelerationStructure g_AccelStruct;
+RaytracingAccelerationStructure g_AccelStruct;
 
 struct PerRayData {
     float beta;
@@ -23,10 +21,13 @@ struct PerRayData {
 
 RWStructuredBuffer<PerRayData> PerRayDataBuffer;
 RWStructuredBuffer<float3> RayPositionsBuffer;
-//RWStructuredBuffer<float3> debugBuf; // used to debug data on the gpu, fill it with values and write them on the cpu
+RWStructuredBuffer<float3> debugBuf; // used to debug data on the gpu, fill it with values and write them on the cpu
 RWStructuredBuffer<PerRayData> ContributingRayData;
 StructuredBuffer<float2> ContributingAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
+StructuredBuffer<float> thetaData;
+
+RWStructuredBuffer<PerRayData> HovemEigenRays;
 
 struct Target {
     float xpos;
@@ -103,10 +104,10 @@ RayHit CreateRayHit()
     return hit;
 }
 
-//#include "HitHandler.cginc" // was first meant to be used for an implementation based on the rt acceleration structure
+
 
 [numthreads(1,8,1)]
-void CSMain(uint3 id : SV_DispatchThreadID)
+void BellhopMain(uint3 id : SV_DispatchThreadID)
 {
     float2 angles = CreateCylindricalRay(id);
 
@@ -132,9 +133,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 }
 
 #include "BTraceContributing.cginc"
-#pragma kernel TraceContributingRays
+#pragma kernel BellhopTraceContributingRays
 [numthreads(1, 1, 1)]
-void TraceContributingRays(uint3 id : SV_DispatchThreadID)
+void BellhopTraceContributingRays(uint3 id : SV_DispatchThreadID)
 {
     // id is 1D, id.y is the only thing needed
     SSP soundSpeedProfile;
@@ -154,4 +155,357 @@ void TraceContributingRays(uint3 id : SV_DispatchThreadID)
     btrace_contributing(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
 
     ContributingRayData[id.y] = prd;
+}
+
+#include "HovemTrace.cginc"
+#pragma kernel HovemMain
+[numthreads(1, 8, 1)]
+void HovemMain(uint3 id : SV_DispatchThreadID) 
+{
+    float2 angles = CreateCylindricalRay(id);
+
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
+
+    float theta = angles.x;
+    float phi = angles.y;
+
+    //theta = thetaData[id.y];
+    //phi = 0;    
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+
+    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
+
+    PerRayData prd;    
+
+    uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target    
+    HovemTrace(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
+    
+    PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop    
+}
+
+#include "HovemTraceContributing.cginc"
+#pragma kernel HovemTraceContributingRays
+[numthreads(1, 1, 1)]
+void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID) 
+{
+    // Buffer HovemEigenRays contains N rays, this function will be called and create N/2 threads, rays are paired where ray 1 and 2 are paired to create an eigenray. Rays 3 and 4 are another pair.
+    // Each thread will trace an eigenray and its data will replace either index i or i-1 in the buffer where i starts at 1
+    // both rays in the pair (more specifically the eigenray and the other ray, the on that isn't replaced, are used to calculate transmission loss)
+
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
+
+    uint rayIdx = 1 + (2 * id.y);    
+    
+    float theta = ContributingAnglesData[id.y].x;
+
+    float phi = ContributingAnglesData[id.y].y;
+
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+
+    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };    
+    PerRayData prd;    
+    HovemTraceContributing(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
+
+    // fill buffer
+    uint eigIdx = 0;
+    uint idx2 = 0; // index of the other ray, going to be used to clear buffer on those positions    
+    if (prd.xn * ContributingRayData[rayIdx].xn > 0) {
+        ContributingRayData[rayIdx] = prd;
+        eigIdx = rayIdx;
+        idx2 = rayIdx - 1;
+    }
+    else {
+        ContributingRayData[rayIdx - 1] = prd;
+        eigIdx = rayIdx - 1;
+        idx2 = rayIdx;
+    }
+
+    // calculate transmission loss for the eigenray pairs
+
+    float xn1 = ContributingRayData[rayIdx - 1].xn;
+    float xn2 = ContributingRayData[rayIdx].xn;
+    float w1 = xn2 / (xn2 - xn1);
+    float w2 = 1 - w1;
+
+    float _theta = w1 * ContributingRayData[rayIdx - 1].theta + w2 * ContributingRayData[rayIdx].theta;
+    float curve = w1 * ContributingRayData[rayIdx - 1].curve + w2 * ContributingRayData[rayIdx].curve;
+    float delay = w1 * ContributingRayData[rayIdx - 1].delay + w2 * ContributingRayData[rayIdx].delay;
+
+    float ntop = ContributingRayData[rayIdx].ntop;
+    float nbot = ContributingRayData[rayIdx].nbot;
+
+    // sound speed: source, receiver
+    float cs = ssp(xs.y, soundSpeedProfile, 0).c;
+    float cr = ssp(xr.y, soundSpeedProfile, 0).c;
+
+    //bottom conditions
+    float c1 = ssp(depth, soundSpeedProfile, 0).c;
+    float c2 = 1600;
+    float rho1 = 1000;
+    float rho2 = 1000 * 1.8;
+    // bottom reflection loss, Urick, section 5.8
+    float Rbot = 1;
+
+    float cos1 = c1 * cos(_theta) / cs;
+    float cos2 = c2 * cos(_theta) / cs;
+    if (cos1 <= 1 && cos2 <= 1) {
+        float Y1 = sqrt(1 - cos1 * cos1) / rho1 / c1;
+        float Y2 = sqrt(1 - cos2 * cos2) / rho2 / c2;
+        Rbot = (Y1 - Y2) / (Y1 + Y2);
+    }
+
+    // geometrical spreading loss
+    float Area_s = 2 * PI * cos(_theta) * abs(ContributingRayData[rayIdx].theta - ContributingRayData[rayIdx - 1].theta);
+    float Area_r = 2 * PI * xr.x * abs(xn2 - xn1);
+    float Amp0 = sqrt(Area_s / Area_r);
+    debugBuf[id.y + id.x * ntheta] = float3(Amp0, Area_s, Area_r);
+
+    // caustic phase shift
+    float ncaust = 0;
+    if (xn1 < xn2 && ntop % 2 == 0) {
+        ncaust = 1;
+    }
+
+    // RMS amplitude
+    float Arms = 0;
+
+    // loop over frequencies
+    for (uint i = 0; i < freqsdamps; i++) {
+        float npi = ntop + ncaust / 2;
+        while (npi > 1) {
+            npi -= 2;
+        }
+
+        float phase = npi * PI; // TODO: detta ska egentligen vara en array eller buffer, med plats för varje ray och frekvens
+        float Amp = Amp0 * pow(Rbot, nbot) * exp(-FreqsAndDampData[i].y * curve); // samma här
+        // RMS amplitude
+        Arms += pow(Amp, 2);
+        
+    }
+
+    // transmission loss
+    float Is = 1 / rho1 / cs;
+    float Ir = (Arms / freqsdamps) / rho1 / cr;
+    float TL = 10 * log10(Is / Ir);
+    
+    ContributingRayData[eigIdx].TL = TL;
+    ContributingRayData[eigIdx].ncaust = ncaust;
+
+    PerRayData emptyRay;
+    emptyRay.theta = 0;
+    emptyRay.phi = 0;
+    emptyRay.delay = 0;
+    emptyRay.curve = 0;
+    emptyRay.ntop = 0;
+    emptyRay.nbot = 0;
+    emptyRay.xn = 0;
+    emptyRay.target = 0;
+    emptyRay.TL = 0;
+    emptyRay.ncaust = 0;
+    emptyRay.beta = 0;
+    emptyRay.qi = 0;
+    emptyRay.contributing = 0;
+    ContributingRayData[idx2] = emptyRay;
+}
+
+//#include "HitHandler.cginc"
+#include "UnityRayQuery.cginc"
+#pragma require inlineraytracing
+#pragma kernel HovemWithRTAS
+[numthreads(1, 8, 1)]
+void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
+{
+    SSP soundSpeedProfile;
+    soundSpeedProfile.type = 0;
+
+    // create the ray 
+    float2 angles = CreateCylindricalRay(id);
+    float theta = angles.x;
+    float phi = angles.y;
+    //Ray _ray = CreateHovemRTRay(srcPosition, id); // function should return origin and direction of ray
+
+    theta = thetaData[id.y]; //TODO: ta bort det här nån gång
+    phi = 0;
+    
+    float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
+
+    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
+
+    uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE; // each ray gets _BELLHOPSIZE nr of steps to reach the target
+    
+    RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);
+
+    // --- initial layer traversal for the ray ---    
+
+    // find current layer
+    uint ilay = 0;
+    while (_SSPBuffer[ilay].depth > xs.y) {
+        ilay++;
+    }
+
+    // inital conditions
+    float c = _SSPBuffer[ilay].velocity;
+    float r = xs.x;
+    float z = xs.y;
+    float ksi = cos(theta) / c;
+    float tz = -sin(theta);
+    //float ksi = sqrt(pow(_ray.direction.x, 2) + pow(_ray.direction.z, 2)) / c;
+    //float tz = _ray.direction.y;
+    float tau = 0;
+    float len = 0;
+    uint ntop = 0;
+    uint nbot = 0;
+    uint maxtop = _MAXSURFACEHITS;
+    uint maxbot = _MAXBOTTOMHITS;
+
+    float c0, r0, z0, tz0, tau0, len0, ilay0, dz, xxs;
+    RayHit hit = CreateRayHit(); // empty hit 'struct/object'
+    hit.sendNewRay = true;
+    hit.position = srcPosition;
+
+    RayPositionsBuffer[0 + offset] = srcPosition; // save the origin of the ray
+    uint istep = 1;
+    //debugBuf[offset] = srcPosition;
+    while (hit.sendNewRay) 
+    {
+        // save data from previous step
+        c0 = c;
+        r0 = r;
+        z0 = z;
+        tz0 = tz;
+        tau0 = tau;
+        len0 = len;
+        ilay0 = ilay;
+        dz = 0;
+
+        // take a step
+        if (tz == 0) {
+            // horizontal step
+            r = xr.x;
+            tau = tau0 + (r - r0) / c;
+            len = len0 + (r - r0);
+        }
+        else {
+            // next layer
+            float cz;
+            if (tz < 0) {
+                cz = _SSPBuffer[ilay].derivative1;
+                ilay = ilay + 1;
+            }
+            else {
+                ilay = ilay - 1;
+                cz = _SSPBuffer[ilay].derivative1;
+            }
+
+            // curvature
+            float kappa = cz * ksi;
+
+            // sound speed
+            c = _SSPBuffer[ilay].velocity;
+            float tr = c * ksi;
+            
+            if (tr < 1) {
+                // continue in this direction
+                tz = sign(tz) * sqrt(1 - tr * tr);
+                z = _SSPBuffer[ilay].depth;
+            }
+            else {
+                // U-turn
+                c = c0;
+                tz = -tz;
+                ilay = ilay0;
+                dz = (1 / ksi - c) / cz;
+            }
+
+            // integrate r, tau and len
+            if (kappa != 0) {
+                // arc
+                r = r0 + (tz0 - tz) / kappa;
+                tau = tau0 + abs(log(c / c0 * (1 + tz0) / (1 + tz)) / cz);
+                float ds = sqrt(pow(r - r0, 2) + pow(z - z0, 2));
+                len = len0 + ds * (1 + pow(kappa * ds, 2) / 24);
+            }
+            else {
+                // line segment
+                float ds = (z - z0) / tz;
+                r = r0 + tr * ds;
+                tau = tau0 + ds / c;
+                len = len0 + ds;
+            }
+        }
+        // --- layer traversal done ---     
+
+        RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // save the result of the step in the position buffer
+
+        // step taken, create ray starting from the previous position in the direction of the step's final position
+        float deltar = r - r0;
+        float deltaz = z - z0;
+        float xstep = deltar * cos(phi);
+        float zstep = deltar * sin(phi);
+
+        float3 direction = float3(xstep, deltaz, zstep);
+        direction = normalize(direction);        
+
+        RayDesc ray; // description of the ray to be used in tracerayinline
+        ray.Origin = toCartesian(phi, float2(r0, z0)); // send the ray from the previous position
+        ray.Direction = direction;
+        ray.TMin = 0;
+        ray.TMax = 1e20f;
+
+        const uint rayFlags = RAY_FLAG_NONE;
+        UnityRayQuery<rayFlags> rayQuery;
+
+        rayQuery.TraceRayInline(g_AccelStruct, rayFlags, 0xff, ray); // send the ray
+        rayQuery.Proceed();        
+        
+        if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
+            hit.position = toCartesian(phi, float2(r0, z0)) + (ray.Direction * rayQuery.CommittedRayT());
+            hit.distance = rayQuery.CommittedRayT();            
+            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, rayQuery.CommittedInstanceID());
+
+            
+            // ray interactions with surface and seafloor are the interesting cases
+            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver                
+                if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
+                    RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
+                    tz = -tz;
+                    ntop++;
+                }        
+            }
+            else if (rayQuery.CommittedInstanceID() == 2) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver                
+                if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
+                    RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
+                    tz = -tz;
+                    nbot++;
+                }                
+            }
+        }
+        /*else
+        { // no hit, when the ray misses something it is not certain that a ray should be terminated, (example if a ray turns in a layer, the ray would be sent horizontally and miss)
+            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
+            //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
+        }*/
+        
+        istep++;
+        // distance left to the receiver
+        xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
+        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE);
+    }
+
+    // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
+    for (uint i = istep; i < _BELLHOPSIZE; i++) {
+        RayPositionsBuffer[i + offset] = float3(0, 10, 0);
+        //debugBuf[i + offset] = float3(123, 456, 789);
+    }    
 }
