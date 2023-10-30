@@ -314,7 +314,7 @@ public class Main : MonoBehaviour
         SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
     }
 
-    int GetStartIndexBellhop(int idx, int idy)
+    int GetRayStartIndex(int idx, int idy)
     {
         RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
@@ -335,11 +335,11 @@ public class Main : MonoBehaviour
         }
     }
 
-    List<Vector3> BellhopLine(int idx, int idy, float3[] bds) {
+    List<Vector3> RayLine(int idx, int idy, float3[] bds) {
 
         RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
 
-        int offset = GetStartIndexBellhop(idx, idy);
+        int offset = GetRayStartIndex(idx, idy);
 
         List<Vector3> positions = new List<Vector3>();
 
@@ -379,13 +379,6 @@ public class Main : MonoBehaviour
 
     void PlotLines(int idx, int idy, float3[] bds)
     {
-        // det kan eventuellt vara så att alla errors angående "invalid aabb" kan ha med att linjer ritas mellan alla punkter för en ray och vissa
-        // punkter ligger väldigt nära varandra, kan vara värt att undersöka att ta bort punkter som ligger för nära föregående och se om det löser
-        // problemet, för visualiseringens skulle borde det inte påverka något negativt eftersom de små små linjerna ändå inte går att se, plus att
-        // det blir färre linjer vilket borde minska minnesanvädningen
-        // Testade att bara lägga till punkter som har ett större avstånd mellan sig, blir fortfarande enormt många fel av oklar anledning, läst på om
-        // felet "object is too large or too far away from the origin" och det var någon som sa att man inte ska ha object mer än 5000 enheter från origo,
-        // men våra rays rör sig i detta fall max 300 enheter bort så det känns jätteskumt det som händer
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
         
         int rayIdx = idy + sourceParams.ntheta * idx;
@@ -395,7 +388,7 @@ public class Main : MonoBehaviour
             return;
         }
 
-        List<Vector3> positions = BellhopLine(idx, idy, bds);   
+        List<Vector3> positions = RayLine(idx, idy, bds);   
 
         line = new GameObject("Line").AddComponent<LineRenderer>();
         line.startWidth = 0.03f;
@@ -488,7 +481,7 @@ public class Main : MonoBehaviour
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dtheta", dtheta);
             debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS, 3 * sizeof(float));
-            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS];            
+            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta/* * modelParams.INTEGRATIONSTEPS*/];            
             SetComputeBuffer("debugBuf", debugBuf, modelParams.RTMODEL);
         }
         if (modelParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
@@ -647,14 +640,14 @@ public class Main : MonoBehaviour
     }
 
     void HovemComputeEigenRays()
-    {
+    {        
         // find eigenray pairs
         for (int i = 1; i < rayData.Length; i++)
         {
             if (rayData[i - 1].contributing == 0) // contributing == eigenray for now in the hovem case
             {
                 if (rayData[i].ntop == rayData[i - 1].ntop && rayData[i].nbot == rayData[i - 1].nbot && rayData[i].target == rayData[i - 1].target)
-                {
+                {     
                     if (rayData[i].xn * rayData[i - 1].xn <= 0)
                     {
                         rayData[i].contributing = 1;
@@ -662,8 +655,10 @@ public class Main : MonoBehaviour
                         // add to list
                         contributingRays.Add(rayData[i - 1]);
                         contributingRays.Add(rayData[i]);
+                        Debug.Log("theta: " + rayData[i].theta + ", " + rayData[i - 1].theta);
                         float theta = (rayData[i].theta + rayData[i - 1].theta) / 2;
                         float phi = rayData[i].phi;
+                        Debug.Log("thetafinal: " + theta);
                         contributingAngles.Add(new float2(theta, phi));
                     }
                 }
@@ -679,13 +674,14 @@ public class Main : MonoBehaviour
 
         PerContributingRayData = new PerRayData[contributingRays.Count];
 
-        ContributingAnglesBuffer = new ComputeBuffer(contributingRays.Count, sizeof(float) * 2);
+        ContributingAnglesBuffer = new ComputeBuffer(contributingAngles.Count, sizeof(float) * 2);
 
         ContributingAnglesBuffer.SetData(contributingAngles); // fill buffer of contributing angles/values
         computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "ContributingAnglesData", ContributingAnglesBuffer);
 
         // init return data buffer
         PerContributingRayDataBuffer = new ComputeBuffer(contributingRays.Count, perraydataByteSize);
+        PerContributingRayDataBuffer.SetData(contributingRays);
         computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "ContributingRayData", PerContributingRayDataBuffer);
 
         computeShader.SetBuffer(HovemTraceContributingRaysKernelIdx, "_SSPBuffer", SSPBuffer);
@@ -804,17 +800,17 @@ public class Main : MonoBehaviour
             // read results from buffers into arrays
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
-            //PerRayDataBuffer.GetData(rayData);
+            PerRayDataBuffer.GetData(rayData);
 
-            /*debugBuf.GetData(debugger);
-            Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 49*modelParams.INTEGRATIONSTEPS; i < 50 * modelParams.INTEGRATIONSTEPS; i++)
-            {
-                Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-            }
-            Debug.Log("------------------------------------------------------------------------------");*/
+            //debugBuf.GetData(debugger);
+            //Debug.Log("------------------------------------------------------------------------------");
+            //for (int i = 0; i < debugger.Length; i++)
+            //{
+            //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            //}
+            //Debug.Log("------------------------------------------------------------------------------");
             
-            /*if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
+            if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {                
                 // keep contributing rays only            
                 for (int i = 0; i < rayData.Length; i++)
@@ -836,14 +832,23 @@ public class Main : MonoBehaviour
             }
             else if (modelParams.RTMODEL == RTModelParams.RT_Model.Hovem)
             {
-                HovemComputeEigenRays();  
+                Debug.Log("compute hovem eigen");
+                HovemComputeEigenRays();
 
                 // trace the contributing rays again
                 if (contributingRays.Count > 0)
                 {                    
-                    HovemTraceContributingRays();                                   
+                    HovemTraceContributingRays();
+
+                    //debugBuf.GetData(debugger);
+                    //Debug.Log("------------------------------------------------------------------------------");
+                    //for (int i = 0; i < debugger.Length; i++)
+                    //{
+                    //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+                    //}
+                    //Debug.Log("------------------------------------------------------------------------------");
                 }
-            }*/
+            }
 
             // Communicate the rays with the api
             if (api.enabled)
@@ -857,7 +862,7 @@ public class Main : MonoBehaviour
                     for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
                     {
 
-                        rays.Add(BellhopLine(iphi, itheta, rayPositions));
+                        rays.Add(RayLine(iphi, itheta, rayPositions));
 
                     }
                 }
@@ -925,7 +930,7 @@ public class Main : MonoBehaviour
                 for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
                 {
 
-                    rays.Add(BellhopLine(iphi, itheta, rayPositions));
+                    rays.Add(RayLine(iphi, itheta, rayPositions));
 
                 }
             }

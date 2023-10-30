@@ -14,9 +14,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
     uint ilay = 0;
     while (_SSPBuffer[ilay].depth > xs.y) {
         ilay++;
-    }
-
-    //debugBuf[id.y + id.x * ntheta] = float3(_SSPBuffer[ilay].depth, ilay, 123);
+    }    
 
     // initial conditions
     float c = _SSPBuffer[ilay].velocity;
@@ -145,21 +143,20 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _BELLHOPSIZE; i++) {
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);
-    }
-
-    //debugBuf[id.y + id.x * ntheta] = float3(ilay, ntop, nbot);
+    }    
 
     // calculate ray tangent for segment
     float tr = r - r0;
     tz = z - z0;
     float rlen = sqrt(tr * tr + tz * tz);
     tr = tr / rlen;
-    tz = tz / rlen;
+    tz = tz / rlen;    
 
+    
     // local receiver coordinates
     float xt = tr * (xr.x - r0) + tz * (xr.y - z0); // proportional distance along ray
     float xn = -tz * (xr.x - r0) + tr * (xr.y - z0); // normal distance to ray
-
+    
     // interpolate
     float s = xt / rlen;
     float delay = tau0 + s * (tau - tau0); // interpolated time delay

@@ -104,7 +104,7 @@ RayHit CreateRayHit()
     return hit;
 }
 
-#include "HitHandler.cginc"
+
 
 [numthreads(1,8,1)]
 void BellhopMain(uint3 id : SV_DispatchThreadID)
@@ -171,8 +171,7 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
     float phi = angles.y;
 
     theta = thetaData[id.y];
-    phi = 0;
-
+    phi = 0;    
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
     float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
@@ -211,14 +210,13 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
     float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
 
-    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
-    debugBuf[id.y] = float3(phi, theta, id.y);
+    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };    
     PerRayData prd;    
     HovemTraceContributing(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
 
     // fill buffer
     uint eigIdx = 0;
-    uint idx2 = 0; // index of the other ray, going to be used to clear buffer on those positions
+    uint idx2 = 0; // index of the other ray, going to be used to clear buffer on those positions    
     if (prd.xn * ContributingRayData[rayIdx].xn > 0) {
         ContributingRayData[rayIdx] = prd;
         eigIdx = rayIdx;
@@ -316,7 +314,7 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     ContributingRayData[idx2] = emptyRay;
 }
 
-
+//#include "HitHandler.cginc"
 #include "UnityRayQuery.cginc"
 #pragma require inlineraytracing
 #pragma kernel HovemWithRTAS
