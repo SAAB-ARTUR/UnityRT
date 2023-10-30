@@ -167,57 +167,77 @@ public struct Ray : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p = new Table(_i, _bb); }
   public Ray __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public int Nbot { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetInt(o + __p.bb_pos) : (int)0; } }
-  public int Ntop { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetInt(o + __p.bb_pos) : (int)0; } }
-  public int Ncaust { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetInt(o + __p.bb_pos) : (int)0; } }
+  public uint Nbot { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public uint Ntop { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public uint Ncaust { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public double Delay { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
   public double Curve { get { int o = __p.__offset(12); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
-  public double NormalizedDistance { get { int o = __p.__offset(14); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
-  public double StartAngle { get { int o = __p.__offset(16); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
-  public SAAB.Artur.CylindricalCoord? XCylindrical(int j) { int o = __p.__offset(18); return o != 0 ? (SAAB.Artur.CylindricalCoord?)(new SAAB.Artur.CylindricalCoord()).__assign(__p.__vector(o) + j * 24, __p.bb) : null; }
-  public int XCylindricalLength { get { int o = __p.__offset(18); return o != 0 ? __p.__vector_len(o) : 0; } }
-  public SAAB.Artur.Vec3? XCartesian(int j) { int o = __p.__offset(20); return o != 0 ? (SAAB.Artur.Vec3?)(new SAAB.Artur.Vec3()).__assign(__p.__vector(o) + j * 24, __p.bb) : null; }
-  public int XCartesianLength { get { int o = __p.__offset(20); return o != 0 ? __p.__vector_len(o) : 0; } }
-  public double Beta { get { int o = __p.__offset(22); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
+  public double DistanceToTarget { get { int o = __p.__offset(14); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
+  public double Theta { get { int o = __p.__offset(16); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
+  public double Phi { get { int o = __p.__offset(18); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
+  public double Qi { get { int o = __p.__offset(20); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
+  public uint Contributing { get { int o = __p.__offset(22); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public double TransmissionLoss { get { int o = __p.__offset(24); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
+  public uint TargetIndex { get { int o = __p.__offset(26); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
+  public SAAB.Artur.CylindricalCoord? XCylindrical(int j) { int o = __p.__offset(28); return o != 0 ? (SAAB.Artur.CylindricalCoord?)(new SAAB.Artur.CylindricalCoord()).__assign(__p.__vector(o) + j * 24, __p.bb) : null; }
+  public int XCylindricalLength { get { int o = __p.__offset(28); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public SAAB.Artur.Vec3? XCartesian(int j) { int o = __p.__offset(30); return o != 0 ? (SAAB.Artur.Vec3?)(new SAAB.Artur.Vec3()).__assign(__p.__vector(o) + j * 24, __p.bb) : null; }
+  public int XCartesianLength { get { int o = __p.__offset(30); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public double Beta { get { int o = __p.__offset(32); return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : (double)0.0; } }
 
   public static Offset<SAAB.Artur.Ray> CreateRay(FlatBufferBuilder builder,
-      int nbot = 0,
-      int ntop = 0,
-      int ncaust = 0,
+      uint nbot = 0,
+      uint ntop = 0,
+      uint ncaust = 0,
       double delay = 0.0,
       double curve = 0.0,
-      double normalized_distance = 0.0,
-      double start_angle = 0.0,
+      double distance_to_target = 0.0,
+      double theta = 0.0,
+      double phi = 0.0,
+      double qi = 0.0,
+      uint contributing = 0,
+      double transmission_loss = 0.0,
+      uint target_index = 0,
       VectorOffset x_cylindricalOffset = default(VectorOffset),
       VectorOffset x_cartesianOffset = default(VectorOffset),
       double beta = 0.0) {
-    builder.StartTable(10);
+    builder.StartTable(15);
     Ray.AddBeta(builder, beta);
-    Ray.AddStartAngle(builder, start_angle);
-    Ray.AddNormalizedDistance(builder, normalized_distance);
+    Ray.AddTransmissionLoss(builder, transmission_loss);
+    Ray.AddQi(builder, qi);
+    Ray.AddPhi(builder, phi);
+    Ray.AddTheta(builder, theta);
+    Ray.AddDistanceToTarget(builder, distance_to_target);
     Ray.AddCurve(builder, curve);
     Ray.AddDelay(builder, delay);
     Ray.AddXCartesian(builder, x_cartesianOffset);
     Ray.AddXCylindrical(builder, x_cylindricalOffset);
+    Ray.AddTargetIndex(builder, target_index);
+    Ray.AddContributing(builder, contributing);
     Ray.AddNcaust(builder, ncaust);
     Ray.AddNtop(builder, ntop);
     Ray.AddNbot(builder, nbot);
     return Ray.EndRay(builder);
   }
 
-  public static void StartRay(FlatBufferBuilder builder) { builder.StartTable(10); }
-  public static void AddNbot(FlatBufferBuilder builder, int nbot) { builder.AddInt(0, nbot, 0); }
-  public static void AddNtop(FlatBufferBuilder builder, int ntop) { builder.AddInt(1, ntop, 0); }
-  public static void AddNcaust(FlatBufferBuilder builder, int ncaust) { builder.AddInt(2, ncaust, 0); }
+  public static void StartRay(FlatBufferBuilder builder) { builder.StartTable(15); }
+  public static void AddNbot(FlatBufferBuilder builder, uint nbot) { builder.AddUint(0, nbot, 0); }
+  public static void AddNtop(FlatBufferBuilder builder, uint ntop) { builder.AddUint(1, ntop, 0); }
+  public static void AddNcaust(FlatBufferBuilder builder, uint ncaust) { builder.AddUint(2, ncaust, 0); }
   public static void AddDelay(FlatBufferBuilder builder, double delay) { builder.AddDouble(3, delay, 0.0); }
   public static void AddCurve(FlatBufferBuilder builder, double curve) { builder.AddDouble(4, curve, 0.0); }
-  public static void AddNormalizedDistance(FlatBufferBuilder builder, double normalizedDistance) { builder.AddDouble(5, normalizedDistance, 0.0); }
-  public static void AddStartAngle(FlatBufferBuilder builder, double startAngle) { builder.AddDouble(6, startAngle, 0.0); }
-  public static void AddXCylindrical(FlatBufferBuilder builder, VectorOffset xCylindricalOffset) { builder.AddOffset(7, xCylindricalOffset.Value, 0); }
+  public static void AddDistanceToTarget(FlatBufferBuilder builder, double distanceToTarget) { builder.AddDouble(5, distanceToTarget, 0.0); }
+  public static void AddTheta(FlatBufferBuilder builder, double theta) { builder.AddDouble(6, theta, 0.0); }
+  public static void AddPhi(FlatBufferBuilder builder, double phi) { builder.AddDouble(7, phi, 0.0); }
+  public static void AddQi(FlatBufferBuilder builder, double qi) { builder.AddDouble(8, qi, 0.0); }
+  public static void AddContributing(FlatBufferBuilder builder, uint contributing) { builder.AddUint(9, contributing, 0); }
+  public static void AddTransmissionLoss(FlatBufferBuilder builder, double transmissionLoss) { builder.AddDouble(10, transmissionLoss, 0.0); }
+  public static void AddTargetIndex(FlatBufferBuilder builder, uint targetIndex) { builder.AddUint(11, targetIndex, 0); }
+  public static void AddXCylindrical(FlatBufferBuilder builder, VectorOffset xCylindricalOffset) { builder.AddOffset(12, xCylindricalOffset.Value, 0); }
   public static void StartXCylindricalVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(24, numElems, 8); }
-  public static void AddXCartesian(FlatBufferBuilder builder, VectorOffset xCartesianOffset) { builder.AddOffset(8, xCartesianOffset.Value, 0); }
+  public static void AddXCartesian(FlatBufferBuilder builder, VectorOffset xCartesianOffset) { builder.AddOffset(13, xCartesianOffset.Value, 0); }
   public static void StartXCartesianVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(24, numElems, 8); }
-  public static void AddBeta(FlatBufferBuilder builder, double beta) { builder.AddDouble(9, beta, 0.0); }
+  public static void AddBeta(FlatBufferBuilder builder, double beta) { builder.AddDouble(14, beta, 0.0); }
   public static Offset<SAAB.Artur.Ray> EndRay(FlatBufferBuilder builder) {
     int o = builder.EndTable();
     return new Offset<SAAB.Artur.Ray>(o);
@@ -230,16 +250,21 @@ static public class RayVerify
   static public bool Verify(Google.FlatBuffers.Verifier verifier, uint tablePos)
   {
     return verifier.VerifyTableStart(tablePos)
-      && verifier.VerifyField(tablePos, 4 /*Nbot*/, 4 /*int*/, 4, false)
-      && verifier.VerifyField(tablePos, 6 /*Ntop*/, 4 /*int*/, 4, false)
-      && verifier.VerifyField(tablePos, 8 /*Ncaust*/, 4 /*int*/, 4, false)
+      && verifier.VerifyField(tablePos, 4 /*Nbot*/, 4 /*uint*/, 4, false)
+      && verifier.VerifyField(tablePos, 6 /*Ntop*/, 4 /*uint*/, 4, false)
+      && verifier.VerifyField(tablePos, 8 /*Ncaust*/, 4 /*uint*/, 4, false)
       && verifier.VerifyField(tablePos, 10 /*Delay*/, 8 /*double*/, 8, false)
       && verifier.VerifyField(tablePos, 12 /*Curve*/, 8 /*double*/, 8, false)
-      && verifier.VerifyField(tablePos, 14 /*NormalizedDistance*/, 8 /*double*/, 8, false)
-      && verifier.VerifyField(tablePos, 16 /*StartAngle*/, 8 /*double*/, 8, false)
-      && verifier.VerifyVectorOfData(tablePos, 18 /*XCylindrical*/, 24 /*SAAB.Artur.CylindricalCoord*/, false)
-      && verifier.VerifyVectorOfData(tablePos, 20 /*XCartesian*/, 24 /*SAAB.Artur.Vec3*/, false)
-      && verifier.VerifyField(tablePos, 22 /*Beta*/, 8 /*double*/, 8, false)
+      && verifier.VerifyField(tablePos, 14 /*DistanceToTarget*/, 8 /*double*/, 8, false)
+      && verifier.VerifyField(tablePos, 16 /*Theta*/, 8 /*double*/, 8, false)
+      && verifier.VerifyField(tablePos, 18 /*Phi*/, 8 /*double*/, 8, false)
+      && verifier.VerifyField(tablePos, 20 /*Qi*/, 8 /*double*/, 8, false)
+      && verifier.VerifyField(tablePos, 22 /*Contributing*/, 4 /*uint*/, 4, false)
+      && verifier.VerifyField(tablePos, 24 /*TransmissionLoss*/, 8 /*double*/, 8, false)
+      && verifier.VerifyField(tablePos, 26 /*TargetIndex*/, 4 /*uint*/, 4, false)
+      && verifier.VerifyVectorOfData(tablePos, 28 /*XCylindrical*/, 24 /*SAAB.Artur.CylindricalCoord*/, false)
+      && verifier.VerifyVectorOfData(tablePos, 30 /*XCartesian*/, 24 /*SAAB.Artur.Vec3*/, false)
+      && verifier.VerifyField(tablePos, 32 /*Beta*/, 8 /*double*/, 8, false)
       && verifier.VerifyTableEnd(tablePos);
   }
 }
@@ -309,24 +334,32 @@ public struct World : IFlatbufferObject
 
   public SAAB.Artur.Sender? Sender { get { int o = __p.__offset(4); return o != 0 ? (SAAB.Artur.Sender?)(new SAAB.Artur.Sender()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
   public SAAB.Artur.Reciever? Reciever { get { int o = __p.__offset(6); return o != 0 ? (SAAB.Artur.Reciever?)(new SAAB.Artur.Reciever()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
-  public SAAB.Artur.RayCollection? RayCollections(int j) { int o = __p.__offset(8); return o != 0 ? (SAAB.Artur.RayCollection?)(new SAAB.Artur.RayCollection()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
-  public int RayCollectionsLength { get { int o = __p.__offset(8); return o != 0 ? __p.__vector_len(o) : 0; } }
+  public float Cr { get { int o = __p.__offset(8); return o != 0 ? __p.bb.GetFloat(o + __p.bb_pos) : (float)0.0f; } }
+  public float Cs { get { int o = __p.__offset(10); return o != 0 ? __p.bb.GetFloat(o + __p.bb_pos) : (float)0.0f; } }
+  public SAAB.Artur.RayCollection? RayCollections(int j) { int o = __p.__offset(12); return o != 0 ? (SAAB.Artur.RayCollection?)(new SAAB.Artur.RayCollection()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
+  public int RayCollectionsLength { get { int o = __p.__offset(12); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<SAAB.Artur.World> CreateWorld(FlatBufferBuilder builder,
       Offset<SAAB.Artur.Sender> senderOffset = default(Offset<SAAB.Artur.Sender>),
       Offset<SAAB.Artur.Reciever> recieverOffset = default(Offset<SAAB.Artur.Reciever>),
+      float cr = 0.0f,
+      float cs = 0.0f,
       VectorOffset ray_collectionsOffset = default(VectorOffset)) {
-    builder.StartTable(3);
+    builder.StartTable(5);
     World.AddRayCollections(builder, ray_collectionsOffset);
+    World.AddCs(builder, cs);
+    World.AddCr(builder, cr);
     World.AddReciever(builder, recieverOffset);
     World.AddSender(builder, senderOffset);
     return World.EndWorld(builder);
   }
 
-  public static void StartWorld(FlatBufferBuilder builder) { builder.StartTable(3); }
+  public static void StartWorld(FlatBufferBuilder builder) { builder.StartTable(5); }
   public static void AddSender(FlatBufferBuilder builder, Offset<SAAB.Artur.Sender> senderOffset) { builder.AddOffset(0, senderOffset.Value, 0); }
   public static void AddReciever(FlatBufferBuilder builder, Offset<SAAB.Artur.Reciever> recieverOffset) { builder.AddOffset(1, recieverOffset.Value, 0); }
-  public static void AddRayCollections(FlatBufferBuilder builder, VectorOffset rayCollectionsOffset) { builder.AddOffset(2, rayCollectionsOffset.Value, 0); }
+  public static void AddCr(FlatBufferBuilder builder, float cr) { builder.AddFloat(2, cr, 0.0f); }
+  public static void AddCs(FlatBufferBuilder builder, float cs) { builder.AddFloat(3, cs, 0.0f); }
+  public static void AddRayCollections(FlatBufferBuilder builder, VectorOffset rayCollectionsOffset) { builder.AddOffset(4, rayCollectionsOffset.Value, 0); }
   public static VectorOffset CreateRayCollectionsVector(FlatBufferBuilder builder, Offset<SAAB.Artur.RayCollection>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
   public static VectorOffset CreateRayCollectionsVectorBlock(FlatBufferBuilder builder, Offset<SAAB.Artur.RayCollection>[] data) { builder.StartVector(4, data.Length, 4); builder.Add(data); return builder.EndVector(); }
   public static VectorOffset CreateRayCollectionsVectorBlock(FlatBufferBuilder builder, ArraySegment<Offset<SAAB.Artur.RayCollection>> data) { builder.StartVector(4, data.Count, 4); builder.Add(data); return builder.EndVector(); }
@@ -348,7 +381,9 @@ static public class WorldVerify
     return verifier.VerifyTableStart(tablePos)
       && verifier.VerifyTable(tablePos, 4 /*Sender*/, SAAB.Artur.SenderVerify.Verify, false)
       && verifier.VerifyTable(tablePos, 6 /*Reciever*/, SAAB.Artur.RecieverVerify.Verify, false)
-      && verifier.VerifyVectorOfTables(tablePos, 8 /*RayCollections*/, SAAB.Artur.RayCollectionVerify.Verify, false)
+      && verifier.VerifyField(tablePos, 8 /*Cr*/, 4 /*float*/, 4, false)
+      && verifier.VerifyField(tablePos, 10 /*Cs*/, 4 /*float*/, 4, false)
+      && verifier.VerifyVectorOfTables(tablePos, 12 /*RayCollections*/, SAAB.Artur.RayCollectionVerify.Verify, false)
       && verifier.VerifyTableEnd(tablePos);
   }
 }

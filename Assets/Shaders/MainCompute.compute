@@ -5,7 +5,8 @@
 
 //RaytracingAccelerationStructure g_AccelStruct;
 
-struct PerRayData {
+struct PerRayData
+{
     float beta;
     uint ntop;
     uint nbot;
@@ -13,8 +14,14 @@ struct PerRayData {
     float delay;
     float curve;
     float xn;
-    float qi;    
+    float qi;
     float theta;
+    
+    // Note: The two below are exactly the same for all rays. For efficeincy, these
+    // should be transmitted in a seperate buffer.
+    float cs; // Interpolated sound speed at the sender
+    float cr; // Interpolated sound speed at the receiver
+    
     float phi; // angle from source to target in the xz-plane
     uint contributing; // if ray 'hits' a target
     float TL; // transmission loss
@@ -128,6 +135,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     uint offset = (id.y + id.x * ntheta) * _BELLHOPSIZE;
     btrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
     
+    // id.y: The number of thetas of sent out (up and down)
+    // id.x: The number of targets. 
+    // This is a flattened matrix, that is num_targets x num_theta
     PerRayDataBuffer[id.y + id.x * ntheta] = prd;
 }
 

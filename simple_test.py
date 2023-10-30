@@ -6,6 +6,7 @@ import os
 import flatbuffers 
 import Assets.Scripts.api.ObserveSchema_generated as schema
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
+import math
 
 fig = plt.figure()
 
@@ -62,10 +63,11 @@ def plot_rays(rays, world: schema.World):
             rays.do_3d_projection()
             #print(raydata[0][1])
 
-def plot_resp(y):
+def plot_resp(d: tuple[np.ndarray, np.ndarray] | None):
 
-    axresp.clear()
-    axresp.plot(y)
+    if d is not None:
+        axresp.clear()
+        axresp.plot(d[0], d[1])
     #lineresp.set_data(np.arange(len(y)), y)
 
 
@@ -221,64 +223,135 @@ def send(message: bytearray):
 
 
 # Signal processing to get the response
-def result2Time(Amp, phase, delay, freqs) -> np.ndarray:
-
-    # Define the signal that is carried by the rays
-
-    Fs = 2e4;       # Sampling rate
-    T  = 0.0005;      # Period
-    Ns = int(Fs*T); # Number of samples
-    
-    print("Ns", Ns)
-    
-    f = np.arange(0, Ns)
-
-    # Ricker pulse
-    tt = np.arange(0, Ns)/Fs - T/4
-    fc = 1000
-    xx = (np.pi*fc*tt)**2
-    xx = (1 - 2*xx) * np.exp(-xx)
-    X = np.fft.fft(xx)
-
+def transferFn(Amp, phase, delay, freqs) -> np.ndarray:
 
     tmin = np.min(delay)
 
     # Calculate the receiver signal
     # Preallocate Y
-    Y = np.zeros(Ns).astype(complex)
-    for jj in range(1, int(Ns/2)):
+    Y = np.zeros(len(freqs)).astype(complex)
 
+    for jj in range(len(freqs)):
         Pk = 0
-        omega = 2 * np.pi * f[jj]
+        omega = 2 * np.pi * freqs[jj]
 
         for ii in range(len(delay)):
-            print("ii", ii)
-            Pk = Pk + Amp[ii,jj] * np.exp(1j * (phase[ii,jj] - omega*(delay[ii]-tmin)))
-        Y[jj] = Pk * X[jj]
-        Y[-jj] = np.conj(Pk) * X[-jj]
-    
-    yy = np.real(np.fft.ifft(Y))
 
-    return yy
+            Pk = Pk + Amp[ii,jj] * np.exp(1j * (phase[ii,jj] - omega*(delay[ii]-tmin)))
+        Y[jj] = Pk # * X[jj]
+        Y[-jj] = np.conj(Pk) # * X[-jj]
+        
+    # yy = np.real(np.fft.ifft(Y))
+
+    return Y
         
 
-def extractRay(world) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def extractRay(world: schema.World, freqs) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
 
-    empty = np.empty((10, 10))
-    return (empty, empty, empty[:, 0], empty)
+    nfreq = len(freqs)
+    damp = 0.015 / 8.6858896 * np.zeros(nfreq)# 
+
+    
+
+    if (world.RayCollectionsLength() > 0):
+        
+       
+        rays = world.RayCollections(0).Rays
+        nrays = world.RayCollections(0).RaysLength()
+
+        contributing = np.repeat(False, nrays)
+        Amp = np.zeros((nrays, nfreq))
+        phase = np.zeros((nrays, nfreq))
+        delay = np.zeros(nrays)
 
 
+        pos_rec = world.Reciever().Position()
+        pos_sen = world.Sender().Position()
+        dist = math.sqrt((pos_rec.X() - pos_sen.X())**2 + (pos_rec.Z() - pos_sen.Z())**2)
+
+        cr = world.Cr()
+        cs = world.Cs()
+
+
+        for rayii in range(nrays):
+            
+            ray = rays(rayii)
+            Arms = 0.0
+            Amp0 = np.sqrt( np.cos(ray.Theta()) * cr / abs(ray.Qi()) /  dist )
+            
+
+            contributing[rayii] = ray.Contributing()
+            delay[rayii] = ray.Delay()
+
+            # TODO: Add bottom reflections
+            Rfa = 1
+            phi = 0
+
+            for jj in range(nfreq):
+                Amp[rayii,jj] = Amp0 * Rfa**ray.Nbot() * np.exp( -damp[jj] * ray.Curve() )
+                phi = np.pi * ray.Ntop() + phi * ray.Nbot() + np.pi/2 * ray.Ncaust()
+                phase[rayii,jj] = ((phi + np.pi) % (2*np.pi)) - np.pi
+                
+                # RMS amplitude
+                Arms = Arms + Amp[rayii,jj]**2
+
+                Amp[rayii,jj] = (1 - ray.Beta()) * Amp[rayii,jj]
+        if np.all(contributing == False): 
+            return None    
+        return (Amp[contributing, :], phase[contributing, :], delay[contributing])
+
+def ricker(world):
+
+    Fs = 2e4;       # Sampling rate
+    T  = 0.05;      # Period
+    Ns = Fs*T;      # Number of samples
+
+    # Ricker pulse
+    tt = np.arange(Ns)/Fs - T/4
+    fc = 1000
+    xx = (np.pi*fc*tt)**2
+    xx = (1 - 2*xx) * np.exp(-xx)
+
+    # FFT
+    f = np.arange(Ns)/T
+    X = np.fft.fft(xx)
+
+    d = extractRay(world, f)
+    
+    if d is not None:
+        (Amp, phase, delay) = d
+
+        G = transferFn(Amp, phase, delay, f)
+
+        Y = G * X
+        y = np.real(np.fft.ifft(Y))
+        return (tt, y)
+
+
+
+
+#while True:
+#    send(response_handled_message())
+
+# buf = open("apimsg.bin", "rb").read()
+# world = schema.World.GetRootAs(buf)
+# t, y = ricker(world)
+# plt.plot(t, y)
+# plt.show()
+# 
+# 
+# exit()
 theta = 0
 
 ran = False
-while (not ran):
+while (True):
     
     ran = not ran
     
     theta += 0.1
 
     pos_sender = [10 * np.cos(theta), 10 * np.sin(theta), -25 + 10 * np.sin(theta)]   
-    pos_receiver = [10 * np.sin(theta), 0, -25 + 10 * np.sin(theta)]
+    pos_receiver = [10 * np.sin(theta), 0, -250 + 10 * np.sin(theta)]
 
     #blength = int.from_bytes(sys.stdin.buffer.read())
     blength = int.from_bytes(os.read(sys.stdin.fileno(), 4), sys.byteorder, signed = True)
@@ -300,7 +373,7 @@ while (not ran):
     plot_senders(senders, world)
     plot_reciever(recievers, world)
     plot_rays(rays, world)
-    plot_resp(result2Time(*extractRay(world)))
+    plot_resp(ricker(world))
 
 
     fix_axis()

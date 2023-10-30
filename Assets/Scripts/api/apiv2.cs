@@ -14,6 +14,15 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityTemplateProjects;
 
+
+public class PerTarget {
+
+    public List<List<Vector3>> cart_rays;
+    public List<List<Vector3>>? cyl_rays = null;
+    public List<Main.PerRayData> raydatas;
+
+}
+
 public class apiv2 : MonoBehaviour
 {
 
@@ -22,6 +31,7 @@ public class apiv2 : MonoBehaviour
     [SerializeField] GameObject world;
 
     bool processreadyForData = true;
+    bool processAlive = false;
 
     string command = "";
 
@@ -32,7 +42,14 @@ public class apiv2 : MonoBehaviour
     Process process = null;
     Thread thread1 = null;
 
+    // Enable this if you want to save the binary message to be sent to over the 
+    // api in a file
+    // For debugging purposes. Should be false for maximum performance.
+    bool save = true;
+
     List<List<Vector3>> rays = new List<List<Vector3>>();
+
+    List<PerTarget> rayData = new List<PerTarget>();
 
     Queue<SAAB.Artur.Control.Message> messageQueue = new Queue<SAAB.Artur.Control.Message>();
 
@@ -50,6 +67,7 @@ public class apiv2 : MonoBehaviour
 
 
         process = Process.Start(startInfo);
+        processAlive = true;
 
         process.OutputDataReceived += Process_OutputDataReceived;
         process.ErrorDataReceived += Process_ErrorDataReceived;
@@ -62,7 +80,9 @@ public class apiv2 : MonoBehaviour
         ThreadStart threadStart = new ThreadStart(() =>
         {
 
-            while (true)
+
+
+            while (!process.HasExited)
             {
 
 
@@ -81,6 +101,9 @@ public class apiv2 : MonoBehaviour
                     //UnityEngine.Debug.Log("blength: " + blength.Length.ToString());
                     //UnityEngine.Debug.Log("bmsglength: " + bmsg.Length.ToString());
                     byte[] total_message = blength.Concat(msg).ToArray();
+
+                    
+
                     process.StandardInput.BaseStream.Write(total_message, 0, total_message.Length); 
                     process.StandardInput.BaseStream.Flush();
 
@@ -211,6 +234,8 @@ public class apiv2 : MonoBehaviour
         UnityEngine.Debug.Log("TRACING222");
         UnityEngine.Debug.Log(rays.Count.ToString());
         main.TraceNow();
+        // Remove the rayData, while we are waiting for a new set of data points 
+
 
         //main.doRayTracing = true;
 
@@ -244,7 +269,10 @@ public class apiv2 : MonoBehaviour
     {
 
         msg = CreateOutputMessage();
-
+        if (save)
+        {
+            File.WriteAllBytes("apimsg.bin", msg);
+        }
 
         // Work on the queue
         UnityEngine.Debug.Log("Queue length " + messageQueue.Count);
@@ -289,9 +317,13 @@ public class apiv2 : MonoBehaviour
 
         UnityEngine.Debug.Log("Disable api...");
         thread1.Interrupt();
-        process.Kill();
-        thread1.Abort();
-       
+
+        if (!process.HasExited) {
+            process.Kill();
+            thread1.Abort();
+        }
+
+
     }
 
     byte[] CreateOutputMessage()
@@ -338,11 +370,15 @@ public class apiv2 : MonoBehaviour
         Offset<Reciever> r = Reciever.EndReciever(fbb);
 
         // Ray collections
-        Offset<RayCollection>[] rayCollectionCol = new Offset<RayCollection>[1];
+        Offset<RayCollection>[] rayCollectionCol = new Offset<RayCollection>[rayData.Count];
 
-        
-        // TODO: Iterate over every combination of sender and reciever
-        rayCollectionCol[0] = AddRays(fbb, s, r);
+
+        // TODO: Iterate over every combination of sender and recieve
+        for (int ii = 0; ii < rayData.Count; ii++) {
+            rayCollectionCol[ii] = AddRays(fbb, s, r, ii);
+        }
+
+
         VectorOffset rayCollectionsOffset = fbb.CreateVectorOfTables(rayCollectionCol);
         
 
@@ -350,6 +386,13 @@ public class apiv2 : MonoBehaviour
         SAAB.Artur.World.StartWorld(fbb);
         SAAB.Artur.World.AddSender(fbb, s);
         SAAB.Artur.World.AddReciever(fbb, r);
+
+        if (rayData.Count > 0)
+        {
+            UnityEngine.Debug.Log( "----->>**>>" + rayData[0].raydatas[0].cr);
+            SAAB.Artur.World.AddCr(fbb, rayData[0].raydatas[0].cr);
+            SAAB.Artur.World.AddCs(fbb, rayData[0].raydatas[0].cs);
+        }
 
 
 
@@ -370,50 +413,80 @@ public class apiv2 : MonoBehaviour
     }
 
     // Interface to recieve rays from main.
-    public void Rays(List<List<Vector3>> _rays) { 
+    public void SetData(List<PerTarget> data) {
+        rayData = data;
+    }
+    public void SetRays(List<List<Vector3>> _rays) {
         rays = _rays;
     }
 
-    Offset<RayCollection> AddRays(FlatBufferBuilder fbb, Offset<Sender> s, Offset<Reciever> r) {
+
+
+    Offset<RayCollection> AddRays(FlatBufferBuilder fbb, Offset<Sender> s, Offset<Reciever> r, int collectionIndex) {
 
 
         
         Offset<SAAB.Artur.Ray>[] raycol;
-        if (rays != null) {
-            raycol = new Offset<SAAB.Artur.Ray>[rays.Count];
+        if (rayData != null) {
+            raycol = new Offset<SAAB.Artur.Ray>[rayData[collectionIndex].cart_rays.Count] ;
         }
         else
         {
             raycol = new Offset<SAAB.Artur.Ray>[0];
         }
 
-        if (rays != null) {
+        if (rayData != null) {
 
             
 
-            for (int rayii = 0; rayii < rays.Count; rayii++){
+            for (int rayii = 0; rayii < rayData[collectionIndex].cart_rays.Count; rayii++){
                 //SAAB.Artur.Ray.StartXCartesianVector(fbb, rays.Count);
-                List<Vector3> ray = rays[rayii];
+                UnityEngine.Debug.Log("------------------->>>" + rays.Count);
+                UnityEngine.Debug.Log("------------------->>>>" + rayData[collectionIndex].cart_rays.Count);
+                List<Vector3> ray = rayData[collectionIndex].cart_rays[rayii];
 
                 // Offset<Vec3>[] positions = new Offset<Vec3>[ray.Count];
 
-                SAAB.Artur.Ray.StartXCartesianVector(fbb, rays[rayii].Count);
+                SAAB.Artur.Ray.StartXCartesianVector(fbb, ray.Count);
 
                 for (int i = ray.Count -1 ; i >= 0; i--) {
                     SAAB.Artur.Vec3.CreateVec3(fbb, ray[i].x, ray[i].y, ray[i].z);    
                 }
                 VectorOffset posoffset = fbb.EndVector();
-                
-
 
 
                 SAAB.Artur.Ray.StartRay(fbb);
                 SAAB.Artur.Ray.AddXCartesian(fbb, posoffset);
 
+                /*
+                SAAB.Artur.Ray.StartXCylindricalVector(fbb, rays[rayii].Count);
+
+                for (int i = ray.Count - 1; i >= 0; i--)
+                {   
+                    float phi = 
+                    ray[i].x, ray[i].y, ray[i].z
+                }
+
                 // TODO: Add cylindrical coordinates representation
                 // SAAB.Artur.Ray.AddXCylindrical(fbb, ...);
+                */
+
+                Main.PerRayData d = rayData[collectionIndex].raydatas[rayii];
+                SAAB.Artur.Ray.AddBeta(fbb, d.beta);
+                SAAB.Artur.Ray.AddNtop(fbb,  d.ntop);
+                SAAB.Artur.Ray.AddNbot(fbb, d.nbot);
+                SAAB.Artur.Ray.AddNcaust(fbb, d.ncaust);
+                SAAB.Artur.Ray.AddDelay(fbb, d.delay);
+                SAAB.Artur.Ray.AddCurve(fbb, d.curve);
+                SAAB.Artur.Ray.AddDistanceToTarget(fbb, d.xn);
+                SAAB.Artur.Ray.AddQi(fbb, d.qi);
+                SAAB.Artur.Ray.AddTheta(fbb, d.theta);
+                SAAB.Artur.Ray.AddPhi(fbb, d.phi);
+                SAAB.Artur.Ray.AddContributing(fbb, d.contributing);
+                SAAB.Artur.Ray.AddTransmissionLoss(fbb, d.TL);
+                SAAB.Artur.Ray.AddTargetIndex(fbb, d.target);
                 
-                
+
                 raycol[rayii] = SAAB.Artur.Ray.EndRay(fbb);
                 
             
@@ -427,7 +500,8 @@ public class apiv2 : MonoBehaviour
         SAAB.Artur.RayCollection.StartRayCollection(fbb);
         
         SAAB.Artur.RayCollection.AddRays(fbb, vv);
-        
+        SAAB.Artur.RayCollection.AddSender(fbb, s);
+        SAAB.Artur.RayCollection.AddReciever(fbb, r);
 
         //SAAB.Artur.RayCollection.AddSender(fbb, s);
         //SAAB.Artur.RayCollection.AddReciever(fbb, r);

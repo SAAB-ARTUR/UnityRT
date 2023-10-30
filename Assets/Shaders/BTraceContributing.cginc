@@ -185,6 +185,9 @@ void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float
     prd.theta = theta;
     prd.phi = rayPhi;
     prd.target = 0; // not important anymore
+    prd.cs = ssp(xs.y, soundSpeedProfile, 0).c;
+
+    prd.cr = ssp(xr.y, soundSpeedProfile, 0).c;
 
     if (beta < 1) {
         prd.contributing = 1; // this should always be the case for rays traced in this function
