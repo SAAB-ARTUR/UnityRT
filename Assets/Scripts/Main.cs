@@ -89,6 +89,7 @@ public class Main : MonoBehaviour
     private ComputeBuffer PerContributingRayDataBuffer;
     private PerRayData[] PerContributingRayData = null;
     private ComputeBuffer RayTargetsBuffer;
+    private ComputeBuffer NormalBuffer;
     private List<uint> rayTargets = new List<uint>();
 
     private ComputeBuffer debugBuf;
@@ -161,6 +162,8 @@ public class Main : MonoBehaviour
         FreqDampBuffer = null;
         debugBuf?.Release();
         debugBuf = null;
+        NormalBuffer?.Release();
+        NormalBuffer = null;
     }
 
     void OnDestroy()
@@ -196,6 +199,8 @@ public class Main : MonoBehaviour
             PerRayDataBuffer = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta, perraydataByteSize);
             SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer, modelParams.RTMODEL);
         }
+
+
 
         if (rayData == null)
         {
@@ -275,7 +280,14 @@ public class Main : MonoBehaviour
         RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         world.AddSource(sourceCamera);
         world.AddSurface(surface);
-        world.AddBottom(seafloor, modelParams.RTMODEL);
+        List<Vector3> normals =  world.AddBottom(seafloor, modelParams.RTMODEL);
+        if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS) {
+            NormalBuffer = new ComputeBuffer(normals.Count, 3 * sizeof(float));
+            NormalBuffer.SetData(normals.ToArray());
+            SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);
+        }
+
+
         if (world.GetNrOfWaterplanes() > 0)
         {
             world.AddWaterplane(waterplane);
@@ -301,7 +313,7 @@ public class Main : MonoBehaviour
         Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
         srcRenderer.material.SetColor("_Color", Color.green);
 
-        BuildWorld();
+        //BuildWorld();
         rtas = new RayTracingAccelerationStructure();
         rebuildRTAS = true;        
 
@@ -482,7 +494,7 @@ public class Main : MonoBehaviour
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dtheta", dtheta);
             debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS, 3 * sizeof(float));
-            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta/* * modelParams.INTEGRATIONSTEPS*/];            
+            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS];            
             SetComputeBuffer("debugBuf", debugBuf, modelParams.RTMODEL);
         }
         if (modelParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
@@ -711,8 +723,7 @@ public class Main : MonoBehaviour
 
         PerContributingRayDataBuffer.GetData(PerContributingRayData);
 
-        Debug.Log("    theta     phi     T   B   C         TL          dist         delay");
-        Debug.Log(PerContributingRayData.Length);        
+        Debug.Log("    theta     phi     T   B   C         TL          dist         delay");           
         for (int i = 0; i < PerContributingRayData.Length; i++)
         {            
             if (PerContributingRayData[i].curve > 0) // skip the empty rays
@@ -804,14 +815,14 @@ public class Main : MonoBehaviour
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
 
-            //debugBuf.GetData(debugger);
-            //Debug.Log("------------------------------------------------------------------------------");
-            //for (int i = 0; i < debugger.Length; i++)
-            //{
-            //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-            //}
-            //Debug.Log("------------------------------------------------------------------------------");
-            
+            debugBuf.GetData(debugger);
+            Debug.Log("------------------------------------------------------------------------------");
+            for (int i = 0; i < debugger.Length; i++)
+            {
+                Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            }
+            Debug.Log("------------------------------------------------------------------------------");
+
             if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {                
                 // keep contributing rays only            
@@ -833,8 +844,7 @@ public class Main : MonoBehaviour
 
             }
             else if (modelParams.RTMODEL == RTModelParams.RT_Model.Hovem)
-            {
-                Debug.Log("compute hovem eigen");
+            {                
                 HovemComputeEigenRays();
 
                 // trace the contributing rays again

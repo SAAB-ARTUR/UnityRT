@@ -26,6 +26,7 @@ RWStructuredBuffer<PerRayData> ContributingRayData;
 StructuredBuffer<float2> ContributingAnglesData;
 StructuredBuffer<float2> FreqsAndDampData;
 StructuredBuffer<float> thetaData;
+StructuredBuffer<float3> NormalBuffer; // contains normals of the triangles in the seafloor bottom. For reflections with RTAS. 
 
 RWStructuredBuffer<PerRayData> HovemEigenRays;
 
@@ -472,7 +473,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
             hit.position = toCartesian(phi, float2(r0, z0)) + (ray.Direction * rayQuery.CommittedRayT());
             hit.distance = rayQuery.CommittedRayT();            
-            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, rayQuery.CommittedInstanceID());
+            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, rayQuery.CommittedPrimitiveIndex());
 
             
             // ray interactions with surface and seafloor are the interesting cases
@@ -486,16 +487,30 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
             else if (rayQuery.CommittedInstanceID() == 2) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver                
                 if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
                     RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
-                    tz = -tz;
+                    
+                    float2 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xy; // normal of the triangle that the ray hit
+                    
+                    float2 reflection = reflect(direction.xy, normal);
+                    reflection = normalize(reflection);
+
+                    tz = reflection.y;
+                    ksi = reflection.x / c;
                     nbot++;
+
+                    r = hit.position.x; // den här blir troligtvis negativ eftersom hit.position har globala koordinater och r har relativa koordninater
+
+                    r = abs(hit.position.x - srcPosition.x);
+
+                    z = hit.position.y;
+
                 }                
             }
         }
-        /*else
+        else
         { // no hit, when the ray misses something it is not certain that a ray should be terminated, (example if a ray turns in a layer, the ray would be sent horizontally and miss)
-            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
+            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
             //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
-        }*/
+        }
         
         istep++;
         // distance left to the receiver
@@ -506,6 +521,6 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _BELLHOPSIZE; i++) {
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);
-        //debugBuf[i + offset] = float3(123, 456, 789);
+        debugBuf[i + offset] = float3(123, 456, 789);
     }    
 }

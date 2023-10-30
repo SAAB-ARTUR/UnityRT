@@ -113,7 +113,8 @@ public class World : MonoBehaviour
         
         surface = _surface;
     }
-    public void AddBottom(GameObject _bottom, RTModelParams.RT_Model rtmodel) 
+
+    public List<Vector3> AddBottom(GameObject _bottom, RTModelParams.RT_Model rtmodel) 
     {
         foreach (LineRenderer line in pyramidlines) // delete lines from previous runs
         {
@@ -121,6 +122,8 @@ public class World : MonoBehaviour
         }
         pyramidlines.Clear();
         Vector3 center = Vector3.up * waterDepth;
+
+        List<Vector3> normals = new List<Vector3>();
 
         Mesh m1;
         if (rtmodel == RTModelParams.RT_Model.HovemRTAS)
@@ -142,6 +145,16 @@ public class World : MonoBehaviour
 
                 pyramidlines.Add(line);
             }
+            
+            // calculate normals of the triangles creating the bottom
+            for (int ii = 2; ii < m1.triangles.Length; ii += 3)
+            {
+                Vector3 v1 = m1.vertices[m1.triangles[ii]] - m1.vertices[m1.triangles[ii - 1]];
+                Vector3 v2 = m1.vertices[m1.triangles[ii]] - m1.vertices[m1.triangles[ii - 2]];
+
+                Vector3 normal = Vector3.Cross(v2, v1).normalized;
+                normals.Add(normal);
+            }
         }
         else
         {
@@ -150,7 +163,8 @@ public class World : MonoBehaviour
 
         _bottom.GetComponent<MeshFilter>().mesh = m1;
         
-        bottom = _bottom;        
+        bottom = _bottom;
+        return normals;
     }
 
     public void AddWaterplane(GameObject waterplane) 
@@ -272,6 +286,8 @@ public class World : MonoBehaviour
             new Vector4(1f, 0f, 0f, -1f),
         };
 
+
+
         mesh.triangles = new int[] {
             0, 1, 4, // pyramid
             1, 2, 4, 
@@ -279,6 +295,10 @@ public class World : MonoBehaviour
             0, 4, 3,
             0, 2, 1, 0, 3, 2, // seafloor 
         };
+        //mesh.RecalculateNormals();
+
+        
+
 
         return mesh;
     }
