@@ -58,7 +58,7 @@ public class Main : MonoBehaviour
     private const int BellhopTraceContributingRaysKernelIdx = 1;
     private const int HovemTraceRaysKernelIdx = 2;
     private const int HovemTraceContributingRaysKernelIdx = 3;
-    private const int HovemRTASTraceRaysKernelIdx = 4;
+    private const int HovemRTASTraceRaysKernelIdx = 5;
 
     struct PerRayData
     {
@@ -818,7 +818,7 @@ public class Main : MonoBehaviour
             
             debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 62*modelParams.INTEGRATIONSTEPS; i < 63 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
+            for (int i = 69*modelParams.INTEGRATIONSTEPS; i < 70 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
             {
                 Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }
@@ -997,6 +997,6 @@ public class Main : MonoBehaviour
         rtas.Build();
         Debug.Log("RTAS built");
 
-        computeShader.SetRayTracingAccelerationStructure(4, "g_AccelStruct", rtas);
+        computeShader.SetRayTracingAccelerationStructure(HovemRTASTraceRaysKernelIdx, "g_AccelStruct", rtas);
     }
 }
