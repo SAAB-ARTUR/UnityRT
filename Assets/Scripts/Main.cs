@@ -817,7 +817,7 @@ public class Main : MonoBehaviour
 
             debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 127*modelParams.INTEGRATIONSTEPS; i < debugger.Length; i++)
+            for (int i = 62*modelParams.INTEGRATIONSTEPS; i < 63 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
             {
                 Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }

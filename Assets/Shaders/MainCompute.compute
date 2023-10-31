@@ -490,21 +490,25 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                     debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
                     RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
                     
-                    float2 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xy; // normal of the triangle that the ray hit
-                    
-                    float2 reflection = reflect(direction.xy, normal);
+                    float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit
+                    debugBuf[offset + istep] = float3(normal.xyz);
+                    float2 reflection = reflect(direction.xy, normal.xy);
                     reflection = normalize(reflection);
+                    debugBuf[offset + istep] = float3(reflection.xy, 1997);
 
+                    c = c0;
+
+                    ilay = ilay0;
                     tz = reflection.y;
                     ksi = reflection.x / c;
                     nbot++;
 
                     //r = hit.position.x; // den här blir troligtvis negativ eftersom hit.position har globala koordinater och r har relativa koordninater
 
-                    r = abs(hit.position.x - srcPosition.x);
-
-                    z = hit.position.y;
-
+                    float eps = 0.001; 
+                    r = abs(hit.position.x - srcPosition.x) + eps * normal.x;   // Leave the plane. 
+                    z = hit.position.y + eps * normal.y;
+                    
                 }                
             }
         }
