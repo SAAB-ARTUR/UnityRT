@@ -369,10 +369,10 @@ public class Main : MonoBehaviour
                 Vector3 pos1 = positions[positions.Count-1];
                 Vector3 pos2 = rayPositions[offset + i];
                 float distance = MathF.Sqrt(MathF.Pow(pos1.x - pos2.x, 2) + MathF.Pow(pos1.y - pos2.y, 2) + MathF.Pow(pos1.z - pos2.z, 2));
-                if (distance < 1) // if points are too close, don't add the current point
+                /*if (distance < 1) // if points are too close, don't add the current point
                 {
                     continue;
-                }
+                }*/
             }
             
             if (rayPositions[offset + i].y <= 0f )
@@ -817,7 +817,7 @@ public class Main : MonoBehaviour
 
             debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 0; i < debugger.Length; i++)
+            for (int i = 127*modelParams.INTEGRATIONSTEPS; i < debugger.Length; i++)
             {
                 Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
             }

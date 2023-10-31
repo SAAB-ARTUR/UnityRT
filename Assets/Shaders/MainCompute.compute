@@ -485,7 +485,9 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                 }        
             }
             else if (rayQuery.CommittedInstanceID() == 2) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver                
+                debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 1897);
                 if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
+                    debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
                     RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
                     
                     float2 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xy; // normal of the triangle that the ray hit
@@ -497,7 +499,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                     ksi = reflection.x / c;
                     nbot++;
 
-                    r = hit.position.x; // den här blir troligtvis negativ eftersom hit.position har globala koordinater och r har relativa koordninater
+                    //r = hit.position.x; // den här blir troligtvis negativ eftersom hit.position har globala koordinater och r har relativa koordninater
 
                     r = abs(hit.position.x - srcPosition.x);
 

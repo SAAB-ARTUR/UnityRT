@@ -8414,7 +8414,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   theta: 60
-  _ntheta: 64
+  _ntheta: 128
   sendRaysContinously: 0
   visualizeRays: 0
   showContributingRaysOnly: 0
