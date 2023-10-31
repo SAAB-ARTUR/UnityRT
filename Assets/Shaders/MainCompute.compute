@@ -333,8 +333,8 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     float phi = angles.y;
     //Ray _ray = CreateHovemRTRay(srcPosition, id); // function should return origin and direction of ray
 
-    theta = thetaData[id.y]; //TODO: ta bort det här nån gång
-    phi = 0;
+    //theta = thetaData[id.y]; //TODO: ta bort det här nån gång
+    // phi = 0;
     
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
@@ -478,23 +478,26 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
             
             // ray interactions with surface and seafloor are the interesting cases
             if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver                
-                if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
-                    RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
+                //debugBuf[offset + istep] = float3(hit.position.xy, 19);
+                //if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
+                if(z >= -1e-6) {
+                    //debugBuf[offset + istep] = float3(hit.position.xy, 20);
+                    RayPositionsBuffer[istep + offset] = float3(hit.position.x, 0, hit.position.z); // overwrite the data stored in the position buffer with the position of the hit
                     tz = -tz;
                     ntop++;
                 }        
             }
             else if (rayQuery.CommittedInstanceID() == 2) { // seafloor hit, change depth direction and take new step if we are getting closer to the receiver                
-                debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 1897);
+                //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 1897);
                 if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the seafloor (meaning that the ray should have stopped before the seafloor)
-                    debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
+                    //debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
                     RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
                     
                     float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit
-                    debugBuf[offset + istep] = float3(normal.xyz);
+                    //debugBuf[offset + istep] = float3(normal.xyz);
                     float2 reflection = reflect(direction.xy, normal.xy);
                     reflection = normalize(reflection);
-                    debugBuf[offset + istep] = float3(reflection.xy, 1997);
+                    //debugBuf[offset + istep] = float3(reflection.xy, 1997);
 
                     c = c0;
 
@@ -514,7 +517,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         }
         else
         { // no hit, when the ray misses something it is not certain that a ray should be terminated, (example if a ray turns in a layer, the ray would be sent horizontally and miss)
-            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
+            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
             //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
         }
         

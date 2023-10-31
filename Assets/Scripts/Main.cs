@@ -815,6 +815,7 @@ public class Main : MonoBehaviour
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
 
+            
             debugBuf.GetData(debugger);
             Debug.Log("------------------------------------------------------------------------------");
             for (int i = 62*modelParams.INTEGRATIONSTEPS; i < 63 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
