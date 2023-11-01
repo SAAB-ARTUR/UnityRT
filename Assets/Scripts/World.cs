@@ -99,16 +99,7 @@ public class World : MonoBehaviour
         controller.lower_limit_z = -range/2;
         
         controller.JumpTo(Vector3.down * sourceDepth);
-    }
-
-    public void AddSurface(/*GameObject _surface*/) 
-    {
-        Mesh m1 = DoublePlaneMesh(Vector3.zero);
-
-        surface.GetComponent<MeshFilter>().mesh = m1;
-        
-        //surface = _surface;
-    }
+    }    
 
     public void AddCustomBottom(Mesh mesh)
     {
@@ -147,76 +138,51 @@ public class World : MonoBehaviour
         }
     }
 
+    public void AddCustomSurface() // not actually a custom surface, it just matches the size of bottom and creates a flat plane from the dimensions of the bottom
+    {
+        Mesh mesh = new Mesh()
+        {
+            name = "Plane Mesh"
+        };
 
-    public void /*List<Vector3>*/ AddPlaneBottom() 
+        // take the final 6 vertices and use them to create a surface of the same dimensions (definition of the bottom vertices is in STLFileReader.cs)
+        Vector3[] vertices = bottom.GetComponent<MeshFilter>().mesh.vertices.Skip(bottom.GetComponent<MeshFilter>().mesh.vertexCount - 6).Take(6).ToArray();
+        Vector3 upshift = Vector3.up * waterDepth;
+
+        // shift the vertices up to 0 depth
+        vertices = vertices.Select(x => { return x - upshift; }).ToArray();
+
+        mesh.vertices = vertices;
+        mesh.triangles = Enumerable.Range(0, vertices.Length).ToArray();
+
+        mesh.normals = Enumerable.Repeat(Vector3.back, mesh.vertexCount).ToArray();
+        mesh.tangents = Enumerable.Repeat(new Vector4(1f, 0f, 0f, -1f), mesh.vertexCount).ToArray();
+    }
+
+
+    public void AddPlaneBottom() 
     {
         foreach (LineRenderer line in pyramidlines) // delete lines from previous runs
         {
             Destroy(line.gameObject);
         }
         pyramidlines.Clear();
-        Vector3 center = Vector3.up * waterDepth;
+        Vector3 center = Vector3.up * waterDepth;        
 
-        //List<Vector3> normals = new List<Vector3>();
-
-        Mesh m1;
-        /*if (rtmodel == RTModelParams.RT_Model.HovemRTAS && bathymetryChosen)
-        {
-            m1 = BottomPyramid(center, pyramidTop);
-            for (int i = 2; i < m1.triangles.Length; i += 3)
-            {
-                line = new GameObject("Line").AddComponent<LineRenderer>();
-                line.startWidth = 0.03f;
-                line.endWidth = 0.03f;
-                line.useWorldSpace = true;
-
-                Vector3[] positions = new Vector3[4] { m1.vertices[m1.triangles[i]], m1.vertices[m1.triangles[i - 1]], m1.vertices[m1.triangles[i - 2]], m1.vertices[m1.triangles[i]] };
-                line.positionCount = 4;
-                line.SetPositions(positions);
-
-                line.material = lineMaterial;
-                line.material.color = Color.black;
-
-                pyramidlines.Add(line);
-            }
-        }*/
-        /*else // create a flat bottom if no bathymetry is chosen or if it is the standard 2D bellhop/hovem models that is chosen as the rt model
-        {
-            m1 = DoublePlaneMesh(center);
-        }*/
-        m1 = DoublePlaneMesh(center);
+        Mesh m1 = DoublePlaneMesh(center);
         bottom.GetComponent<MeshFilter>().mesh = m1;
-        
-        //bottom = _bottom;
-
-        // calculate normals of the triangles creating the bottom
-        /*for (int ii = 2; ii < m1.triangles.Length - 6; ii += 3) // the last 6 triangle points creates the lower plane "underneath" the seafloor
-        {
-            Vector3 v1 = m1.vertices[m1.triangles[ii]] - m1.vertices[m1.triangles[ii - 1]];
-            Vector3 v2 = m1.vertices[m1.triangles[ii]] - m1.vertices[m1.triangles[ii - 2]];
-
-            Vector3 normal = Vector3.Cross(v2, v1).normalized;
-            normals.Add(normal);
-        }
-
-        return normals;*/
     }
 
-    /*public void AddWaterplane(GameObject waterplane) 
+    public void AddPlaneSurface()
     {
-        // Create one waterplane, more waterplanes (if wanted) are created in main when the waterplane is added to the raytracing acceleration structure
-        float dx = waterDepth / (nrOfWaterplanes + 1);
-                
-        Vector3 center = Vector3.up * dx;
-        Mesh m1 = SinglePlaneMesh(center);
+        // surface is flat for now, but it should be the same size as bottom
 
-        waterplane.GetComponent<MeshFilter>().mesh = m1;
+        Mesh m1 = DoublePlaneMesh(Vector3.zero);
 
-        // make plane invisible in the normal scene
-        Color temp = waterplane.GetComponent<MeshRenderer>().material.color;
-        temp.a = 0;
-        waterplane.GetComponent<MeshRenderer>().material.color = temp;
-    }*/
+        surface.GetComponent<MeshFilter>().mesh = m1;
+
+        //surface = _surface;
+    }
 
     private Vector3 mean(Vector3[] vectors) 
     {        
@@ -297,57 +263,6 @@ public class World : MonoBehaviour
 
         return mesh;
     }
-
-    /*private Mesh BottomPyramid(Vector3 center, Vector3 topPoint)
-    {
-        Mesh mesh = new Mesh();
-        Vector3[] pyramid = new Vector3[] // create vertices for 4 triangles and combine them into a pyramid
-        {
-            new Vector3(-range/2, waterDepth, -range/2), new Vector3(-range/2, waterDepth, range/2), new Vector3(range/2, waterDepth, range/2), new Vector3(range/2, waterDepth, -range/2),
-            topPoint// top position
-        };
-
-        mesh.vertices = pyramid;
-
-        mesh.normals = new Vector3[] {
-            Vector3.back, Vector3.back, Vector3.back, Vector3.back, Vector3.back
-        };
-
-        mesh.tangents = new Vector4[] {
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-        };
-
-
-
-        mesh.triangles = new int[] {
-            0, 1, 4, // pyramid
-            1, 2, 4, 
-            3, 4, 2,
-            0, 4, 3,
-            0, 2, 1, 0, 3, 2, // seafloor 
-        };
-        //mesh.RecalculateNormals();
-
-        
-
-
-        return mesh;
-    }*/
-
-    /*public int GetNrOfWaterplanes()
-    {
-        return nrOfWaterplanes;
-    }
-
-    public void SetNrOfWaterplanes(int value)
-    {
-        nrOfWaterplanes = value;
-        changeInWorld = true;
-    }*/
 
     public float GetWaterDepth()
     {
@@ -442,11 +357,6 @@ public class World : MonoBehaviour
     {
         targetChange = false;
     }
-
-    /*public GameObject GetTarget()
-    {
-        return target;
-    }*/
 
     public GameObject GetSurface()
     {

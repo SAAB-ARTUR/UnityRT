@@ -11,9 +11,6 @@ public class Main : MonoBehaviour
     public ComputeShader computeShader = null;
 
     public GameObject srcSphere = null;
-    /*[SerializeField] GameObject surface = null;
-    [SerializeField] GameObject seafloor = null;*/
-    //[SerializeField] GameObject waterplane = null;
     public Camera sourceCamera = null; 
     [SerializeField] GameObject worldManager = null;
     [SerializeField] GameObject btnSSPFilePicker = null;
@@ -164,7 +161,6 @@ public class Main : MonoBehaviour
             seafloorInstanceData.Dispose();
             seafloorInstanceData = null;
         }
-
         
         SSPBuffer?.Release();
         SSPBuffer = null;
@@ -213,8 +209,6 @@ public class Main : MonoBehaviour
             PerRayDataBuffer = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta, perraydataByteSize);
             SetComputeBuffer("PerRayDataBuffer", PerRayDataBuffer, modelParams.RTMODEL);
         }
-
-
 
         if (rayData == null)
         {
@@ -273,16 +267,18 @@ public class Main : MonoBehaviour
             List<Vector3> normals = _STLFileReader.GetBottomMeshNormals();
             NormalBuffer = new ComputeBuffer(normals.Count, 3 * sizeof(float));
             NormalBuffer.SetData(normals.ToArray());
-            SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);            
+            SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);
+            world.AddCustomSurface();
         }
         else
         {
             // create flat bottom
             world.AddPlaneBottom();
+            world.AddPlaneSurface();
         }
 
         world.AddSource(sourceCamera);
-        world.AddSurface();
+        
         
         computeShader.SetFloat("depth", world.GetWaterDepth());
         
@@ -777,15 +773,14 @@ public class Main : MonoBehaviour
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
-
             
-            debugBuf.GetData(debugger);
-            Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 69*modelParams.INTEGRATIONSTEPS; i < 70 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
-            {
-                Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-            }
-            Debug.Log("------------------------------------------------------------------------------");
+            //debugBuf.GetData(debugger);
+            //Debug.Log("------------------------------------------------------------------------------");
+            //for (int i = 69*modelParams.INTEGRATIONSTEPS; i < 70 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
+            //{
+            //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            //}
+            //Debug.Log("------------------------------------------------------------------------------");
 
             if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {                
@@ -816,13 +811,13 @@ public class Main : MonoBehaviour
                 {                    
                     HovemTraceContributingRays();
 
-                    debugBuf.GetData(debugger);
-                    Debug.Log("------------------------------------------------------------------------------");
-                    for (int i = 0; i < debugger.Length; i++)
-                    {
-                        Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-                    }
-                    Debug.Log("------------------------------------------------------------------------------");
+                    //debugBuf.GetData(debugger);
+                    //Debug.Log("------------------------------------------------------------------------------");
+                    //for (int i = 0; i < debugger.Length; i++)
+                    //{
+                    //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+                    //}
+                    //Debug.Log("------------------------------------------------------------------------------");
                 }
             }
 
