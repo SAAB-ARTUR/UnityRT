@@ -50,7 +50,13 @@ uint _MAXSURFACEHITS;
 
 static const float PI = 3.14159265f;
 
+// boundaries of the volume
 float depth;
+float xmin;
+float xmax;
+float zmin;
+float zmax;
+
 float theta;
 uint ntheta;
 float3 srcDirection;
@@ -331,10 +337,6 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     float2 angles = CreateCylindricalRay(id);
     float theta = angles.x;
     float phi = angles.y;
-    //Ray _ray = CreateHovemRTRay(srcPosition, id); // function should return origin and direction of ray
-
-    //theta = thetaData[id.y]; //TODO: ta bort det här nån gång
-    // phi = 0;
     
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
@@ -557,11 +559,6 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 
     float3 pos = srcPosition;
 
-    //Ray _ray = CreateHovemRTRay(srcPosition, id); // function should return origin and direction of ray
-
-    //theta = thetaData[id.y]; //TODO: ta bort det här nån gång
-    // phi = 0;
-
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
     float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
@@ -583,12 +580,10 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 
     // inital conditions
     float c = _SSPBuffer[ilay].velocity;
-    float r = 0;//xs.x;
+    float r = 0;
     float depth = xs.y;
     float ksi = cos(theta) / c;
     float tdepth = -sin(theta);
-    //float ksi = sqrt(pow(_ray.direction.x, 2) + pow(_ray.direction.z, 2)) / c;
-    //float tdepth = _ray.direction.y;
     float tau = 0;
     float len = 0;
     uint ntop = 0;
@@ -596,7 +591,7 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
     uint maxtop = _MAXSURFACEHITS;
     uint maxbot = _MAXBOTTOMHITS;
 
-    float c0, r0, depth0, tdepth0, tau0, len0, ilay0, /*dz,*/ xxs, phi0;
+    float c0, r0, depth0, tdepth0, tau0, len0, ilay0, xxs, phi0;
     float3 pos0;
     RayHit hit = CreateRayHit(); // empty hit 'struct/object'
     hit.sendNewRay = true;
@@ -616,7 +611,6 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
         tau0 = tau;
         len0 = len;
         ilay0 = ilay;
-        //dz = 0;
         phi0 = phi;
         pos0 = pos;
         float cz;
@@ -772,8 +766,8 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 
         istep++;
         // distance left to the receiver
-        xxs = 1; // (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
-        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE && pos.y > -100 && pos.y < 10);
+        xxs = 1; // (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position // TODO: den här borde nog inte vara 1
+        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE && pos.y >= depth && pos.y <= 0 && pos.x <= xmax && pos.x >= xmin && pos.z <= zmax && pos.z >= zmin);
     }
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for

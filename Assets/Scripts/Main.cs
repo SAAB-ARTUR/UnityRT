@@ -269,6 +269,12 @@ public class Main : MonoBehaviour
             NormalBuffer.SetData(normals.ToArray());
             SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);
             world.AddCustomSurface();
+            // send bounds of the volume to the gpu
+            float[] boundaries = world.GetBoundaries();
+            computeShader.SetFloat("xmin", boundaries[0]); // boundaries are only used in the gpu code that uses the acceleration structure
+            computeShader.SetFloat("xmax", boundaries[1]);
+            computeShader.SetFloat("zmin", boundaries[2]);
+            computeShader.SetFloat("zmax", boundaries[3]);
         }
         else
         {
@@ -941,9 +947,5 @@ public class Main : MonoBehaviour
 }
 
 // TODOS:
-
-// 1: läsa in stl-fil om barymetri, anpassa världen efter detta
-// 1.2: se till att en plan botten alltid finns tillgänglig, antingen via kod eller skapa en stl-fil för det
-
 // 2: se till att strålar inte färdas ut ur volymen för 3D-Hovem
 // 3: skapa ett knippe av strålar för 3D-hovem

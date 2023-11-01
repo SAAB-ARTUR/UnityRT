@@ -7,13 +7,13 @@ using UnityTemplateProjects;
 public class World : MonoBehaviour
 {
     [SerializeField] Material lineMaterial = null;
-    [SerializeField] float sourceDepth = 0;
+    //[SerializeField] float sourceDepth = 0;
 
     [SerializeField] GameObject surface = null;
     [SerializeField] GameObject bottom = null;
     public Vector3 pyramidTop = Vector3.zero;
     private LineRenderer line = null;
-    private List<LineRenderer> pyramidlines = new List<LineRenderer>();
+    private List<LineRenderer> bottomlines = new List<LineRenderer>();
 
     public int range
     {
@@ -32,13 +32,16 @@ public class World : MonoBehaviour
             }
         }
     }
+    // volume boundaries
+    private float xmin;
+    private float xmax;
+    private float zmin;
+    private float zmax;
 
     [SerializeField]
     private int _range;    
     
-    private float waterDepth = 0.0f;
-
-    private int nrOfWaterplanes = 0;
+    private float waterDepth = 0.0f;    
 
     private Camera sourceSphere;
 
@@ -90,24 +93,24 @@ public class World : MonoBehaviour
         sourceSphere = c;
 
         SimpleSourceController controller = c.GetComponent<SimpleSourceController>();
-        
-        controller.upper_limit_x = range/2;
-        controller.lower_limit_x = -range/2;
+
+        controller.upper_limit_x = xmax;
+        controller.lower_limit_x = xmin;
         controller.upper_limit_y = 0;
         controller.lower_limit_y = waterDepth;
-        controller.upper_limit_z = range/2;
-        controller.lower_limit_z = -range/2;
-        
-        controller.JumpTo(Vector3.down * sourceDepth);
+        controller.upper_limit_z = zmax;
+        controller.lower_limit_z = zmin;
+        Debug.Log(waterDepth / 2);
+        controller.JumpTo(Vector3.up * waterDepth/2);
     }    
 
     public void AddCustomBottom(Mesh mesh)
     {
-        foreach (LineRenderer line in pyramidlines) // delete lines from previous runs
+        foreach (LineRenderer line in bottomlines) // delete lines from previous runs
         {
             Destroy(line.gameObject);
         }
-        pyramidlines.Clear();
+        bottomlines.Clear();
 
         // set the mesh
         bottom.GetComponent<MeshFilter>().mesh = mesh;
@@ -134,8 +137,15 @@ public class World : MonoBehaviour
             line.material = lineMaterial;
             line.material.color = Color.black;
 
-            pyramidlines.Add(line);
+            bottomlines.Add(line);
         }
+
+        // calculate the boundaries (grab vertices from the flat part of the bottom and take the smallest and largest x/z-values
+        Vector3[] verts = bottom.GetComponent<MeshFilter>().mesh.vertices.Skip(bottom.GetComponent<MeshFilter>().mesh.vertexCount - 3).Take(3).ToArray();
+        xmin = verts[2].x;
+        xmax = verts[0].x;
+        zmin = verts[0].z;
+        zmax = verts[2].z;
     }
 
     public void AddCustomSurface() // not actually a custom surface, it just matches the size of bottom and creates a flat plane from the dimensions of the bottom
@@ -146,31 +156,44 @@ public class World : MonoBehaviour
         };
 
         // take the final 6 vertices and use them to create a surface of the same dimensions (definition of the bottom vertices is in STLFileReader.cs)
-        Vector3[] vertices = bottom.GetComponent<MeshFilter>().mesh.vertices.Skip(bottom.GetComponent<MeshFilter>().mesh.vertexCount - 6).Take(6).ToArray();
+        Vector3[] vertices = bottom.GetComponent<MeshFilter>().mesh.vertices.Skip(bottom.GetComponent<MeshFilter>().mesh.vertexCount - 12).Take(12).ToArray();
         Vector3 upshift = Vector3.up * waterDepth;
 
         // shift the vertices up to 0 depth
         vertices = vertices.Select(x => { return x - upshift; }).ToArray();
+
+        foreach(Vector3 vertex in vertices)
+        {
+            Debug.Log(vertex);
+        }
 
         mesh.vertices = vertices;
         mesh.triangles = Enumerable.Range(0, vertices.Length).ToArray();
 
         mesh.normals = Enumerable.Repeat(Vector3.back, mesh.vertexCount).ToArray();
         mesh.tangents = Enumerable.Repeat(new Vector4(1f, 0f, 0f, -1f), mesh.vertexCount).ToArray();
+
+        surface.GetComponent<MeshFilter>().mesh = mesh;
     }
 
 
     public void AddPlaneBottom() 
     {
-        foreach (LineRenderer line in pyramidlines) // delete lines from previous runs
+        foreach (LineRenderer line in bottomlines) // delete lines from previous runs
         {
             Destroy(line.gameObject);
         }
-        pyramidlines.Clear();
+        bottomlines.Clear();
         Vector3 center = Vector3.up * waterDepth;        
 
         Mesh m1 = DoublePlaneMesh(center);
         bottom.GetComponent<MeshFilter>().mesh = m1;
+
+        // calculate the boundaries
+        xmin = -range / 2;
+        zmin = -range / 2;
+        xmax = range / 2;
+        zmax = range / 2;
     }
 
     public void AddPlaneSurface()
@@ -229,40 +252,7 @@ public class World : MonoBehaviour
         };
 
         return mesh;
-    }
-
-    private Mesh SinglePlaneMesh(Vector3 center)
-    {
-        Mesh mesh = new Mesh()
-        {
-            name = "Plane Mesh"
-        };
-
-        Vector3[] square = new Vector3[] {
-            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range), // Upper plane
-        };
-        Vector3 center_local = mean(square);
-        square = square.Select(x => { return x - center_local + center; }).ToArray();
-
-        mesh.vertices = square;
-
-        mesh.normals = new Vector3[] {
-            Vector3.back, Vector3.back, Vector3.back, Vector3.back,
-        };
-
-        mesh.tangents = new Vector4[] {
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-        };
-
-        mesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3,
-        };
-
-        return mesh;
-    }
+    }   
 
     public float GetWaterDepth()
     {
@@ -366,5 +356,10 @@ public class World : MonoBehaviour
     public GameObject GetBottom()
     {
         return bottom;
+    }
+
+    public float[] GetBoundaries()
+    {
+        return new float[] { xmin, xmax, zmin, zmax };
     }
 }
