@@ -31,7 +31,8 @@ public class SSPFileReader : MonoBehaviour
 
     public void OnSSPButtonPress()
     {
-        BrowserProperties bp = new BrowserProperties();
+        BrowserProperties bp = new BrowserProperties();        
+        bp.initialDir = Directory.GetCurrentDirectory() + "\\Assets\\SSP";
         bp.filter = "txt files (*.txt)|*.txt|All Files (*.*)|*.*";
         bp.filterIndex = 0;
         new FileBrowser().OpenFileBrowser(bp, path =>
@@ -40,7 +41,7 @@ public class SSPFileReader : MonoBehaviour
             {
                 string filename = path.Split("\\").Last(); // print only filename and extension on the button, not the entire path
 
-                GameObject.Find("Button - Filepicker").GetComponentInChildren<Text>().text = filename;
+                GameObject.Find("Button - Filepicker_SSP").GetComponentInChildren<Text>().text = filename;
                 filepathHasChanged = true;
                 ReadSSPFromFile(path);
             }

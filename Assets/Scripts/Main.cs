@@ -11,12 +11,13 @@ public class Main : MonoBehaviour
     public ComputeShader computeShader = null;
 
     public GameObject srcSphere = null;
-    [SerializeField] GameObject surface = null;
-    [SerializeField] GameObject seafloor = null;
-    [SerializeField] GameObject waterplane = null;
+    /*[SerializeField] GameObject surface = null;
+    [SerializeField] GameObject seafloor = null;*/
+    //[SerializeField] GameObject waterplane = null;
     public Camera sourceCamera = null; 
     [SerializeField] GameObject worldManager = null;
-    [SerializeField] GameObject btnFilePicker = null;
+    [SerializeField] GameObject btnSSPFilePicker = null;
+    [SerializeField] GameObject btnSTLFilePicker = null; 
     [SerializeField] GameObject RTModel = null;
 
     apiv2 api = null;
@@ -39,13 +40,13 @@ public class Main : MonoBehaviour
     private bool rebuildRTAS = false;
 
     private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
-    private SurfaceAndSeafloorInstanceData seafloorInstanceData = null;
-    private WaterplaneInstanceData waterplaneInstanceData = null;
-    //private TargetInstanceData targetInstanceData = null;   
+    private SurfaceAndSeafloorInstanceData seafloorInstanceData = null; 
 
     private SSPFileReader _SSPFileReader = null;
     private List<SSPFileReader.SSP_Data> SSP = null;
     private ComputeBuffer SSPBuffer;
+
+    private STLFileReader _STLFileReader = null;
 
     private ComputeBuffer RayPositionsBuffer;
     private float3[] rayPositions = null;
@@ -123,6 +124,27 @@ public class Main : MonoBehaviour
 
     private Vector3 oldPyramidTop = Vector3.zero;
 
+    // Start is called before the first frame update
+    void Start()
+    {
+        Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
+        srcRenderer.material.SetColor("_Color", Color.green);
+
+        //BuildWorld();
+        rtas = new RayTracingAccelerationStructure();
+        rebuildRTAS = true;
+
+        _SSPFileReader = btnSSPFilePicker.GetComponent<SSPFileReader>();
+        _STLFileReader = btnSTLFilePicker.GetComponent<STLFileReader>();
+
+        api = GetComponent<apiv2>();
+
+        alphaData = new ComputeBuffer(128, sizeof(float));
+        alphaData.SetData(alphas);
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+        SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
+    }
+
     private void ReleaseResources()
     {
         if (rtas != null)
@@ -136,21 +158,13 @@ public class Main : MonoBehaviour
             surfaceInstanceData.Dispose();
             surfaceInstanceData = null;
         }
-        if (waterplaneInstanceData != null)
-        {
-            waterplaneInstanceData.Dispose();
-            waterplaneInstanceData = null;
-        }
+
         if (seafloorInstanceData != null)
         {
             seafloorInstanceData.Dispose();
             seafloorInstanceData = null;
         }
-        /*if (targetInstanceData != null)
-        {
-            targetInstanceData.Dispose();
-            targetInstanceData = null;
-        }*/
+
         
         SSPBuffer?.Release();
         SSPBuffer = null;
@@ -215,33 +229,6 @@ public class Main : MonoBehaviour
         {            
             seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
         }
-        
-        int nrOfWaterplanes = world.GetNrOfWaterplanes();
-        float depth = world.GetWaterDepth();
-        if (nrOfWaterplanes > 0 && (waterplaneInstanceData == null || waterplaneInstanceData.layers != nrOfWaterplanes || waterplaneInstanceData.depth != depth))
-        {
-            if (waterplaneInstanceData != null)
-            {
-                waterplaneInstanceData.Dispose();
-            }
-            waterplaneInstanceData = new WaterplaneInstanceData(nrOfWaterplanes, depth);
-        }
-        else if (nrOfWaterplanes <= 0)
-        {
-            if (waterplaneInstanceData != null)
-            {
-                waterplaneInstanceData.Dispose();
-            }
-        }
-
-        /*if (targetInstanceData == null)
-        {
-            if (targetInstanceData != null)
-            {
-                targetInstanceData.Dispose();
-            }
-            targetInstanceData = new TargetInstanceData();
-        }*/
     }
 
     private void SetComputeBuffer(string name, ComputeBuffer buffer, RTModelParams.RT_Model rtmodel)
@@ -277,56 +264,32 @@ public class Main : MonoBehaviour
     private void BuildWorld() {
         
         World world = worldManager.GetComponent<World>();
-        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
-        world.AddSource(sourceCamera);
-        world.AddSurface(surface);
-        List<Vector3> normals =  world.AddBottom(seafloor, modelParams.RTMODEL);
-        if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS) {
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();        
+        
+        if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS && _STLFileReader.GetBottomMesh() != null) { // if RTAS is to be used and a custom bathymetry file (.stl) has been selected
+            // create the custom bottom                        
+            world.AddCustomBottom(_STLFileReader.GetBottomMesh());
+
+            List<Vector3> normals = _STLFileReader.GetBottomMeshNormals();
             NormalBuffer = new ComputeBuffer(normals.Count, 3 * sizeof(float));
             NormalBuffer.SetData(normals.ToArray());
-            SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);
+            SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);            
         }
-
-
-        if (world.GetNrOfWaterplanes() > 0)
+        else
         {
-            world.AddWaterplane(waterplane);
+            // create flat bottom
+            world.AddPlaneBottom();
         }
+
+        world.AddSource(sourceCamera);
+        world.AddSurface();
+        
         computeShader.SetFloat("depth", world.GetWaterDepth());
         
         
     }
 
-    /*private void OnEnable()
-    {
-        if (sourceCamera != null)
-        {
-            sourceCameraScript = sourceCamera.GetComponent<RayTracingVisualization>();
-        }
-
-        //rtas = new RayTracingAccelerationStructure();
-    }*/
-
-    // Start is called before the first frame update
-    void Start()
-    {        
-        Renderer srcRenderer = srcSphere.GetComponent<Renderer>();
-        srcRenderer.material.SetColor("_Color", Color.green);
-
-        //BuildWorld();
-        rtas = new RayTracingAccelerationStructure();
-        rebuildRTAS = true;        
-
-        _SSPFileReader = btnFilePicker.GetComponent<SSPFileReader>();
-
-        api = GetComponent<apiv2>();
-
-        alphaData = new ComputeBuffer(128, sizeof(float));
-        alphaData.SetData(alphas);
-        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
-        SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
-    }
-
+    #region plotting
     int GetRayStartIndex(int idx, int idy)
     {
         RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
@@ -422,7 +385,7 @@ public class Main : MonoBehaviour
         }
         lines.Clear();
     }
-
+    #endregion
 
     /// <summary>
     /// maintain data structures that are related to the gpu, update them if necessary and return the status of the operations
@@ -468,8 +431,7 @@ public class Main : MonoBehaviour
                 Debug.Log(e);
             }
             rayPositionDataAvail = false;
-            oldSourceParams = sourceParams.ToStruct();
-            
+            oldSourceParams = sourceParams.ToStruct();            
 
             if (RayPositionsBuffer != null)
             {
@@ -508,12 +470,13 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_MAXBOTTOMHITS", modelParams.MAXNRBOTTOMHITS);
         }        
 
-        if (world.WorldHasChanged() || oldPyramidTop != world.pyramidTop || modelParams.HasChanged(oldRTModelParams))
+        if (world.WorldHasChanged() || oldPyramidTop != world.pyramidTop || modelParams.HasChanged(oldRTModelParams) || _STLFileReader.BathymetryFileHasChanged())
         {
             oldRTModelParams = modelParams.ToStruct();
             oldPyramidTop = world.pyramidTop;
             BuildWorld();
             world.AckChangeInWorld();
+            _STLFileReader.AckBathymetryFileHasChanged();
             rebuildRTAS = true;           
         }
         SetComputeBuffer("thetaData", alphaData, modelParams.RTMODEL);
@@ -545,7 +508,7 @@ public class Main : MonoBehaviour
                 SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);                
                 SetComputeBuffer("_SSPBuffer", SSPBuffer, modelParams.RTMODEL);
                 World world = worldManager.GetComponent<World>();
-                world.SetNrOfWaterplanes(SSP.Count - 2);
+                //world.SetNrOfWaterplanes(SSP.Count - 2);
                 world.SetWaterDepth(SSP.Last().depth);
             }
             catch (Exception e)
@@ -960,6 +923,9 @@ public class Main : MonoBehaviour
 
         rtas.ClearInstances();
 
+        GameObject surface = world.GetSurface();
+        GameObject bottom = world.GetBottom();
+
         // add surface
         Mesh surfaceMesh = surface.GetComponent<MeshFilter>().mesh;
         Material surfaceMaterial = surface.GetComponent<MeshRenderer>().material;
@@ -967,32 +933,10 @@ public class Main : MonoBehaviour
         rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
 
         // add seafloor
-        Mesh seafloorMesh = seafloor.GetComponent<MeshFilter>().mesh;
-        Material seafloorMaterial = seafloor.GetComponent<MeshRenderer>().material;
+        Mesh seafloorMesh = bottom.GetComponent<MeshFilter>().mesh;
+        Material seafloorMaterial = bottom.GetComponent<MeshRenderer>().material;
         RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
-        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 2);        
-
-        // targetmesh is a predefined mesh in unity, its vertices will all be defined in local coordinates, therefore a copy of the mesh is created but the vertices
-        // are defined in global coordinates, this copy is used in the acceleration structure to make sure that the ray tracing works properly. these actions will be 
-        // necessary on all predefined meshes
-        /*GameObject target = world.GetTarget();
-        Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
-        
-        Vector3[] transformed_vertices = new Vector3[targetMesh.vertexCount];
-
-        target.transform.TransformPoints(targetMesh.vertices, transformed_vertices);
-
-        Material targetMaterial = target.GetComponent<MeshRenderer>().material;
-
-        Mesh realTargetMesh = new Mesh();
-        realTargetMesh.vertices = transformed_vertices;
-        realTargetMesh.triangles = targetMesh.triangles;
-        realTargetMesh.normals = targetMesh.normals;
-        realTargetMesh.tangents = targetMesh.tangents;
-
-        RayTracingMeshInstanceConfig targetConfig = new RayTracingMeshInstanceConfig(realTargetMesh, 0, targetMaterial);
-
-        rtas.AddInstances(targetConfig, targetInstanceData.matrices, id: 4);*/
+        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 2);       
 
         rtas.Build();
         Debug.Log("RTAS built");
@@ -1000,3 +944,11 @@ public class Main : MonoBehaviour
         computeShader.SetRayTracingAccelerationStructure(HovemRTASTraceRaysKernelIdx, "g_AccelStruct", rtas);
     }
 }
+
+// TODOS:
+
+// 1: läsa in stl-fil om barymetri, anpassa världen efter detta
+// 1.2: se till att en plan botten alltid finns tillgänglig, antingen via kod eller skapa en stl-fil för det
+
+// 2: se till att strålar inte färdas ut ur volymen för 3D-Hovem
+// 3: skapa ett knippe av strålar för 3D-hovem
