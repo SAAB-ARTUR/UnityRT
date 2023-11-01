@@ -947,5 +947,5 @@ public class Main : MonoBehaviour
 }
 
 // TODOS:
-// 2: se till att strålar inte färdas ut ur volymen för 3D-Hovem
+// 2: se till att strålar inte färdas ut ur volymen för 3D-Hovem, ska testas
 // 3: skapa ett knippe av strålar för 3D-hovem

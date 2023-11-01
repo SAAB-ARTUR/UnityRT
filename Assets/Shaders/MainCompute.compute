@@ -767,6 +767,7 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
         istep++;
         // distance left to the receiver
         xxs = 1; // (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position // TODO: den här borde nog inte vara 1
+        // xxs borde väl kunna tas bort, strålen ska fortsätta sålänge den är innanför volymens gränser och inte har träffat botten/yta för många gånger
         hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE && pos.y >= depth && pos.y <= 0 && pos.x <= xmax && pos.x >= xmin && pos.z <= zmax && pos.z >= zmin);
     }
 
