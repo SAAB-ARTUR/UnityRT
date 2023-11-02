@@ -230,9 +230,9 @@ void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float
         }
 
         // amplitude and phase
-        Amp = Amp0 * pow(Rfa, nbot) * exp(-FreqsAndDampData[i].y * curve);
+        Amp = Amp0 * pow(Rfa, nbot) * exp(-FreqsAndDampData[i].y * curve); // TODO: this should be a buffer containing amplitudes for each frequency component of the signal
         gamma = PI * ntop + gamma * nbot + PI / 2 * ncaust;
-        Phase = (gamma + PI) % (2 * PI) - PI;
+        Phase = (gamma + PI) % (2 * PI) - PI; // this should also be a buffer for the phases of each frequency of the signal
 
         // RMS amplitude
         Arms += pow(Amp, 2);

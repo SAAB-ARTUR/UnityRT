@@ -111,8 +111,6 @@ RayHit CreateRayHit()
     return hit;
 }
 
-
-
 [numthreads(1,8,1)]
 void BellhopMain(uint3 id : SV_DispatchThreadID)
 {

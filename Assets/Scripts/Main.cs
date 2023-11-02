@@ -523,7 +523,7 @@ public class Main : MonoBehaviour
 
     void BellhopComputeEigenRays()
     {
-        for (int i = 0; i < contributingRays.Count - 1; i++) // TODO: här blir det problem eftersom sista strålen kan skippas
+        for (int i = 0; i < contributingRays.Count - 1; i++)
         {
             // find pairs of rays
             if (contributingRays[i + 1].theta < contributingRays[i].theta + 1.5 * dtheta && contributingRays[i].phi == contributingRays[i + 1].phi)
