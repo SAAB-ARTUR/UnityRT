@@ -7,11 +7,8 @@ using UnityTemplateProjects;
 public class World : MonoBehaviour
 {
     [SerializeField] Material lineMaterial = null;
-    //[SerializeField] float sourceDepth = 0;
-
     [SerializeField] GameObject surface = null;
-    [SerializeField] GameObject bottom = null;
-    public Vector3 pyramidTop = Vector3.zero;
+    [SerializeField] GameObject bottom = null;    
     private LineRenderer line = null;
     private List<LineRenderer> bottomlines = new List<LineRenderer>();
 
@@ -100,7 +97,7 @@ public class World : MonoBehaviour
         controller.lower_limit_y = waterDepth;
         controller.upper_limit_z = zmax;
         controller.lower_limit_z = zmin;
-        Debug.Log(waterDepth / 2);
+        
         controller.JumpTo(Vector3.up * waterDepth/2);
     }    
 
@@ -162,11 +159,6 @@ public class World : MonoBehaviour
         // shift the vertices up to 0 depth
         vertices = vertices.Select(x => { return x - upshift; }).ToArray();
 
-        foreach(Vector3 vertex in vertices)
-        {
-            Debug.Log(vertex);
-        }
-
         mesh.vertices = vertices;
         mesh.triangles = Enumerable.Range(0, vertices.Length).ToArray();
 
@@ -175,7 +167,6 @@ public class World : MonoBehaviour
 
         surface.GetComponent<MeshFilter>().mesh = mesh;
     }
-
 
     public void AddPlaneBottom() 
     {
@@ -202,12 +193,10 @@ public class World : MonoBehaviour
 
         Mesh m1 = DoublePlaneMesh(Vector3.zero);
 
-        surface.GetComponent<MeshFilter>().mesh = m1;
-
-        //surface = _surface;
+        surface.GetComponent<MeshFilter>().mesh = m1;        
     }
 
-    private Vector3 mean(Vector3[] vectors) 
+    private Vector3 Mean(Vector3[] vectors) 
     {        
         int n_vec = vectors.Length;
 
@@ -230,7 +219,7 @@ public class World : MonoBehaviour
         Vector3[] square = new Vector3[] {
             Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range),
         };
-        Vector3 center_local = mean(square);
+        Vector3 center_local = Mean(square);
         square = square.Select(x => { return x - center_local + center; }).ToArray();
 
         mesh.vertices = square;

@@ -54,7 +54,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
     RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);
     uint istep = 1;
 
-    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE) 
+    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS) 
     {
         // save data from previous step
         c0 = c;
@@ -141,7 +141,7 @@ void HovemTrace(SSP soundSpeedProfile, float theta, float2 xs, float2 xr, float 
     }
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
-    for (uint i = istep; i < _BELLHOPSIZE; i++) {
+    for (uint i = istep; i < _MAXSTEPS; i++) {
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);
     }    
 

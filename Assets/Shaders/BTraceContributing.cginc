@@ -84,7 +84,7 @@ void btrace_contributing(SSP soundSpeedProfile, float theta, float dtheta, float
 
     uint istep = 1;
         
-    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
+    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS)
     {
         // Apply caustic phase change
         if (q <= 0 && q0 > 0 || q >= 0 && q0 < 0)

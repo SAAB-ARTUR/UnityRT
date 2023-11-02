@@ -24,8 +24,6 @@ public class Main : MonoBehaviour
     private int oldMaxSurfaceHits = 0;
     private int oldMaxBottomHits = 0;    
 
-    //private RayTracingVisualization sourceCameraScript = null;    
-
     public bool doRayTracing = false;
     private bool lockRayTracing = false;
     private bool errorFree = true;
@@ -36,8 +34,8 @@ public class Main : MonoBehaviour
     private RayTracingAccelerationStructure rtas = null;
     private bool rebuildRTAS = false;
 
-    private SurfaceAndSeafloorInstanceData surfaceInstanceData = null;
-    private SurfaceAndSeafloorInstanceData seafloorInstanceData = null; 
+    private SurfaceAndBottomInstanceData surfaceInstanceData = null;
+    private SurfaceAndBottomInstanceData bottomInstanceData = null; 
 
     private SSPFileReader _SSPFileReader = null;
     private List<SSPFileReader.SSP_Data> SSP = null;
@@ -119,8 +117,6 @@ public class Main : MonoBehaviour
                                             (float)0.441142275504079, (float)0.449387925513501, (float)0.457633575522923, (float)0.465879225532345, (float)0.474124875541767, (float)0.482370525551189, (float)0.490616175560611, (float)0.498861825570033,
                                             (float)0.507107475579455, (float)0.515353125588877, (float)0.523598775598299 };    
 
-    private Vector3 oldPyramidTop = Vector3.zero;
-
     // Start is called before the first frame update
     void Start()
     {
@@ -156,10 +152,10 @@ public class Main : MonoBehaviour
             surfaceInstanceData = null;
         }
 
-        if (seafloorInstanceData != null)
+        if (bottomInstanceData != null)
         {
-            seafloorInstanceData.Dispose();
-            seafloorInstanceData = null;
+            bottomInstanceData.Dispose();
+            bottomInstanceData = null;
         }
         
         SSPBuffer?.Release();
@@ -217,11 +213,11 @@ public class Main : MonoBehaviour
 
         if (surfaceInstanceData == null)
         {            
-            surfaceInstanceData = new SurfaceAndSeafloorInstanceData();
+            surfaceInstanceData = new SurfaceAndBottomInstanceData();
         }        
-        if (seafloorInstanceData == null)
+        if (bottomInstanceData == null)
         {            
-            seafloorInstanceData = new SurfaceAndSeafloorInstanceData();
+            bottomInstanceData = new SurfaceAndBottomInstanceData();
         }
     }
 
@@ -306,7 +302,7 @@ public class Main : MonoBehaviour
         World world = worldManager.GetComponent<World>();
         for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
         {
-            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+            for (int itheta = 17; itheta < 18/*sourceParams.ntheta*/; itheta++)
             {
                 PlotLines(iphi, itheta, rayPositions);
             }
@@ -451,7 +447,7 @@ public class Main : MonoBehaviour
             computeShader.SetFloat("theta", sourceParams.theta);
             computeShader.SetInt("ntheta", sourceParams.ntheta);
 
-            computeShader.SetInt("_BELLHOPSIZE", modelParams.INTEGRATIONSTEPS);
+            computeShader.SetInt("_MAXSTEPS", modelParams.INTEGRATIONSTEPS);
             computeShader.SetFloat("deltas", modelParams.BELLHOPSTEPSIZE);
 
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1); //TODO: Lista ut hur vinklar ska hanteras. Gör som i matlab, och sen lös det på nåt sätt
@@ -472,10 +468,9 @@ public class Main : MonoBehaviour
             computeShader.SetInt("_MAXBOTTOMHITS", modelParams.MAXNRBOTTOMHITS);
         }        
 
-        if (world.WorldHasChanged() || oldPyramidTop != world.pyramidTop || modelParams.HasChanged(oldRTModelParams) || _STLFileReader.BathymetryFileHasChanged())
+        if (world.WorldHasChanged() || modelParams.HasChanged(oldRTModelParams) || _STLFileReader.BathymetryFileHasChanged())
         {
-            oldRTModelParams = modelParams.ToStruct();
-            oldPyramidTop = world.pyramidTop;
+            oldRTModelParams = modelParams.ToStruct();            
             BuildWorld();
             world.AckChangeInWorld();
             _STLFileReader.AckBathymetryFileHasChanged();
@@ -510,7 +505,6 @@ public class Main : MonoBehaviour
                 SSPBuffer.SetData(SSP.ToArray(), 0, 0, SSP.Count);                
                 SetComputeBuffer("_SSPBuffer", SSPBuffer, modelParams.RTMODEL);
                 World world = worldManager.GetComponent<World>();
-                //world.SetNrOfWaterplanes(SSP.Count - 2);
                 world.SetWaterDepth(SSP.Last().depth);
             }
             catch (Exception e)
@@ -633,11 +627,9 @@ public class Main : MonoBehaviour
                         rayData[i - 1].contributing = 1;
                         // add to list
                         contributingRays.Add(rayData[i - 1]);
-                        contributingRays.Add(rayData[i]);
-                        Debug.Log("theta: " + rayData[i].theta + ", " + rayData[i - 1].theta);
+                        contributingRays.Add(rayData[i]);                        
                         float theta = (rayData[i].theta + rayData[i - 1].theta) / 2;
-                        float phi = rayData[i].phi;
-                        Debug.Log("thetafinal: " + theta);
+                        float phi = rayData[i].phi;                        
                         contributingAngles.Add(new float2(theta, phi));
                     }
                 }
@@ -779,14 +771,14 @@ public class Main : MonoBehaviour
             RayPositionsBuffer.GetData(rayPositions);
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
-            
-            //debugBuf.GetData(debugger);
-            //Debug.Log("------------------------------------------------------------------------------");
-            //for (int i = 69*modelParams.INTEGRATIONSTEPS; i < 70 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
-            //{
-            //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-            //}
-            //Debug.Log("------------------------------------------------------------------------------");
+
+            debugBuf.GetData(debugger);
+            Debug.Log("------------------------------------------------------------------------------");
+            for (int i = 17 * modelParams.INTEGRATIONSTEPS; i < 18 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
+            {
+                Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            }
+            Debug.Log("------------------------------------------------------------------------------");
 
             if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {                
@@ -933,11 +925,11 @@ public class Main : MonoBehaviour
         RayTracingMeshInstanceConfig surfaceConfig = new RayTracingMeshInstanceConfig(surfaceMesh, 0, surfaceMaterial);
         rtas.AddInstances(surfaceConfig, surfaceInstanceData.matrices, id: 1); // add config to rtas with id, id is used to determine what object has been hit in raytracing
 
-        // add seafloor
-        Mesh seafloorMesh = bottom.GetComponent<MeshFilter>().mesh;
-        Material seafloorMaterial = bottom.GetComponent<MeshRenderer>().material;
-        RayTracingMeshInstanceConfig seafloorConfig = new RayTracingMeshInstanceConfig(seafloorMesh, 0, seafloorMaterial);
-        rtas.AddInstances(seafloorConfig, seafloorInstanceData.matrices, id: 2);       
+        // add bottom
+        Mesh bottomMesh = bottom.GetComponent<MeshFilter>().mesh;
+        Material bottomMaterial = bottom.GetComponent<MeshRenderer>().material;
+        RayTracingMeshInstanceConfig bottomConfig = new RayTracingMeshInstanceConfig(bottomMesh, 0, bottomMaterial);
+        rtas.AddInstances(bottomConfig, bottomInstanceData.matrices, id: 2);       
 
         rtas.Build();
         Debug.Log("RTAS built");
@@ -947,5 +939,5 @@ public class Main : MonoBehaviour
 }
 
 // TODOS:
-// 2: se till att strålar inte färdas ut ur volymen för 3D-Hovem, ska testas
+
 // 3: skapa ett knippe av strålar för 3D-hovem

@@ -49,7 +49,7 @@ void HovemTraceContributing(SSP soundSpeedProfile, float theta, float2 xs, float
     
     uint istep = 1;
 
-    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE)
+    while (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS)
     {
         // save data from previous step
         c0 = c;
