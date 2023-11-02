@@ -40,10 +40,10 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     float previous_distance = original_distance;    
     float3 x_cart;
 
-    RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);    
+    RayPositionsBuffer[0 + offset] = toCartesian(phi, xs);
     uint istep = 1;
     
-    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _BELLHOPSIZE) // each ray gets _BELLHOPSIZE nr of steps to reach the target
+    while (current_distance <= previous_distance && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS) // each ray gets _MAXSTEPS nr of steps to reach the target
     {
         // Apply caustic phase change
         if (q <= 0 && q0 > 0 || q >= 0 && q0 < 0)
@@ -66,7 +66,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
 
         // Reflection to top and bottom        
         if (stepOutput.x.y >= 0)
-        {
+        {            
             ntop++;
             Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
             Tray = reflection.Tray;
@@ -74,7 +74,7 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         }
 
         if (stepOutput.x.y <= depth)
-        {
+        {            
             nbot++;
             Reflection reflection = breflect(stepOutput.c, stepOutput.cz, Tray, p, stepOutput.q);
             Tray = reflection.Tray;
@@ -92,13 +92,17 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         current_distance = sqrt(pow((x.x - xr.x), 2) + pow((x.y - xr.y), 2));        
 
         x_cart = toCartesian(phi, x);
+        if (x_cart.y > 0)
+        {
+            x_cart.y = 0;
+        }
         RayPositionsBuffer[istep + offset] = x_cart;        
 
         istep++;
     }
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
-    for (uint i = istep; i < _BELLHOPSIZE; i++) { 
+    for (uint i = istep; i < _MAXSTEPS; i++) {        
         RayPositionsBuffer[i + offset] = float3(0, 10, 0);        
     }
 

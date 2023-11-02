@@ -4,11 +4,11 @@ using Unity.Collections;
 using System;
 
 
-public class SurfaceAndSeafloorInstanceData : IDisposable
+public class SurfaceAndBottomInstanceData : IDisposable
 {
     public NativeArray<Matrix4x4> matrices;
 
-    public SurfaceAndSeafloorInstanceData()
+    public SurfaceAndBottomInstanceData()
     {
         matrices = new NativeArray<Matrix4x4>(1, Allocator.Persistent);
 

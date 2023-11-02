@@ -7,11 +7,10 @@ using UnityTemplateProjects;
 public class World : MonoBehaviour
 {
     [SerializeField] Material lineMaterial = null;
-    [SerializeField] float sourceDepth = 0;
-    public Vector3 pyramidTop = Vector3.zero;
-    //[SerializeField] GameObject srcSphere = null;
+    [SerializeField] GameObject surface = null;
+    [SerializeField] GameObject bottom = null;    
     private LineRenderer line = null;
-    private List<LineRenderer> pyramidlines = new List<LineRenderer>();
+    private List<LineRenderer> bottomlines = new List<LineRenderer>();
 
     public int range
     {
@@ -30,17 +29,18 @@ public class World : MonoBehaviour
             }
         }
     }
+    // volume boundaries
+    private float xmin;
+    private float xmax;
+    private float zmin;
+    private float zmax;
 
     [SerializeField]
     private int _range;    
     
-    private float waterDepth = 0.0f;
-
-    private int nrOfWaterplanes = 0;
+    private float waterDepth = 0.0f;    
 
     private Camera sourceSphere;
-    private GameObject surface;
-    private GameObject bottom;
 
     private bool changeInWorld = false;
 
@@ -78,10 +78,6 @@ public class World : MonoBehaviour
 
     public bool WorldHasChanged()
     {
-        /*if (changeInWorld)
-        {
-            Debug.Log("change");
-        }*/
         return changeInWorld;
     }
 
@@ -94,82 +90,113 @@ public class World : MonoBehaviour
         sourceSphere = c;
 
         SimpleSourceController controller = c.GetComponent<SimpleSourceController>();
-        
-        controller.upper_limit_x = range/2;
-        controller.lower_limit_x = -range/2;
+
+        controller.upper_limit_x = xmax;
+        controller.lower_limit_x = xmin;
         controller.upper_limit_y = 0;
         controller.lower_limit_y = waterDepth;
-        controller.upper_limit_z = range/2;
-        controller.lower_limit_z = -range/2;
+        controller.upper_limit_z = zmax;
+        controller.lower_limit_z = zmin;
         
-        controller.JumpTo(Vector3.down * sourceDepth);
-    }
+        controller.JumpTo(Vector3.up * waterDepth/2);
+    }    
 
-    public void AddSurface(GameObject _surface) 
+    public void AddCustomBottom(Mesh mesh)
     {
-        Mesh m1 = DoublePlaneMesh(Vector3.zero);
-
-        _surface.GetComponent<MeshFilter>().mesh = m1;
-        
-        surface = _surface;
-    }
-    public void AddBottom(GameObject _bottom, RTModelParams.RT_Model rtmodel) 
-    {
-        foreach (LineRenderer line in pyramidlines) // delete lines from previous runs
+        foreach (LineRenderer line in bottomlines) // delete lines from previous runs
         {
             Destroy(line.gameObject);
         }
-        pyramidlines.Clear();
-        Vector3 center = Vector3.up * waterDepth;
+        bottomlines.Clear();
 
-        Mesh m1;
-        if (rtmodel == RTModelParams.RT_Model.HovemRTAS)
+        // set the mesh
+        bottom.GetComponent<MeshFilter>().mesh = mesh;
+
+        //shift the custom mesh down to the correct depth
+        Vector3[] vertices = mesh.vertices;
+        Vector3 downshift = Vector3.up * waterDepth;
+        vertices = vertices.Select(x => { return x + downshift; }).ToArray();
+        bottom.GetComponent<MeshFilter>().mesh.vertices = vertices;
+
+        Mesh customMesh = bottom.GetComponent<MeshFilter>().mesh;
+
+        for (int i = 2; i < mesh.triangles.Length; i += 3)
         {
-            m1 = BottomPyramid(center, pyramidTop);
-            for (int i = 2; i < m1.triangles.Length; i += 3)
-            {
-                line = new GameObject("Line").AddComponent<LineRenderer>();
-                line.startWidth = 0.03f;
-                line.endWidth = 0.03f;
-                line.useWorldSpace = true;
+            line = new GameObject("Line").AddComponent<LineRenderer>();
+            line.startWidth = 0.03f;
+            line.endWidth = 0.03f;
+            line.useWorldSpace = true;
 
-                Vector3[] positions = new Vector3[4] { m1.vertices[m1.triangles[i]], m1.vertices[m1.triangles[i - 1]], m1.vertices[m1.triangles[i - 2]], m1.vertices[m1.triangles[i]] };
-                line.positionCount = 4;
-                line.SetPositions(positions);
+            Vector3[] positions = new Vector3[4] { customMesh.vertices[customMesh.triangles[i]], customMesh.vertices[customMesh.triangles[i - 1]], customMesh.vertices[customMesh.triangles[i - 2]], customMesh.vertices[customMesh.triangles[i]] };
+            line.positionCount = 4;
+            line.SetPositions(positions);
 
-                line.material = lineMaterial;
-                line.material.color = Color.black;
+            line.material = lineMaterial;
+            line.material.color = Color.black;
 
-                pyramidlines.Add(line);
-            }
+            bottomlines.Add(line);
         }
-        else
-        {
-            m1 = DoublePlaneMesh(center);
-        }       
 
-        _bottom.GetComponent<MeshFilter>().mesh = m1;
-        
-        bottom = _bottom;        
+        // calculate the boundaries (grab vertices from the flat part of the bottom and take the smallest and largest x/z-values
+        Vector3[] verts = bottom.GetComponent<MeshFilter>().mesh.vertices.Skip(bottom.GetComponent<MeshFilter>().mesh.vertexCount - 3).Take(3).ToArray();
+        xmin = verts[2].x;
+        xmax = verts[0].x;
+        zmin = verts[0].z;
+        zmax = verts[2].z;
     }
 
-    public void AddWaterplane(GameObject waterplane) 
+    public void AddCustomSurface() // not actually a custom surface, it just matches the size of bottom and creates a flat plane from the dimensions of the bottom
     {
-        // Create one waterplane, more waterplanes (if wanted) are created in main when the waterplane is added to the raytracing acceleration structure
-        float dx = waterDepth / (nrOfWaterplanes + 1);
-                
-        Vector3 center = Vector3.up * dx;
-        Mesh m1 = SinglePlaneMesh(center);
+        Mesh mesh = new Mesh()
+        {
+            name = "Plane Mesh"
+        };
 
-        waterplane.GetComponent<MeshFilter>().mesh = m1;
+        // take the final 6 vertices and use them to create a surface of the same dimensions (definition of the bottom vertices is in STLFileReader.cs)
+        Vector3[] vertices = bottom.GetComponent<MeshFilter>().mesh.vertices.Skip(bottom.GetComponent<MeshFilter>().mesh.vertexCount - 12).Take(12).ToArray();
+        Vector3 upshift = Vector3.up * waterDepth;
 
-        // make plane invisible in the normal scene
-        Color temp = waterplane.GetComponent<MeshRenderer>().material.color;
-        temp.a = 0;
-        waterplane.GetComponent<MeshRenderer>().material.color = temp;
+        // shift the vertices up to 0 depth
+        vertices = vertices.Select(x => { return x - upshift; }).ToArray();
+
+        mesh.vertices = vertices;
+        mesh.triangles = Enumerable.Range(0, vertices.Length).ToArray();
+
+        mesh.normals = Enumerable.Repeat(Vector3.back, mesh.vertexCount).ToArray();
+        mesh.tangents = Enumerable.Repeat(new Vector4(1f, 0f, 0f, -1f), mesh.vertexCount).ToArray();
+
+        surface.GetComponent<MeshFilter>().mesh = mesh;
     }
 
-    private Vector3 mean(Vector3[] vectors) 
+    public void AddPlaneBottom() 
+    {
+        foreach (LineRenderer line in bottomlines) // delete lines from previous runs
+        {
+            Destroy(line.gameObject);
+        }
+        bottomlines.Clear();
+        Vector3 center = Vector3.up * waterDepth;        
+
+        Mesh m1 = DoublePlaneMesh(center);
+        bottom.GetComponent<MeshFilter>().mesh = m1;
+
+        // calculate the boundaries
+        xmin = -range / 2;
+        zmin = -range / 2;
+        xmax = range / 2;
+        zmax = range / 2;
+    }
+
+    public void AddPlaneSurface()
+    {
+        // surface is flat for now, but it should be the same size as bottom
+
+        Mesh m1 = DoublePlaneMesh(Vector3.zero);
+
+        surface.GetComponent<MeshFilter>().mesh = m1;        
+    }
+
+    private Vector3 Mean(Vector3[] vectors) 
     {        
         int n_vec = vectors.Length;
 
@@ -190,9 +217,9 @@ public class World : MonoBehaviour
         };
 
         Vector3[] square = new Vector3[] {
-            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range),             
+            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range),
         };
-        Vector3 center_local = mean(square);
+        Vector3 center_local = Mean(square);
         square = square.Select(x => { return x - center_local + center; }).ToArray();
 
         mesh.vertices = square;
@@ -214,85 +241,7 @@ public class World : MonoBehaviour
         };
 
         return mesh;
-    }
-
-    private Mesh SinglePlaneMesh(Vector3 center)
-    {
-        Mesh mesh = new Mesh()
-        {
-            name = "Plane Mesh"
-        };
-
-        Vector3[] square = new Vector3[] {
-            Vector3.zero, new Vector3(range, 0f, 0f), new Vector3(0f, 0f, range), new Vector3(range, 0f, range), // Upper plane
-        };
-        Vector3 center_local = mean(square);
-        square = square.Select(x => { return x - center_local + center; }).ToArray();
-
-        mesh.vertices = square;
-
-        mesh.normals = new Vector3[] {
-            Vector3.back, Vector3.back, Vector3.back, Vector3.back,
-        };
-
-        mesh.tangents = new Vector4[] {
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-        };
-
-        mesh.triangles = new int[] {
-            0, 2, 1, 1, 2, 3,
-        };
-
-        return mesh;
-    }
-
-    private Mesh BottomPyramid(Vector3 center, Vector3 topPoint)
-    {
-        Mesh mesh = new Mesh();
-        Vector3[] pyramid = new Vector3[] // create vertices for 4 triangles and combine them into a pyramid
-        {
-            new Vector3(-range/2, waterDepth, -range/2), new Vector3(-range/2, waterDepth, range/2), new Vector3(range/2, waterDepth, range/2), new Vector3(range/2, waterDepth, -range/2),
-            topPoint// top position
-        };
-
-        mesh.vertices = pyramid;
-
-        mesh.normals = new Vector3[] {
-            Vector3.back, Vector3.back, Vector3.back, Vector3.back, Vector3.back
-        };
-
-        mesh.tangents = new Vector4[] {
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-            new Vector4(1f, 0f, 0f, -1f),
-        };
-
-        mesh.triangles = new int[] {
-            0, 1, 4, // pyramid
-            1, 2, 4, 
-            3, 4, 2,
-            0, 4, 3,
-            0, 2, 1, 0, 3, 2, // seafloor 
-        };
-
-        return mesh;
-    }
-
-    public int GetNrOfWaterplanes()
-    {
-        return nrOfWaterplanes;
-    }
-
-    public void SetNrOfWaterplanes(int value)
-    {
-        nrOfWaterplanes = value;
-        changeInWorld = true;
-    }
+    }   
 
     public float GetWaterDepth()
     {
@@ -312,7 +261,7 @@ public class World : MonoBehaviour
 
         for(int i = 3; i < targetCoords.Count; i+=3)
         {
-            if (targetCoords[i] <= range / 2 && targetCoords[i] >= -range / 2 && targetCoords[i+2] <= range / 2 && targetCoords[i+2] >= -range / 2 && targetCoords[i+1] <= 0 && targetCoords[i+1] >= waterDepth)
+            if (targetCoords[i] <= xmax && targetCoords[i] >= xmin && targetCoords[i+2] <= zmax && targetCoords[i+2] >= zmin && targetCoords[i+1] <= 0 && targetCoords[i+1] >= waterDepth)
             {
                 GameObject temp = Instantiate(target, new Vector3(targetCoords[i], targetCoords[i + 1], targetCoords[i + 2]), Quaternion.identity); // create a new target
                 tempTargets.Add(temp);
@@ -324,7 +273,7 @@ public class World : MonoBehaviour
         }
 
         // first target position denotes the 'main' target
-        if (targetCoords[0] <= range / 2 && targetCoords[0] >= -range / 2 && targetCoords[2] <= range / 2 && targetCoords[2] >= -range / 2 && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
+        if (targetCoords[0] <= xmax && targetCoords[0] >= xmin && targetCoords[2] <= zmax && targetCoords[2] >= zmin && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
         {
             target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
         }
@@ -388,8 +337,18 @@ public class World : MonoBehaviour
         targetChange = false;
     }
 
-    public GameObject GetTarget()
+    public GameObject GetSurface()
     {
-        return target;
+        return surface;
+    }
+
+    public GameObject GetBottom()
+    {
+        return bottom;
+    }
+
+    public float[] GetBoundaries()
+    {
+        return new float[] { xmin, xmax, zmin, zmax };
     }
 }
