@@ -1356,7 +1356,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9dcd90d4b09e47a408d8e5bb3df2bca7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  lineMaterial: {fileID: 0}
   surface: {fileID: 631925276}
   bottom: {fileID: 2030398151}
   _range: 300

@@ -261,7 +261,12 @@ public class Main : MonoBehaviour
             world.AddCustomBottom(_STLFileReader.GetBottomMesh());
 
             List<Vector3> normals = _STLFileReader.GetBottomMeshNormals();
+            Debug.Log(normals.Count);
             NormalBuffer = new ComputeBuffer(normals.Count, 3 * sizeof(float));
+            foreach(Vector3 normal in normals)
+            {
+                Debug.Log(normal);
+            }
             NormalBuffer.SetData(normals.ToArray());
             SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);
             world.AddCustomSurface();
@@ -282,7 +287,7 @@ public class Main : MonoBehaviour
         world.AddSource(sourceCamera);
         
         
-        computeShader.SetFloat("depth", world.GetWaterDepth());
+        computeShader.SetFloat("maxdepth", world.GetWaterDepth());
         
         
     }

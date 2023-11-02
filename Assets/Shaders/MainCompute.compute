@@ -51,7 +51,7 @@ uint _MAXSURFACEHITS;
 static const float PI = 3.14159265f;
 
 // boundaries of the volume
-float depth;
+float maxdepth;
 float xmin;
 float xmax;
 float zmin;
@@ -134,7 +134,7 @@ void BellhopMain(uint3 id : SV_DispatchThreadID)
     PerRayData prd;    
     
     uint offset = (id.y + id.x * ntheta) * _MAXSTEPS;
-    btrace(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
+    btrace(soundSpeedProfile, theta, dtheta, xs, xr, maxdepth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
     
     PerRayDataBuffer[id.y + id.x * ntheta] = prd;
 }
@@ -159,7 +159,7 @@ void BellhopTraceContributingRays(uint3 id : SV_DispatchThreadID)
 
     PerRayData prd;    
     
-    btrace_contributing(soundSpeedProfile, theta, dtheta, xs, xr, depth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
+    btrace_contributing(soundSpeedProfile, theta, dtheta, xs, xr, maxdepth, deltas, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
 
     ContributingRayData[id.y] = prd;
 }
@@ -189,7 +189,7 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
     PerRayData prd;    
 
     uint offset = (id.y + id.x * ntheta) * _MAXSTEPS; // each ray gets _MAXSTEPS nr of steps to reach the target    
-    HovemTrace(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
+    HovemTrace(soundSpeedProfile, theta, xs, xr, maxdepth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
     
     PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop    
 }
@@ -219,7 +219,7 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
 
     float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };    
     PerRayData prd;    
-    HovemTraceContributing(soundSpeedProfile, theta, xs, xr, depth, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
+    HovemTraceContributing(soundSpeedProfile, theta, xs, xr, maxdepth, _MAXSURFACEHITS, _MAXBOTTOMHITS, phi, prd);
 
     // fill buffer
     uint eigIdx = 0;
@@ -254,7 +254,7 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     float cr = ssp(xr.y, soundSpeedProfile, 0).c;
 
     //bottom conditions
-    float c1 = ssp(depth, soundSpeedProfile, 0).c;
+    float c1 = ssp(maxdepth, soundSpeedProfile, 0).c;
     float c2 = 1600;
     float rho1 = 1000;
     float rho2 = 1000 * 1.8;
@@ -709,9 +709,14 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
             hit.position = pos0 + (ray.Direction * rayQuery.CommittedRayT());
             hit.distance = rayQuery.CommittedRayT();
-            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, depth)).xy, rayQuery.CommittedPrimitiveIndex());
+            debugBuf[offset + istep] = float3(depth, hit.position.y, ray.Direction.y);
 
-
+            bool a = depth > hit.position.y && ray.Direction.y < 0;
+            float aa = (float) a;
+            bool b = depth < hit.position.y && ray.Direction.y > 0;
+            float bb = (float) b;
+            debugBuf[offset + istep] = float3(depth, hit.position.y, ray.Direction.y);
+            
             // ray interactions with surface and bottom are the interesting cases
             if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver                
                 //debugBuf[offset + istep] = float3(hit.position.xy, 19);
@@ -725,7 +730,8 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
             }
             else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step if we are getting closer to the receiver                
                 //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 1897);
-                if (!((depth > hit.position.y && ray.Direction.y < 0) || (depth < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
+                
+                if (!((depth >= hit.position.y && ray.Direction.y < 0) || (depth < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
                     //debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
                    
 
@@ -764,14 +770,14 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
             //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
         }
 
-
+        //debugBuf[offset + istep] = float3(nbot, 763, 128);
         pos = RayPositionsBuffer[istep + offset];
 
         istep++;
         // distance left to the receiver
         xxs = 1; // (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position // TODO: den här borde nog inte vara 1
         // xxs borde väl kunna tas bort, strålen ska fortsätta sålänge den är innanför volymens gränser och inte har träffat botten/yta för många gånger
-        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && pos.y >= depth && pos.y <= 0 && pos.x <= xmax && pos.x >= xmin && pos.z <= zmax && pos.z >= zmin);
+        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && pos.y >= maxdepth && pos.y <= 0 && pos.x <= xmax && pos.x >= xmin && pos.z <= zmax && pos.z >= zmin);
     }
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
