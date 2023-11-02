@@ -683,7 +683,7 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
             float xstep = deltar * cos(phi);
             float zstep = deltar * sin(phi);
             direction = float3(xstep, deltadepth, zstep);
-            debugBuf[offset + istep] = direction;
+            debugBuf[offset + istep] = float3(direction.xy, 1453);
         }
         // --- layer traversal done ---     
 
@@ -730,7 +730,7 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
                    
 
                     float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit
-                    debugBuf[offset + istep] = float3(normal.xyz);
+                    debugBuf[offset + istep] = float3(normal.xy, 12986374);
                     float3 reflection = reflect(direction.xyz, normal.xyz);
                     reflection = normalize(reflection);
                     //debugBuf[offset + istep] = float3(reflection.xy, 1997);
