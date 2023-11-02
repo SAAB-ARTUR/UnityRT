@@ -191,7 +191,7 @@ void HovemMain(uint3 id : SV_DispatchThreadID)
     uint offset = (id.y + id.x * ntheta) * _MAXSTEPS; // each ray gets _MAXSTEPS nr of steps to reach the target    
     HovemTrace(soundSpeedProfile, theta, xs, xr, maxdepth, _MAXSURFACEHITS, _MAXBOTTOMHITS, offset, phi, prd, id);
     
-    PerRayDataBuffer[id.y + id.x * ntheta] = prd; // TODO??: create separate buffers and data structs for hovem and bellhop    
+    PerRayDataBuffer[id.y + id.x * ntheta] = prd;
 }
 
 #include "HovemTraceContributing.cginc"
@@ -290,8 +290,8 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
             npi -= 2;
         }
 
-        float phase = npi * PI; // TODO: detta ska egentligen vara en array eller buffer, med plats för varje ray och frekvens
-        float Amp = Amp0 * pow(Rbot, nbot) * exp(-FreqsAndDampData[i].y * curve); // samma här
+        float phase = npi * PI; // TODO: this should be a buffer containing phases for each frequency of the signal
+        float Amp = Amp0 * pow(Rbot, nbot) * exp(-FreqsAndDampData[i].y * curve); // this should also be a buffer for the amplitudes of each frequency of the signal
         // RMS amplitude
         Arms += pow(Amp, 2);
         
