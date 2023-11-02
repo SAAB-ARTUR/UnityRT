@@ -54,7 +54,7 @@ public class Main : MonoBehaviour
     private const int BellhopTraceContributingRaysKernelIdx = 1;
     private const int HovemTraceRaysKernelIdx = 2;
     private const int HovemTraceContributingRaysKernelIdx = 3;
-    private const int HovemRTASTraceRaysKernelIdx = 4;
+    private const int HovemRTASTraceRaysKernelIdx = 5;
 
     struct PerRayData
     {

@@ -481,7 +481,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
 
             
             // ray interactions with surface and bottom are the interesting cases
-            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver                
+            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step
                 //debugBuf[offset + istep] = float3(hit.position.xy, 19);
                 //if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
                 if(z >= -1e-6) {
@@ -489,11 +489,11 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                     RayPositionsBuffer[istep + offset] = float3(hit.position.x, 0, hit.position.z); // overwrite the data stored in the position buffer with the position of the hit
                     tz = -tz;
                     ntop++;
-                    z -= 0.0005;
+                    z -= 0.0005; // move away from the surface slightly
                     debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 152244);
                 }        
             }
-            else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step if we are getting closer to the receiver                
+            else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step        
                 debugBuf[offset + istep] = float3(z, hit.position.y, 1897);
                 //if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
                 if (z <= hit.position.y && ray.Direction.y < 0)
@@ -535,7 +535,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
         xxs = 1;
         
-        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && r < (xmax - xmin) && z > maxdepth && z < 0);
+        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && r < (xmax - xmin) && z > maxdepth && z < 0); //continue to send a ray as long as it's in bounds and has not hit the bottom or surface too many times
         //debugBuf[offset + istep] = float3(xxs, xr.y-z, (float)hit.sendNewRay);
         istep++;
     }
@@ -720,7 +720,12 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
             hit.position = pos0 + (ray.Direction * rayQuery.CommittedRayT());
             hit.distance = rayQuery.CommittedRayT();
-            debugBuf[offset + istep] = float3(depth, hit.position.y, ray.Direction.y);
+            //debugBuf[offset + istep] = float3(depth, hit.position.y, ray.Direction.y);
+            
+            if (hit.position.y < maxdepth)
+            {
+                hit.position.y = maxdepth;
+            }
 
             bool a = depth > hit.position.y && ray.Direction.y < 0;
             float aa = (float) a;
@@ -736,13 +741,15 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
                     //debugBuf[offset + istep] = float3(hit.position.xy, 20);
                     RayPositionsBuffer[istep + offset] = float3(hit.position.x, 0, hit.position.z); // overwrite the data stored in the position buffer with the position of the hit
                     tdepth = -tdepth;
+                    depth -= 0.0005; // move away from the surface slightly
                     ntop++;
                 }
             }
             else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step if we are getting closer to the receiver                
                 //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 1897);
                 
-                if (!((depth >= hit.position.y && ray.Direction.y < 0) || (depth < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
+                //if (!((depth >= hit.position.y && ray.Direction.y < 0) || (depth < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
+                if (depth <= hit.position.y && ray.Direction.y < 0) {
                     //debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
                    
 
