@@ -54,7 +54,7 @@ public class Main : MonoBehaviour
     private const int BellhopTraceContributingRaysKernelIdx = 1;
     private const int HovemTraceRaysKernelIdx = 2;
     private const int HovemTraceContributingRaysKernelIdx = 3;
-    private const int HovemRTASTraceRaysKernelIdx = 5;
+    private const int HovemRTASTraceRaysKernelIdx = 4;
 
     struct PerRayData
     {
@@ -307,7 +307,7 @@ public class Main : MonoBehaviour
         World world = worldManager.GetComponent<World>();
         for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
         {
-            for (int itheta = 17; itheta < 18/*sourceParams.ntheta*/; itheta++)
+            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
             {
                 PlotLines(iphi, itheta, rayPositions);
             }
@@ -777,13 +777,13 @@ public class Main : MonoBehaviour
             rayPositionDataAvail = true;
             PerRayDataBuffer.GetData(rayData);
 
-            debugBuf.GetData(debugger);
-            Debug.Log("------------------------------------------------------------------------------");
-            for (int i = 17 * modelParams.INTEGRATIONSTEPS; i < 18 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
-            {
-                Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
-            }
-            Debug.Log("------------------------------------------------------------------------------");
+            //debugBuf.GetData(debugger);
+            //Debug.Log("------------------------------------------------------------------------------");
+            //for (int i = 17 * modelParams.INTEGRATIONSTEPS; i < 18 * modelParams.INTEGRATIONSTEPS/*debugger.Length*/; i++)
+            //{
+            //    Debug.Log("i: " + i + " x: " + debugger[i].x + " y: " + debugger[i].y + " z: " + debugger[i].z);
+            //}
+            //Debug.Log("------------------------------------------------------------------------------");
 
             if (modelParams.RTMODEL == RTModelParams.RT_Model.Bellhop)
             {                

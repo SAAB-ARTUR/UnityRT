@@ -380,6 +380,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     RayPositionsBuffer[0 + offset] = srcPosition; // save the origin of the ray
     uint istep = 1;
     //debugBuf[offset] = srcPosition;
+    float cz;
     while (hit.sendNewRay) 
     {
         // save data from previous step
@@ -401,7 +402,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         }
         else {
             // next layer
-            float cz;
+            
             if (tz < 0) {
                 cz = _SSPBuffer[ilay].derivative1;
                 ilay = ilay + 1;
@@ -450,6 +451,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         // --- layer traversal done ---     
 
         RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // save the result of the step in the position buffer
+        debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 12);
 
         // step taken, create ray starting from the previous position in the direction of the step's final position
         float deltar = r - r0;
@@ -487,12 +489,17 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                     RayPositionsBuffer[istep + offset] = float3(hit.position.x, 0, hit.position.z); // overwrite the data stored in the position buffer with the position of the hit
                     tz = -tz;
                     ntop++;
+                    z -= 0.0005;
+                    debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 152244);
                 }        
             }
             else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step if we are getting closer to the receiver                
-                //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 1897);
-                if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
-                    //debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
+                debugBuf[offset + istep] = float3(z, hit.position.y, 1897);
+                //if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
+                if (z <= hit.position.y && ray.Direction.y < 0)
+                {
+                
+                    debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
                     RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
                     
                     float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit
@@ -501,7 +508,8 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                     reflection = normalize(reflection);
                     //debugBuf[offset + istep] = float3(reflection.xy, 1997);
 
-                    c = c0;
+                    //c = c0;
+                    c = c0 + cz * (hit.position.y - z0);
 
                     ilay = ilay0;
                     tz = reflection.y;
@@ -513,20 +521,23 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
                     float eps = 0.001; 
                     r = abs(hit.position.x - srcPosition.x) + eps * normal.x;   // Leave the plane. 
                     z = hit.position.y + eps * normal.y;
-                    
+                    //debugBuf[offset + istep] = float3(z, hit.position.y, maxbot);
                 }                
             }
         }
         else
         { // no hit, when the ray misses something it is not certain that a ray should be terminated, (example if a ray turns in a layer, the ray would be sent horizontally and miss)
-            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
+            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
             //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
-        }
+        }        
         
-        istep++;
         // distance left to the receiver
         xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
-        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS);
+        xxs = 1;
+        
+        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && r < (xmax - xmin) && z > maxdepth && z < 0);
+        //debugBuf[offset + istep] = float3(xxs, xr.y-z, (float)hit.sendNewRay);
+        istep++;
     }
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
