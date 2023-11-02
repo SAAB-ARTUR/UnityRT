@@ -260,13 +260,8 @@ public class Main : MonoBehaviour
             // create the custom bottom                        
             world.AddCustomBottom(_STLFileReader.GetBottomMesh());
 
-            List<Vector3> normals = _STLFileReader.GetBottomMeshNormals();
-            Debug.Log(normals.Count);
-            NormalBuffer = new ComputeBuffer(normals.Count, 3 * sizeof(float));
-            foreach(Vector3 normal in normals)
-            {
-                Debug.Log(normal);
-            }
+            List<Vector3> normals = _STLFileReader.GetBottomMeshNormals();            
+            NormalBuffer = new ComputeBuffer(normals.Count, 3 * sizeof(float));            
             NormalBuffer.SetData(normals.ToArray());
             SetComputeBuffer("NormalBuffer", NormalBuffer, modelParams.RTMODEL);
             world.AddCustomSurface();
@@ -295,7 +290,7 @@ public class Main : MonoBehaviour
     #region plotting
     int GetRayStartIndex(int idx, int idy)
     {
-        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();     
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();        
         
         return (idy + idx * sourceParams.ntheta) * modelParams.INTEGRATIONSTEPS;
@@ -936,8 +931,7 @@ public class Main : MonoBehaviour
         RayTracingMeshInstanceConfig bottomConfig = new RayTracingMeshInstanceConfig(bottomMesh, 0, bottomMaterial);
         rtas.AddInstances(bottomConfig, bottomInstanceData.matrices, id: 2);       
 
-        rtas.Build();
-        Debug.Log("RTAS built");
+        rtas.Build();        
 
         computeShader.SetRayTracingAccelerationStructure(HovemRTASTraceRaysKernelIdx, "g_AccelStruct", rtas);
     }

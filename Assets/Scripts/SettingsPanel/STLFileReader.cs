@@ -238,9 +238,7 @@ public class STLFileReader : MonoBehaviour
         catch (Exception e)
         {
             Debug.Log("Exception: " + e.Message);
-        }
-
-        Debug.Log(meshNormals.Count);
+        }        
 
         // create more vertices to add a bottom to the seafloor mesh (for visual purposes only), these get no normals since they are not supposed to be in the rtas
         Vector3[] bottom = new Vector3[]

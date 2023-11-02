@@ -272,8 +272,7 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     // geometrical spreading loss
     float Area_s = 2 * PI * cos(_theta) * abs(ContributingRayData[rayIdx].theta - ContributingRayData[rayIdx - 1].theta);
     float Area_r = 2 * PI * xr.x * abs(xn2 - xn1);
-    float Amp0 = sqrt(Area_s / Area_r);
-    debugBuf[id.y + id.x * ntheta] = float3(Amp0, Area_s, Area_r);
+    float Amp0 = sqrt(Area_s / Area_r);    
 
     // caustic phase shift
     float ncaust = 0;
@@ -362,9 +361,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     float r = xs.x;
     float z = xs.y;
     float ksi = cos(theta) / c;
-    float tz = -sin(theta);
-    //float ksi = sqrt(pow(_ray.direction.x, 2) + pow(_ray.direction.z, 2)) / c;
-    //float tz = _ray.direction.y;
+    float tz = -sin(theta);    
     float tau = 0;
     float len = 0;
     uint ntop = 0;
@@ -372,14 +369,13 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
     uint maxtop = _MAXSURFACEHITS;
     uint maxbot = _MAXBOTTOMHITS;
 
-    float c0, r0, z0, tz0, tau0, len0, ilay0, dz, xxs;
+    float c0, r0, z0, tz0, tau0, len0, ilay0, dz;
     RayHit hit = CreateRayHit(); // empty hit 'struct/object'
     hit.sendNewRay = true;
     hit.position = srcPosition;
 
     RayPositionsBuffer[0 + offset] = srcPosition; // save the origin of the ray
-    uint istep = 1;
-    //debugBuf[offset] = srcPosition;
+    uint istep = 1;    
     float cz;
     while (hit.sendNewRay) 
     {
@@ -450,8 +446,7 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         }
         // --- layer traversal done ---     
 
-        RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // save the result of the step in the position buffer
-        debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 12);
+        RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // save the result of the step in the position buffer        
 
         // step taken, create ray starting from the previous position in the direction of the step's final position
         float deltar = r - r0;
@@ -477,39 +472,36 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
             hit.position = toCartesian(phi, float2(r0, z0)) + (ray.Direction * rayQuery.CommittedRayT());
             hit.distance = rayQuery.CommittedRayT();            
-            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, rayQuery.CommittedPrimitiveIndex());
-
+            
+            if (hit.position.y < maxdepth)
+            {
+                hit.position.y = maxdepth;
+            }
+            
+            if (hit.position.y > 0)
+            {
+                hit.position.y = 0;
+            }
             
             // ray interactions with surface and bottom are the interesting cases
-            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step
-                //debugBuf[offset + istep] = float3(hit.position.xy, 19);
-                //if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
-                if(z >= -1e-6) {
-                    //debugBuf[offset + istep] = float3(hit.position.xy, 20);
+            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step                
+                if(z >= 0) {                    
                     RayPositionsBuffer[istep + offset] = float3(hit.position.x, 0, hit.position.z); // overwrite the data stored in the position buffer with the position of the hit
                     tz = -tz;
                     ntop++;
-                    z -= 0.0005; // move away from the surface slightly
-                    debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 152244);
+                    z -= 0.0005; // move away from the surface slightly                    
                 }        
             }
-            else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step        
-                debugBuf[offset + istep] = float3(z, hit.position.y, 1897);
-                //if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
-                if (z <= hit.position.y && ray.Direction.y < 0)
-                {
-                
-                    debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
+            else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step                        
+                if ((z <= hit.position.y && ray.Direction.y < 0) || (z >= hit.position.y && ray.Direction.y > 0)) // if ray hit the bottom before the end of the step
+                {   
                     RayPositionsBuffer[istep + offset] = hit.position; // overwrite the data stored in the position buffer with the position of the hit
                     
-                    float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit
-                    //debugBuf[offset + istep] = float3(normal.xyz);
+                    float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit                    
                     float2 reflection = reflect(direction.xy, normal.xy);
                     reflection = normalize(reflection);
-                    //debugBuf[offset + istep] = float3(reflection.xy, 1997);
-
-                    //c = c0;
-                    c = c0 + cz * (hit.position.y - z0);
+                    
+                    c = c0 + cz * (hit.position.y - z0); // estimate the sound velocity at the depth that the ray hit the bottom
 
                     ilay = ilay0;
                     tz = reflection.y;
@@ -520,23 +512,13 @@ void HovemWithRTAS(uint3 id : SV_DispatchThreadID)
 
                     float eps = 0.001; 
                     r = abs(hit.position.x - srcPosition.x) + eps * normal.x;   // Leave the plane. 
-                    z = hit.position.y + eps * normal.y;
-                    //debugBuf[offset + istep] = float3(z, hit.position.y, maxbot);
+                    z = hit.position.y + eps * normal.y;                    
                 }                
             }
-        }
-        else
-        { // no hit, when the ray misses something it is not certain that a ray should be terminated, (example if a ray turns in a layer, the ray would be sent horizontally and miss)
-            debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
-            //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
-        }        
+        }               
         
-        // distance left to the receiver
-        xxs = (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position
-        xxs = 1;
+        hit.sendNewRay = (ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && r < (xmax - xmin) && z > maxdepth && z < 0); //continue to send a ray as long as it's in bounds and has not hit the bottom or surface too many times
         
-        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && r < (xmax - xmin) && z > maxdepth && z < 0); //continue to send a ray as long as it's in bounds and has not hit the bottom or surface too many times
-        //debugBuf[offset + istep] = float3(xxs, xr.y-z, (float)hit.sendNewRay);
         istep++;
     }
 
@@ -568,9 +550,6 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
     float theta = angles.x;
     float phi = angles.y;
 
-    //theta = thetaData[id.y];
-    //phi = 0;
-
     float3 pos = srcPosition;
 
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
@@ -594,7 +573,7 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 
     // inital conditions
     float c = _SSPBuffer[ilay].velocity;
-    float r = 0;
+    float r = 0; // r is the length of the step taken
     float depth = xs.y;
     float ksi = cos(theta) / c;
     float tdepth = -sin(theta);
@@ -605,21 +584,18 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
     uint maxtop = _MAXSURFACEHITS;
     uint maxbot = _MAXBOTTOMHITS;
 
-    float c0, r0, depth0, tdepth0, tau0, len0, ilay0, xxs, phi0;
+    float c0, depth0, tdepth0, tau0, len0, ilay0, phi0;
     float3 pos0;
     RayHit hit = CreateRayHit(); // empty hit 'struct/object'
     hit.sendNewRay = true;
-    hit.position = srcPosition;
     float3 direction;
     RayPositionsBuffer[0 + offset] = srcPosition; // save the origin of the ray
-    uint istep = 1;
-    //debugBuf[offset] = srcPosition;
+    uint istep = 1;    
     while (hit.sendNewRay)
     {
         r = 0;
         // save data from previous step
-        c0 = c;
-        r0 = r;
+        c0 = c;        
         depth0 = depth;
         tdepth0 = tdepth;
         tau0 = tau;
@@ -627,9 +603,7 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
         ilay0 = ilay;
         phi0 = phi;
         pos0 = pos;
-        float cz;
-
-        
+        float cz;        
 
         // take a step
         if (tdepth == 0) {
@@ -637,9 +611,6 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
             //r = xr.x;
             
             direction = float3(cos(phi0), 0, sin(phi0));
-
-            /*tau = tau0 + (r - r0) / c;
-            len = len0 + (r - r0);*/
         }
         else {
             // next layer
@@ -669,44 +640,34 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
                 // U-turn
                 c = c0;
                 tdepth = -tdepth;
-                ilay = ilay0;
-                //dz = (1 / ksi - c) / cz;
+                ilay = ilay0;                
             }
 
             // integrate r, tau and len
             if (kappa != 0) {
                 // arc
-                r = r0 + (tdepth0 - tdepth) / kappa;
-                /*tau = tau0 + abs(log(c / c0 * (1 + tdepth0) / (1 + tdepth)) / cz);
-                float ds = sqrt(pow(r - r0, 2) + pow(depth - depth0, 2));
-                len = len0 + ds * (1 + pow(kappa * ds, 2) / 24);*/
+                r = (tdepth0 - tdepth) / kappa;                
             }
             else {
                 // line segment
                 float ds = (depth - depth0) / tdepth;
-                r = r0 + tr * ds;
-                /*tau = tau0 + ds / c;
-                len = len0 + ds;*/
+                r = tr * ds;
             }
             // step taken, create ray starting from the previous position in the direction of the step's final position
-            float deltar = abs(r - r0);
+            float deltar = abs(r);
             float deltadepth = depth - depth0;
             float xstep = deltar * cos(phi);
             float zstep = deltar * sin(phi);
-            direction = float3(xstep, deltadepth, zstep);
-            debugBuf[offset + istep] = float3(direction.xy, 1453);
+            direction = float3(xstep, deltadepth, zstep);            
         }
-        // --- layer traversal done ---     
-
-        
+        // --- layer traversal done ---            
 
         RayPositionsBuffer[istep + offset] = pos0 + toCartesian2(phi, float2(r, depth-depth0)); // save the result of the step in the position buffer
-
 
         direction = normalize(direction);
 
         RayDesc ray; // description of the ray to be used in tracerayinline
-        ray.Origin = pos0;// + toCartesian(phi, float2(r0, depth0)); // send the ray from the previous position
+        ray.Origin = pos0; // send the ray from the previous position
         ray.Direction = direction;
         ray.TMin = 0;
         ray.TMax = 1e20f;
@@ -719,50 +680,37 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) { // if ray has hit someting in the acceleration structure that is made of triangles
             hit.position = pos0 + (ray.Direction * rayQuery.CommittedRayT());
-            hit.distance = rayQuery.CommittedRayT();
-            //debugBuf[offset + istep] = float3(depth, hit.position.y, ray.Direction.y);
+            hit.distance = rayQuery.CommittedRayT();            
             
             if (hit.position.y < maxdepth)
             {
                 hit.position.y = maxdepth;
             }
-
-            bool a = depth > hit.position.y && ray.Direction.y < 0;
-            float aa = (float) a;
-            bool b = depth < hit.position.y && ray.Direction.y > 0;
-            float bb = (float) b;
-            debugBuf[offset + istep] = float3(depth, hit.position.y, ray.Direction.y);
+            
+            if (hit.position.y > 0)
+            {
+                hit.position.y = 0;
+            }
             
             // ray interactions with surface and bottom are the interesting cases
-            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step if we are getting closer to the receiver                
-                //debugBuf[offset + istep] = float3(hit.position.xy, 19);
-                //if (!((z > hit.position.y && ray.Direction.y < 0) || (z < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the surface (meaning that the ray should have stopped before the surface)
-                if (depth >= -1e-6) {
-                    //debugBuf[offset + istep] = float3(hit.position.xy, 20);
+            if (rayQuery.CommittedInstanceID() == 1) { // surface hit, change depth direction and take new step                
+                if (depth >= 0) { // if the step reached the surface                    
                     RayPositionsBuffer[istep + offset] = float3(hit.position.x, 0, hit.position.z); // overwrite the data stored in the position buffer with the position of the hit
                     tdepth = -tdepth;
                     depth -= 0.0005; // move away from the surface slightly
                     ntop++;
                 }
             }
-            else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step if we are getting closer to the receiver                
-                //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).xy, 1897);
-                
-                //if (!((depth >= hit.position.y && ray.Direction.y < 0) || (depth < hit.position.y && ray.Direction.y > 0))) { // if the step ended before the bottom
-                if (depth <= hit.position.y && ray.Direction.y < 0) {
-                    //debugBuf[offset + istep] = float3(hit.position.xy, 1997); //float3(toCartesian(phi, float2(r, z)).xy, 1997);
-                   
-
-                    float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit
-                    debugBuf[offset + istep] = float3(normal.xy, 12986374);
+            else if (rayQuery.CommittedInstanceID() == 2) { // bottom hit, change depth direction and take new step                
+                if ( (depth <= hit.position.y && ray.Direction.y < 0) || (depth >= hit.position.y && ray.Direction.y > 0) ) // if ray hit the bottom before the end of the step
+                {
+                    float3 normal = NormalBuffer[rayQuery.CommittedPrimitiveIndex()].xyz; // normal of the triangle that the ray hit                    
                     float3 reflection = reflect(direction.xyz, normal.xyz);
-                    reflection = normalize(reflection);
-                    //debugBuf[offset + istep] = float3(reflection.xy, 1997);
+                    reflection = normalize(reflection);                    
 
                     float radial = length(reflection.xz);
-
-                    //c = c0;
-                    c = c0 + cz * (hit.position.y - pos0.y);
+                    
+                    c = c0 + cz * (hit.position.y - pos0.y); // estimate the sound velocity at the depth that the ray hit the bottom
 
                     ilay = ilay0;
                     tdepth = reflection.y;
@@ -770,32 +718,20 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
                     nbot++;
 
                     phi = atan2(reflection.z, reflection.x);
-
-                    //r = hit.position.x; // den här blir troligtvis negativ eftersom hit.position har globala koordinater och r har relativa koordninater
-
-                    float eps = 0.001;
-                    //r = abs(hit.position.x - srcPosition.x) + eps * normal.x;   // Leave the plane. 
-                    depth = hit.position.y + eps * normal.y;
                     
-                    // direction = reflection;
+                    float eps = 0.001;                    
+                    depth = hit.position.y + eps * normal.y; // move away from the bottom slightly                    
+                    
                     RayPositionsBuffer[istep + offset] = hit.position + eps * normal; // overwrite the data stored in the position buffer with the position of the hit
                 }
             }
         }
-        else
-        { // no hit, when the ray misses something it is not certain that a ray should be terminated, (example if a ray turns in a layer, the ray would be sent horizontally and miss)
-            //debugBuf[offset + istep] = float3(toCartesian(phi, float2(r, z)).x, toCartesian(phi, float2(r, z)).y, 12555555);
-            //RayPositionsBuffer[istep + offset] = toCartesian(phi, float2(r, z)); // TODO: den här bör vara beroende på hit.position om man nu träffat nåt
-        }
-
-        //debugBuf[offset + istep] = float3(nbot, 763, 128);
+        
         pos = RayPositionsBuffer[istep + offset];
 
-        istep++;
-        // distance left to the receiver
-        xxs = 1; // (r - r0) * (xr.x - r) + (z - z0) * (xr.y - z); // den här borde räknas på nåt annat sätt som använder hit.position // TODO: den här borde nog inte vara 1
-        // xxs borde väl kunna tas bort, strålen ska fortsätta sålänge den är innanför volymens gränser och inte har träffat botten/yta för många gånger
-        hit.sendNewRay = (xxs > 0 && ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && pos.y >= maxdepth && pos.y <= 0 && pos.x <= xmax && pos.x >= xmin && pos.z <= zmax && pos.z >= zmin);
+        istep++;        
+        
+        hit.sendNewRay = (ntop <= maxtop && nbot <= maxbot && istep < _MAXSTEPS && pos.y >= maxdepth && pos.y <= 0 && pos.x <= xmax && pos.x >= xmin && pos.z <= zmax && pos.z >= zmin);
     }
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for

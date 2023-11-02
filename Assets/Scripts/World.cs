@@ -261,7 +261,7 @@ public class World : MonoBehaviour
 
         for(int i = 3; i < targetCoords.Count; i+=3)
         {
-            if (targetCoords[i] <= range / 2 && targetCoords[i] >= -range / 2 && targetCoords[i+2] <= range / 2 && targetCoords[i+2] >= -range / 2 && targetCoords[i+1] <= 0 && targetCoords[i+1] >= waterDepth)
+            if (targetCoords[i] <= xmax && targetCoords[i] >= xmin && targetCoords[i+2] <= zmax && targetCoords[i+2] >= zmin && targetCoords[i+1] <= 0 && targetCoords[i+1] >= waterDepth)
             {
                 GameObject temp = Instantiate(target, new Vector3(targetCoords[i], targetCoords[i + 1], targetCoords[i + 2]), Quaternion.identity); // create a new target
                 tempTargets.Add(temp);
@@ -273,7 +273,7 @@ public class World : MonoBehaviour
         }
 
         // first target position denotes the 'main' target
-        if (targetCoords[0] <= range / 2 && targetCoords[0] >= -range / 2 && targetCoords[2] <= range / 2 && targetCoords[2] >= -range / 2 && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
+        if (targetCoords[0] <= xmax && targetCoords[0] >= xmin && targetCoords[2] <= zmax && targetCoords[2] >= zmin && targetCoords[1] <= 0 && targetCoords[1] >= waterDepth)
         {
             target.transform.position = new Vector3(targetCoords[0], targetCoords[1], targetCoords[2]);
         }
