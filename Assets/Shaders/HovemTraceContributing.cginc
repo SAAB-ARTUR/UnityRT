@@ -163,5 +163,9 @@ void HovemTraceContributing(SSP soundSpeedProfile, float theta, float2 xs, float
     prd.beta = 0; // not for hovem
     prd.qi = 0; // not for hovem    
     prd.contributing = 0; // not for hovem
+    prd.cs = ssp(xs.y, soundSpeedProfile, 0).c;
+    prd.cr = ssp(xr.y, soundSpeedProfile, 0).c;
+
+
 
 }

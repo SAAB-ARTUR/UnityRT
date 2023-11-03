@@ -327,6 +327,8 @@ void HovemTraceContributingRays(uint3 id : SV_DispatchThreadID)
     emptyRay.beta = 0;
     emptyRay.qi = 0;
     emptyRay.contributing = 0;
+    emptyRay.cs = 0;
+    emptyRay.cr = 0;
     ContributingRayData[idx2] = emptyRay;
 }
 
