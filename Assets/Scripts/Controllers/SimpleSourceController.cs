@@ -298,6 +298,9 @@ namespace UnityTemplateProjects
             m_InterpolatingCameraState.x = m_TargetCameraState.x;
             m_InterpolatingCameraState.y = m_TargetCameraState.y;
             m_InterpolatingCameraState.z = m_TargetCameraState.z;
+
+            hasMoved = true;
+            movementStopped = true;
         }
 
         public void DirectLookAt(float yaw, float pitch, float roll) {

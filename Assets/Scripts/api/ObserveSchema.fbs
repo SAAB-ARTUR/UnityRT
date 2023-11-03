@@ -49,13 +49,20 @@ table Reciever {
 
 table Ray {
 
-    nbot:int;
-    ntop:int;
-    ncaust:int;
+    nbot:uint;
+    ntop:uint;
+    ncaust:uint;
     delay:double;
     curve:double;
-    normalized_distance:double;
-    start_angle:double;
+    distance_to_target:double;
+    theta:double;
+    phi:double;
+    qi:double;
+    contributing:uint;
+    transmission_loss:double;
+    target_index:uint;
+
+
 
     x_cylindrical:[CylindricalCoord];
     x_cartesian:[Vec3];
@@ -76,6 +83,8 @@ table World {
 
     sender: Sender;
     reciever: Reciever;
+    cr: float;
+    cs: float;
     ray_collections:[RayCollection];
 
 

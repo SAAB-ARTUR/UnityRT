@@ -238,21 +238,21 @@ class Ray(object):
     def Nbot(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
         return 0
 
     # Ray
     def Ntop(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
         return 0
 
     # Ray
     def Ncaust(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
         return 0
 
     # Ray
@@ -270,22 +270,57 @@ class Ray(object):
         return 0.0
 
     # Ray
-    def NormalizedDistance(self):
+    def DistanceToTarget(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # Ray
-    def StartAngle(self):
+    def Theta(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
     # Ray
-    def XCylindrical(self, j):
+    def Phi(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
+        return 0.0
+
+    # Ray
+    def Qi(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
+        return 0.0
+
+    # Ray
+    def Contributing(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
+        return 0
+
+    # Ray
+    def TransmissionLoss(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(24))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
+        return 0.0
+
+    # Ray
+    def TargetIndex(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(26))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
+        return 0
+
+    # Ray
+    def XCylindrical(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(28))
         if o != 0:
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 24
@@ -296,19 +331,19 @@ class Ray(object):
 
     # Ray
     def XCylindricalLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(28))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Ray
     def XCylindricalIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(28))
         return o == 0
 
     # Ray
     def XCartesian(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(30))
         if o != 0:
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 24
@@ -319,34 +354,34 @@ class Ray(object):
 
     # Ray
     def XCartesianLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(30))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Ray
     def XCartesianIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(30))
         return o == 0
 
     # Ray
     def Beta(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(32))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float64Flags, o + self._tab.Pos)
         return 0.0
 
 def RayStart(builder):
-    builder.StartObject(10)
+    builder.StartObject(15)
 
 def RayAddNbot(builder, nbot):
-    builder.PrependInt32Slot(0, nbot, 0)
+    builder.PrependUint32Slot(0, nbot, 0)
 
 def RayAddNtop(builder, ntop):
-    builder.PrependInt32Slot(1, ntop, 0)
+    builder.PrependUint32Slot(1, ntop, 0)
 
 def RayAddNcaust(builder, ncaust):
-    builder.PrependInt32Slot(2, ncaust, 0)
+    builder.PrependUint32Slot(2, ncaust, 0)
 
 def RayAddDelay(builder, delay):
     builder.PrependFloat64Slot(3, delay, 0.0)
@@ -354,26 +389,41 @@ def RayAddDelay(builder, delay):
 def RayAddCurve(builder, curve):
     builder.PrependFloat64Slot(4, curve, 0.0)
 
-def RayAddNormalizedDistance(builder, normalizedDistance):
-    builder.PrependFloat64Slot(5, normalizedDistance, 0.0)
+def RayAddDistanceToTarget(builder, distanceToTarget):
+    builder.PrependFloat64Slot(5, distanceToTarget, 0.0)
 
-def RayAddStartAngle(builder, startAngle):
-    builder.PrependFloat64Slot(6, startAngle, 0.0)
+def RayAddTheta(builder, theta):
+    builder.PrependFloat64Slot(6, theta, 0.0)
+
+def RayAddPhi(builder, phi):
+    builder.PrependFloat64Slot(7, phi, 0.0)
+
+def RayAddQi(builder, qi):
+    builder.PrependFloat64Slot(8, qi, 0.0)
+
+def RayAddContributing(builder, contributing):
+    builder.PrependUint32Slot(9, contributing, 0)
+
+def RayAddTransmissionLoss(builder, transmissionLoss):
+    builder.PrependFloat64Slot(10, transmissionLoss, 0.0)
+
+def RayAddTargetIndex(builder, targetIndex):
+    builder.PrependUint32Slot(11, targetIndex, 0)
 
 def RayAddXCylindrical(builder, xCylindrical):
-    builder.PrependUOffsetTRelativeSlot(7, flatbuffers.number_types.UOffsetTFlags.py_type(xCylindrical), 0)
+    builder.PrependUOffsetTRelativeSlot(12, flatbuffers.number_types.UOffsetTFlags.py_type(xCylindrical), 0)
 
 def RayStartXCylindricalVector(builder, numElems):
     return builder.StartVector(24, numElems, 8)
 
 def RayAddXCartesian(builder, xCartesian):
-    builder.PrependUOffsetTRelativeSlot(8, flatbuffers.number_types.UOffsetTFlags.py_type(xCartesian), 0)
+    builder.PrependUOffsetTRelativeSlot(13, flatbuffers.number_types.UOffsetTFlags.py_type(xCartesian), 0)
 
 def RayStartXCartesianVector(builder, numElems):
     return builder.StartVector(24, numElems, 8)
 
 def RayAddBeta(builder, beta):
-    builder.PrependFloat64Slot(9, beta, 0.0)
+    builder.PrependFloat64Slot(14, beta, 0.0)
 
 def RayEnd(builder):
     return builder.EndObject()
@@ -501,8 +551,22 @@ class World(object):
         return None
 
     # World
-    def RayCollections(self, j):
+    def Cr(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
+        return 0.0
+
+    # World
+    def Cs(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
+        return 0.0
+
+    # World
+    def RayCollections(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
@@ -514,18 +578,18 @@ class World(object):
 
     # World
     def RayCollectionsLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # World
     def RayCollectionsIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         return o == 0
 
 def WorldStart(builder):
-    builder.StartObject(3)
+    builder.StartObject(5)
 
 def WorldAddSender(builder, sender):
     builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(sender), 0)
@@ -533,8 +597,14 @@ def WorldAddSender(builder, sender):
 def WorldAddReciever(builder, reciever):
     builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(reciever), 0)
 
+def WorldAddCr(builder, cr):
+    builder.PrependFloat32Slot(2, cr, 0.0)
+
+def WorldAddCs(builder, cs):
+    builder.PrependFloat32Slot(3, cs, 0.0)
+
 def WorldAddRayCollections(builder, rayCollections):
-    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(rayCollections), 0)
+    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(rayCollections), 0)
 
 def WorldStartRayCollectionsVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)

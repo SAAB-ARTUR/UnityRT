@@ -98,6 +98,8 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
         }
         RayPositionsBuffer[istep + offset] = x_cart;        
 
+        // TODO: Add a beta buffer. 
+        
         istep++;
     }
 
@@ -156,6 +158,9 @@ void btrace(SSP soundSpeedProfile, float theta, float dtheta, float2 xs, float2 
     prd.phi = phi;
     prd.TL = 0; // calculated later
     prd.target = id.x;
+    prd.cs = ssp(xs.y, soundSpeedProfile, 0).c;
+
+    prd.cr = ssp(xr.y, soundSpeedProfile, 0).c;
 
     if (beta < 1) {
         prd.contributing = 1;

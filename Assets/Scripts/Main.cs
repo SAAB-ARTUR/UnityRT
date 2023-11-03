@@ -56,7 +56,7 @@ public class Main : MonoBehaviour
     private const int HovemTraceContributingRaysKernelIdx = 3;
     private const int HovemRTASTraceRaysKernelIdx = 5;
 
-    struct PerRayData
+    public struct PerRayData
     {
         public float beta;
         public uint ntop;
@@ -67,12 +67,17 @@ public class Main : MonoBehaviour
         public float xn;
         public float qi;
         public float theta;
+
+        public float cr;
+        public float cs;
+
         public float phi;
         public uint contributing;
         public float TL;
         public uint target;
+
     }
-    private int perraydataByteSize = sizeof(uint) * 5 + sizeof(float) * 8;
+    private int perraydataByteSize = sizeof(uint) * 5 + sizeof(float) * 10;
 
     private ComputeBuffer PerRayDataBuffer;
     private PerRayData[] rayData = null;
@@ -859,19 +864,29 @@ public class Main : MonoBehaviour
             {
 
                 World world = worldManager.GetComponent<World>();
-                // Create a ray collection
-                List<List<Vector3>> rays = new List<List<Vector3>>();
+                List<PerTarget> perTargetData = new List<PerTarget>();
 
-                for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++){
+                for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
+                {
+                    PerTarget currTargetData = new PerTarget();
+
+                    List<List<Vector3>> rays = new List<List<Vector3>>();
+                    List<PerRayData> d = new List<PerRayData>();
+
                     for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
                     {
-
                         rays.Add(RayLine(iphi, itheta, rayPositions));
+                        d.Add(rayData[iphi * sourceParams.ntheta +  itheta]);
+
 
                     }
+                    currTargetData.cart_rays = rays;
+                    currTargetData.raydatas = d;
+                    perTargetData.Add(currTargetData);
+
                 }
 
-                api.Rays(rays);
+                api.SetData(perTargetData);
                 // Debug.Log(rays[0][0].ToString());
             }           
 
@@ -921,25 +936,44 @@ public class Main : MonoBehaviour
         
         computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
         Debug.Log("Dispatching done");
-
+        
+        PerRayDataBuffer.GetData(rayData);
         RayPositionsBuffer.GetData(rayPositions);
 
         // Create a ray collection
-        List<List<Vector3>> rays = new List<List<Vector3>>();
+        //List<List<Vector3>> rays = new List<List<Vector3>>();
+        
+        // This constructs a list of lists of perraydata, that is split by each target
 
         // API should really be enabled if trace has been called. Just to be certain. 
         if (api.enabled) {
 
+            List<PerTarget> perTargetData = new List<PerTarget>();
+
             for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++){
+                PerTarget currTargetData = new PerTarget();
+
+                List<List<Vector3>> rays = new List<List<Vector3>>();
+                List<PerRayData> d = new List<PerRayData>();    
+
                 for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
                 {
 
                     rays.Add(RayLine(iphi, itheta, rayPositions));
 
+
+
+                    d.Add(rayData[iphi * sourceParams.ntheta + itheta]);
+
+
                 }
+                currTargetData.cart_rays = rays;
+                currTargetData.raydatas = d;
+                perTargetData.Add(currTargetData);
+
             }
 
-            api.Rays(rays);
+            api.SetData(perTargetData);
         }
         
         
