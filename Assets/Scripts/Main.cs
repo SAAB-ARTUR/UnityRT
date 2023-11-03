@@ -190,12 +190,20 @@ public class Main : MonoBehaviour
 
         if (RayPositionsBuffer == null)
         {
-            RayPositionsBuffer = new ComputeBuffer(modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));
+            if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS)
+            {         
+                RayPositionsBuffer = new ComputeBuffer(modelParams.INTEGRATIONSTEPS * sourceParams.ntheta * sourceParams.ntheta, 3 * sizeof(float));
+            }
+            else
+            {
+                RayPositionsBuffer = new ComputeBuffer(modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta, 3 * sizeof(float));                
+            }
+            
             SetComputeBuffer("RayPositionsBuffer", RayPositionsBuffer, modelParams.RTMODEL);
         }
 
         if (rayPositions == null)
-        {
+        {            
             rayPositions = new float3[modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
             rayPositionDataAvail = false;
         }
@@ -299,14 +307,32 @@ public class Main : MonoBehaviour
     void Plot()
     {
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
+        RTModelParams modelParams = RTModel.GetComponent<RTModelParams>();
         World world = worldManager.GetComponent<World>();
-        for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
+
+        if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS)
         {
-            for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+            for (int iphi = 0; iphi < sourceParams.ntheta; iphi++)
             {
-                PlotLines(iphi, itheta, rayPositions);
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                {
+                    PlotLines(iphi, itheta, rayPositions);
+                }
             }
         }
+        else 
+        {
+            for (int iphi = 0; iphi < world.GetNrOfTargets(); iphi++)
+            {
+                for (int itheta = 0; itheta < sourceParams.ntheta; itheta++)
+                {
+                    PlotLines(iphi, itheta, rayPositions);
+                }
+            }
+        }
+        
+
+
     }
 
     List<Vector3> RayLine(int idx, int idy, float3[] bds) {
@@ -413,8 +439,15 @@ public class Main : MonoBehaviour
             world.AckTargetChange();
             try
             {
-                rayPositions = new float3[modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];
-                rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta];
+                if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS) {
+                    rayPositions = new float3[modelParams.INTEGRATIONSTEPS * sourceParams.ntheta * sourceParams.ntheta];                    
+                }
+                else
+                {
+                    rayPositions = new float3[modelParams.INTEGRATIONSTEPS * world.GetNrOfTargets() * sourceParams.ntheta];                    
+                }
+                rayData = new PerRayData[world.GetNrOfTargets() * sourceParams.ntheta]; // raydata is not used for 3D hovem so no need to resize it
+
             }
             catch (OverflowException e)
             {
@@ -453,9 +486,9 @@ public class Main : MonoBehaviour
             dtheta = (float)sourceParams.theta / (float)(sourceParams.ntheta + 1);
             dtheta = dtheta * MathF.PI / 180; // to radians
             computeShader.SetFloat("dtheta", dtheta);
-            debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS, 3 * sizeof(float));
-            debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS];            
-            SetComputeBuffer("debugBuf", debugBuf, modelParams.RTMODEL);
+            //debugBuf = new ComputeBuffer(world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS, 3 * sizeof(float));
+            //debugger = new float3[world.GetNrOfTargets() * sourceParams.ntheta * modelParams.INTEGRATIONSTEPS];            
+            //SetComputeBuffer("debugBuf", debugBuf, modelParams.RTMODEL);
         }
         if (modelParams.MAXNRSURFACEHITS != oldMaxSurfaceHits)
         {
@@ -759,6 +792,8 @@ public class Main : MonoBehaviour
             }
             else if (modelParams.RTMODEL == RTModelParams.RT_Model.HovemRTAS)
             {
+                threadGroupsX = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
+                threadGroupsY = Mathf.FloorToInt(sourceParams.ntheta / 8.0f);
                 if (rebuildRTAS)
                 {
                     BuildRTAS();
@@ -938,4 +973,5 @@ public class Main : MonoBehaviour
 }
 
 // TODOS:
-// 3: skapa ett knippe av strålar för 3D-hovem
+// fixa buffrar för amplitud och fas
+// lägga till ett inputfield för fler frekvenser

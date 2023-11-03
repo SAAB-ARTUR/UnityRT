@@ -537,14 +537,14 @@ float3 toCartesian2(float phi, float2 step)
 }
 
 #pragma kernel HovemWithRTAS3D
-[numthreads(1, 8, 1)]
+[numthreads(8, 8, 1)]
 void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 {
     SSP soundSpeedProfile;
     soundSpeedProfile.type = 0;
 
     // create the ray 
-    float2 angles = CreateCylindricalRay(id);
+    float2 angles = CreateCylindricalRayFor3DHovem(id);
     float theta = angles.x;
     float phi = angles.y;
 
@@ -552,10 +552,10 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 
     float2 xs = { 0.0,  mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).y };
 
-    float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
-    float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
+    //float xdiff = targetBuffer[id.x].xpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).x;
+    //float zdiff = targetBuffer[id.x].zpos - mul(_SourceCameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).z;
 
-    float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
+    //float2 xr = { sqrt((pow(xdiff, 2.0) + pow(zdiff, 2.0))), targetBuffer[id.x].ypos };
 
     uint offset = (id.y + id.x * ntheta) * _MAXSTEPS; // each ray gets _MAXSTEPS nr of steps to reach the target
 
@@ -734,8 +734,7 @@ void HovemWithRTAS3D(uint3 id : SV_DispatchThreadID)
 
     // easy solution for buffer problem, positions that should be empty sometimes gets filled with weird values, therefore we force an invalid float3 (positve y-coord is not possible) into the buffer that the cpu can look for
     for (uint i = istep; i < _MAXSTEPS; i++) {
-        RayPositionsBuffer[i + offset] = float3(0, 10, 0);
-        debugBuf[i + offset] = float3(123, 456, 789);
+        RayPositionsBuffer[i + offset] = float3(0, 10, 0);        
     }
 }
 
