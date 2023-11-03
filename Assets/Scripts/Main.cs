@@ -973,6 +973,5 @@ public class Main : MonoBehaviour
 }
 
 // TODOS:
-// skapa ett knippe av strålar för 3D-hovem
 // fixa buffrar för amplitud och fas
 // lägga till ett inputfield för fler frekvenser
