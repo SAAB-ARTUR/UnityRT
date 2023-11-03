@@ -919,7 +919,6 @@ public class Main : MonoBehaviour
 
 
         SourceParams sourceParams = srcSphere.GetComponent<SourceParams>();
-        Debug.Log("HEJ moltas");
 
 
         CreateResources();
@@ -935,10 +934,10 @@ public class Main : MonoBehaviour
 
         
         computeShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
-        Debug.Log("Dispatching done");
         
         PerRayDataBuffer.GetData(rayData);
         RayPositionsBuffer.GetData(rayPositions);
+        rayPositionDataAvail = true;
 
         // Create a ray collection
         //List<List<Vector3>> rays = new List<List<Vector3>>();

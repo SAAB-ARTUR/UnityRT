@@ -45,7 +45,7 @@ public class apiv2 : MonoBehaviour
     // Enable this if you want to save the binary message to be sent to over the 
     // api in a file
     // For debugging purposes. Should be false for maximum performance.
-    bool save = true;
+    bool save = false;
 
     List<List<Vector3>> rays = new List<List<Vector3>>();
 
@@ -75,7 +75,6 @@ public class apiv2 : MonoBehaviour
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
-        UnityEngine.Debug.Log("Has started...");
 
         ThreadStart threadStart = new ThreadStart(() =>
         {
@@ -134,8 +133,7 @@ public class apiv2 : MonoBehaviour
 
     private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
     {
-        UnityEngine.Debug.Log("Python: " + e.Data);
-        
+       
 
 
         byte[] bb = Base64Decode(e.Data);
@@ -144,12 +142,9 @@ public class apiv2 : MonoBehaviour
         // Test read
         SAAB.Artur.Control.Message m = SAAB.Artur.Control.Message.GetRootAsMessage(new ByteBuffer(bb));
 
-        UnityEngine.Debug.Log("Trying to place in queue...");
+
 
         messageQueue.Enqueue(m);
-
-        UnityEngine.Debug.Log("Trying to place in queue... SUCCESS");
-        UnityEngine.Debug.Log("Queue length: "  + messageQueue.Count);
 
 
         
@@ -187,7 +182,7 @@ public class apiv2 : MonoBehaviour
         SAAB.Artur.Control.Vec3? pr = m.Reciever?.Position;
         if (pr != null)
         {
-            UnityEngine.Debug.Log("--------------> Got a reciever position");
+            
 
             List<float> targetList = new List<float>();
             targetList.Add((float)pr?.X);
@@ -231,15 +226,9 @@ public class apiv2 : MonoBehaviour
     void Trace() {
 
 
-        UnityEngine.Debug.Log("TRACING222");
-        UnityEngine.Debug.Log(rays.Count.ToString());
+
         main.TraceNow();
         // Remove the rayData, while we are waiting for a new set of data points 
-
-
-        //main.doRayTracing = true;
-
-        UnityEngine.Debug.Log(rays.Count.ToString());
 
     }
 
@@ -247,7 +236,7 @@ public class apiv2 : MonoBehaviour
     {
         ProcessStartInfo startInfo = new ProcessStartInfo();
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        UnityEngine.Debug.Log("Home is " + home);
+
         startInfo.FileName = home + "\\" + ".conda\\envs\\unity_interface\\python.exe";
 
 
@@ -274,16 +263,14 @@ public class apiv2 : MonoBehaviour
             File.WriteAllBytes("apimsg.bin", msg);
         }
 
-        // Work on the queue
-        UnityEngine.Debug.Log("Queue length " + messageQueue.Count);
 
         if (messageQueue.Count > 0) {
 
             SAAB.Artur.Control.Message m = messageQueue.Dequeue();
-            UnityEngine.Debug.Log("Queue length " + messageQueue.Count);
 
             SAAB.Artur.Control.MessageType tt = m.MessageType;
-            UnityEngine.Debug.Log(tt.ToString());
+            
+            // UnityEngine.Debug.Log(tt.ToString());
 
             switch (tt)
             {
@@ -296,7 +283,6 @@ public class apiv2 : MonoBehaviour
                     break;
 
                 case SAAB.Artur.Control.MessageType.TraceNow:
-                    UnityEngine.Debug.Log("TRACING");
                     Trace();
                     break;
                 case SAAB.Artur.Control.MessageType.SetupMessage:
@@ -389,7 +375,6 @@ public class apiv2 : MonoBehaviour
 
         if (rayData.Count > 0)
         {
-            UnityEngine.Debug.Log( "----->>**>>" + rayData[0].raydatas[0].cr);
             SAAB.Artur.World.AddCr(fbb, rayData[0].raydatas[0].cr);
             SAAB.Artur.World.AddCs(fbb, rayData[0].raydatas[0].cs);
         }
@@ -441,8 +426,6 @@ public class apiv2 : MonoBehaviour
 
             for (int rayii = 0; rayii < rayData[collectionIndex].cart_rays.Count; rayii++){
                 //SAAB.Artur.Ray.StartXCartesianVector(fbb, rays.Count);
-                UnityEngine.Debug.Log("------------------->>>" + rays.Count);
-                UnityEngine.Debug.Log("------------------->>>>" + rayData[collectionIndex].cart_rays.Count);
                 List<Vector3> ray = rayData[collectionIndex].cart_rays[rayii];
 
                 // Offset<Vec3>[] positions = new Offset<Vec3>[ray.Count];
