@@ -10,13 +10,14 @@ import math
 
 fig = plt.figure()
 
-ax = fig.add_subplot(projection = "3d")
+ax = fig.add_subplot(121, projection = "3d")
+axresp = fig.add_subplot(122)
 senders, = ax.plot3D([], [], [], linewidth = 0, marker = ".")
 recievers, = ax.plot3D([], [], [], linewidth = 0, marker = ".")
 rays = Line3DCollection(np.empty((0, 3)))
 ax.add_collection(rays)
 
-figresp, axresp = plt.subplots()
+# figresp, axresp = plt.subplots()
 lineresp, = axresp.plot([], [])
 
 plt.show(block = False)
@@ -68,6 +69,9 @@ def plot_resp(d: tuple[np.ndarray, np.ndarray] | None):
     if d is not None:
         axresp.clear()
         axresp.plot(d[0], d[1])
+        axresp.set_ylim(-0.01, 0.01)
+        axresp.set_xlabel("t [s]")
+        axresp.set_ylabel("y")
     #lineresp.set_data(np.arange(len(y)), y)
 
 
@@ -408,9 +412,10 @@ while (True):
 
 
     fix_axis()
+    fig.tight_layout()
 
     fig.canvas.draw()
-    figresp.canvas.draw()
+    # figresp.canvas.draw()
     plt.pause(0.01)
     #sys.stdin.buffer.flush()
     # sys.stdin.flush()
