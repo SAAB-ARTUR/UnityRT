@@ -13,7 +13,7 @@ Exempel: Om threadGroupsX = 16, threadGroupsY = 16, threadGroupsZ = 1 och det i 
 Kontroller:  
 Med hjälp av högerklick och tangenterna W,A,S,D,Q,E kan man styra den vänstra vyn. Med hjälp av högerklick medan tangenten punkt/kolon hålls ner och tangenterna U,H,J,K,Y,I kan man flytta den gröna sfären. Klicka C för att skicka rays. Genom att klicka R kan användaren toggla mellan en fri-kamera eller en kamera som är låst till att följa sändaren. 
 
-Controls:
+Controls:  
 -C to send rays.  
 -R to toggle between 'free camera' mode and 'follow source' mode.  
 -W,A,S,D,Q,E to control the free camera (when in 'free camera' mode).  
