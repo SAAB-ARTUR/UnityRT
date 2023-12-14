@@ -7,7 +7,7 @@ In the top left corner of the screen a small button labelled "Settings" is found
 
 ![Screenshot 2023-12-14 135652](https://github.com/SAAB-ARTUR/UnityRT/assets/125650725/9d64e026-7978-4483-a988-735617f59491)
 
-There are currently 3 main categories ["Source parameters", "World parameters", "RT Model parameters"]
+There are currently 3 main categories ["Source parameters", "World parameters", "RT Model parameters"] 
 
 
 
