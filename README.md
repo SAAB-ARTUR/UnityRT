@@ -5,10 +5,9 @@ An executable file is located in the build-folder called "Building3DEnvironment.
 Settings panel instructions:
 In the top left corner of the screen a small button labelled "Settings" is found. Click on the button to find a number of options that can be used to change the RayTracer's behaviour.
 
+![Screenshot 2023-12-14 135652](https://github.com/SAAB-ARTUR/UnityRT/assets/125650725/9d64e026-7978-4483-a988-735617f59491)
 
-
-<img width="549" alt="Screenshot 2023-11-16 143527" src="https://github.com/SAAB-ARTUR/UnityRT/assets/125650725/10d85838-8102-44d9-b429-3faaaab978f6">
-
+There are currently 3 main categories ["Source parameters", "World parameters", "RT Model parameters"]
 
 
 
