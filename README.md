@@ -14,7 +14,7 @@ The following steps are necessary to work with the project in Unity:
 Running these steps should enable you to run the program in the Unity using the play button. 
 
 ## Some important details about Unity:
-Unity uses a left handed coordinate system where the xz-plane forms the horizontal plane. The y-axis is directed upwards, meaning that "increasing depth = decreasing y" and a positive y-coordinate indicates a position above the surface. Therefore the code in this project is written in accordance to Unity's coordinate system. 
+Unity uses a left handed coordinate system where the y-axis is directed upwards, meaning that "increasing depth = decreasing y" and a positive y-coordinate indicates a position above the surface. Therefore the code in this project is written in accordance to Unity's coordinate system. 
 
 ## Settings panel instructions:
 In the top left corner of the screen a small button labelled "Settings" is found. Click on the button to find a number of options that can be used to change the RayTracer's behaviour.
