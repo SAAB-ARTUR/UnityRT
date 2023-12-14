@@ -64,4 +64,4 @@ Documentation: https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
 
 The Hovem-RTAS model can be considered to be a 3D ray path simulator/calculator. The reason for this is that only the paths of the rays are calculated. The project ran out of time before the 3D model could be extended to include signal processing steps, e.g. calculating the received signal at a target. 
 
-The 3D model used the 2D Hovem model to estimate a ray's path from one layer to the next layer intersection, which could be the same layer if the ray turns within the layer. An angle &phi
+The 3D model used the 2D Hovem model to estimate a ray's path from one layer to the next layer intersection, which could be the same layer if the ray turns within the layer. A variable for the angle &phi; is added to keep track of which direction the ray is headed in the horiontal plane. Steps are taken in 2D, radially away from the previous position, but in the direction given by &phi;. 
