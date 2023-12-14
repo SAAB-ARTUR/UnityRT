@@ -1,6 +1,20 @@
 # UnityRT
 
-Inspiration: https://github.com/INedelcu/RayTracingMeshInstancingSimple/tree/main
+An executable file is located in the build-folder called "Building3DEnvironment.exe". This should be runnable even without Unity installed.
+
+Settings panel instructions:
+In the top left corner of the screen a small button labelled "Settings" is found. Click on the button to find a number of options that can be used to change the RayTracer's behaviour.
+
+
+
+<img width="549" alt="Screenshot 2023-11-16 143527" src="https://github.com/SAAB-ARTUR/UnityRT/assets/125650725/10d85838-8102-44d9-b429-3faaaab978f6">
+
+
+
+
+Install Unity via https://unity.com/download
+
+Project requires a Windows computer and 
 
 För att få projektet att köra behövs en Windows-dator och detta https://docs.unity3d.com/Manual/UsingDX11GL3Features.html behövs göras i Unity-projektet.
 Troligtvis saknas paketet Unity.Mathematics: i Unity Window->Package Manager-> + -> Install package from git URL. Lägg till com.unity.mathematics.
