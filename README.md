@@ -37,7 +37,7 @@ In the top left corner of the screen a small button labelled "Settings" is found
 
 ### World parameters
   - Range: Sets the size of the surface and bottom. The water volume is square with centre in the origin. Setting range to 300 means that the surface/bottom extends from -150 to 150 in the x- and z-direction. Surface and bottom are the same size and are placed directly above/beneath eachother. **Only relevant for the Bellhop and Hovem models. When using the Hovem-RTAS model the size of the surface/bottom is set by the bathymetry-file.**
-  - SSP: Sound speed profile, an example of a sound speed profile is located in "Assets/SSP/summer.txt". The first column denotes the depth and the second column denotes the speed of sound at that depth. Depths are listed as negative values. Future work: Handle an SSP that is dependent on more variables than only depth.
+  - SSP: Sound speed profile, an example of a sound speed profile is located in "Assets/SSP/summer.txt". The first column denotes the depth and the second column denotes the speed of sound at that depth. Depths are listed as negative values. The gap between listed depths does not have to be uniform. Future work: Handle an SSP that is dependent on more variables than only depth.
   - Targets: List of targets (red sphere's). Separate targets with ":" and define a target as "{x, y, z}".
   - Bathymetry: Read a custom bathymetry .stl-file https://en.wikipedia.org/wiki/STL_(file_format). Currently only ASCII-format is supported. Examples of custom bathymetry files are located in "Assets/Bathymetry/". The bathymetry file defines the dimensions of the bottom (Range-value is overridden). **Only relevant for the Hovem-RTAS model. The other models will simply have a planar bottom.** 
 
