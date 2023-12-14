@@ -59,5 +59,9 @@ A ComputeShader in Unity has a function Dispatch() which is used to start the co
 Example: If threadgroupsX = 16, threadgroupsY = 16, threadgroupsZ = 1, and [numthreads(8, 8, 1)] is written above the kernel, then 16x16x1 = 256 threadgroups are going to be created. Each threadgroup will consist of 8x8x1 = 64 threads and each thread will run its own instance of the GPU kernel. Since the kernel computes one ray this would mean that 16x16x1 x 8x8x1 = 16384 rays will be computed.  
 https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-dispatch shows how the indexing of these threads work.
 
-## Note about the RayTracing Acceleration Structure (RTAS)
+## Note about the Hovem-RTAS model and the RayTracing Acceleration Structure (RTAS)
 Documentation: https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html
+
+The Hovem-RTAS model can be considered to be a 3D ray path simulator/calculator. The reason for this is that only the paths of the rays are calculated. The project ran out of time before the 3D model could be extended to include signal processing steps, e.g. calculating the received signal at a target. 
+
+The 3D model used the 2D Hovem model to estimate a ray's path from one layer to the next layer intersection, which could be the same layer if the ray turns within the layer. An angle &phi
