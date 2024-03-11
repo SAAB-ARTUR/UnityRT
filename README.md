@@ -42,7 +42,7 @@ In the top left corner of the screen a small button labelled "Settings" is found
   - Bathymetry: Read a custom bathymetry .stl-file https://en.wikipedia.org/wiki/STL_(file_format). Currently, only ASCII-format is supported. Examples of custom bathymetry files are located in "Assets/Bathymetry/". The bathymetry file defines the dimensions of the bottom (Range-value is overridden). **Only relevant for the Hovem-RTAS model. The other models will simply have a planar bottom.** 
 
 ### Commands
-  - The "Enable"-box starts something cool (Daniel) **Only implemented for Model: Bellhop.** **Make sure that the "Visualize rays" box is checked for this to work.**
+  - The "Enable"-box starts an API call to some python code. **Only implemented for Model: Bellhop.** **Make sure that the "Visualize rays" box is checked for this to work.**
   - The "Callback" input field fills no purpose. At first, it was added so that commands could be sent to the other software instead of simply using the "Enable"-box. Maybe something for the future if someone finds a smart use for it.
 
 ## Controls (These are bad and someone should do something about these):  
