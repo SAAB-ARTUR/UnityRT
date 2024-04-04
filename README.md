@@ -1,6 +1,10 @@
 # UnityRT (Please try to keep this updated when/if changes to the code are made)
 
-An executable file is located in the build-folder called "Building3DEnvironment.exe". This should be runnable even without Unity installed.
+This project implements traditional Raytracing methods (Bellhop http://oalib.hlsresearch.com/Rays/HLS-2010-1.pdf and Hovem's Planeray https://sintef.brage.unit.no/sintef-xmlui/bitstream/handle/11250/2380647/SINTEF+A21539.pdf?sequence=3), used to simulate underwater acoustics, in the 3D game engine Unity. Note that these models are implemented as 2D models but visualized in a 3D environement. Eigenray computations showing transmission loss, delay, distance, surface bounces, bottom bounces, and caustics are done for these models.
+This project also implements a 3D version of the Hovem Planeray model, but currently no eigenray computations are made for this model. 
+All models are implemented to run on a GPU using shaders to speedup the compuations of rays. 
+
+An executable file called "Building3DEnvironment.exe" is located in the build-folder. This should be runnable even without Unity installed.
 
 ## Requirements
 The following steps are necessary to work with the project in Unity:
